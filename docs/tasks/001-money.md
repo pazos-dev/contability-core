@@ -1,6 +1,7 @@
 # 001-money — Implementar Currency y Money
 
-Estado: pendiente. Leer AGENTS.md y `docs/specs/money.md`.
+Estado: completada. Evidencia: `tests/money.test.mjs` (16 pruebas, M01-M12 en verde) y `docs/STATUS.md`.
+Leer AGENTS.md y `docs/specs/money.md`.
 Dependencia: respetar el orden en docs/ROADMAP.md.
 
 ## Resultado

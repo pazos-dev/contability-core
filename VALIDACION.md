@@ -18,3 +18,6 @@ No hay lint ni verificador semántico de arquitectura configurados.
 Se incluye pnpm-lock.yaml real. El ZIP excluye node_modules, dist y archivos temporales.
 MANIFEST.json enumera tamaños y SHA-256 de todos los archivos entregados salvo el propio manifiesto.
 La integridad del ZIP y las huellas del manifiesto se verifican al empaquetar.
+
+**Actualización posterior (001-money):** `src/index.ts` ya exporta `Currency`, `Money` y `MoneyError`,
+y existen pruebas de negocio en `tests/money.test.mjs`. Ver `docs/STATUS.md` para la evidencia vigente.
