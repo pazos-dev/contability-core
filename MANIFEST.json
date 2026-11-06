@@ -1,0 +1,328 @@
+{
+  "version": "2.0",
+  "prepared_at": "2026-11-06",
+  "state": "preparation-only-business-implementation-pending",
+  "file_count_excluding_manifest": 64,
+  "files": [
+    {
+      "path": ".agents/skills/accounting-implement/SKILL.md",
+      "size_bytes": 2488,
+      "sha256": "3a5213a16414b548aab91bef17e44ead1ca66329a35041159c1659b88a92a55e"
+    },
+    {
+      "path": ".agents/skills/accounting-review/SKILL.md",
+      "size_bytes": 2074,
+      "sha256": "edc730c22ffd4930589d73522a5f33e928c667133f48b931bc6c3a9b07922a0b"
+    },
+    {
+      "path": ".agents/skills/accounting-spec/SKILL.md",
+      "size_bytes": 2217,
+      "sha256": "82db6499904ae0c4d080bcb07fc4be3030fc939321f9829d536b5f99a7ac5689"
+    },
+    {
+      "path": ".agents/skills/clean-code-architecture/SKILL.md",
+      "size_bytes": 2642,
+      "sha256": "73ed6cd4807cbc0b918fc94c5ab4075b60577ba56419d5de73a94841008f156e"
+    },
+    {
+      "path": ".agents/skills/clean-code-architecture/references/patterns.md",
+      "size_bytes": 2496,
+      "sha256": "451d9d69303940401840cdc9d355329df24ea3caf8aaf51c313ed9e46df7386c"
+    },
+    {
+      "path": ".agents/skills/nodejs-best-practices/SKILL.md",
+      "size_bytes": 2485,
+      "sha256": "ecb9bf21edceab214279ba490ab981825784fdc20920973b15fe7dfa4fdaf6c8"
+    },
+    {
+      "path": ".agents/skills/nodejs-best-practices/references/nodejs.md",
+      "size_bytes": 2208,
+      "sha256": "ec41422abf165eccd21bbe7cffc6f315b489e0edfed4456b5ae589b5dfbb044c"
+    },
+    {
+      "path": ".agents/skills/typescript-best-practices/SKILL.md",
+      "size_bytes": 2509,
+      "sha256": "85ec032187a32242896c99801a2cf3ee9dbca3b6145aa6b88a4d62d4ebf902ba"
+    },
+    {
+      "path": ".agents/skills/typescript-best-practices/references/typescript.md",
+      "size_bytes": 2651,
+      "sha256": "6bbba8bade2e56382cdeb2ca6e306ee99f6a7a5e83b6c1886dfa7a2512d48d45"
+    },
+    {
+      "path": ".editorconfig",
+      "size_bytes": 188,
+      "sha256": "a6b98ea7cb6d61ed8d430dd0dffa46c87012b5cf859d4ce7207898954951fdcd"
+    },
+    {
+      "path": ".gitignore",
+      "size_bytes": 70,
+      "sha256": "5f52421d44355d83f5ad801209f7bda2a6706e7c3d6ac8b790ebbf54ec83c257"
+    },
+    {
+      "path": "AGENTS.md",
+      "size_bytes": 4302,
+      "sha256": "477b09436e04c4c437279dbaa1eef2edb73b57e4320b97d219e5f80936f038bb"
+    },
+    {
+      "path": "LEEME-PRIMERO.md",
+      "size_bytes": 1726,
+      "sha256": "d2e429b56ebd5db725fcc2be274e0cc02f1b20dcfe886fcbc1bbb4a92d99a2bd"
+    },
+    {
+      "path": "PROMPTS.md",
+      "size_bytes": 1604,
+      "sha256": "4b10dd7dac1119fd3b73db17e2528b05dfde6d1e6faa6f29e269e8c3a67ca2d4"
+    },
+    {
+      "path": "README.md",
+      "size_bytes": 3221,
+      "sha256": "37e11d74f6c279efadc7f20af4846b0754f52c43bfccf3f3abad7e695d9eb6e4"
+    },
+    {
+      "path": "SKILLS-INCLUIDAS.md",
+      "size_bytes": 1151,
+      "sha256": "48964af5453de716600c337f8ff508c3dfdec8023656ce886d344583f2a9a085"
+    },
+    {
+      "path": "VALIDACION.md",
+      "size_bytes": 1206,
+      "sha256": "8cb6bb8ca6d846fd897c20382d979ec3150aea815c7550fc37b9348619d47379"
+    },
+    {
+      "path": "docs/ARCHITECTURE.md",
+      "size_bytes": 3812,
+      "sha256": "e353ad86f55aa49a5510e74a97e750ba844a3d52875229a63b5b869f549263fa"
+    },
+    {
+      "path": "docs/DOMAIN.md",
+      "size_bytes": 2997,
+      "sha256": "c2f9f2f8d770eba0e3f82915dd032e579bdaf63e49b2ae4df971a3033809a0dc"
+    },
+    {
+      "path": "docs/INTEGRATION.md",
+      "size_bytes": 2060,
+      "sha256": "0d5048ac9be85ae6b22656814aa345a52a0dc1f7f36db4c4d7509b503277b130"
+    },
+    {
+      "path": "docs/OPEN-QUESTIONS.md",
+      "size_bytes": 1811,
+      "sha256": "6a8a161d62c37b601583a551e76ef066af55ed4937842cb2abf562a1fbb34270"
+    },
+    {
+      "path": "docs/QUALITY.md",
+      "size_bytes": 1534,
+      "sha256": "f6bc1ec654c2cf0bf128da91e71a15f5dfafe9106ba6dc91104908bb299eb3fc"
+    },
+    {
+      "path": "docs/ROADMAP.md",
+      "size_bytes": 1242,
+      "sha256": "c1a6b16b6f46940521afa3060e43b10e4f37fea61d3db994674354bf98f775be"
+    },
+    {
+      "path": "docs/SCOPE.md",
+      "size_bytes": 1377,
+      "sha256": "62b1ce15f53df5822b5da071d9792304d5c52cc7dc967c066fe82020b9f5fac9"
+    },
+    {
+      "path": "docs/STATUS.md",
+      "size_bytes": 1122,
+      "sha256": "550eefd1b61feaf4856da074cc27705425645d882e6583b578ecac4bdd5d811c"
+    },
+    {
+      "path": "docs/WORKFLOW.md",
+      "size_bytes": 2649,
+      "sha256": "6bdf4309d60207f3173d4e851e3ce6eae783c751fc6bbb37345751cf346d91e1"
+    },
+    {
+      "path": "docs/decisions/0001-core-independiente.md",
+      "size_bytes": 614,
+      "sha256": "52d4079aeed283d276179965b3c1379dd9a38d0ac5f0982f6ce7c406c12009c5"
+    },
+    {
+      "path": "docs/decisions/0002-base-tecnica.md",
+      "size_bytes": 1980,
+      "sha256": "7078e9364dee49be5feaef695214598eafebbe2f13fab0ccdd9a99c646389dec"
+    },
+    {
+      "path": "docs/decisions/TEMPLATE.md",
+      "size_bytes": 436,
+      "sha256": "b4d36c2d780c3c672dc5e590eaed2618328bd8cf28a1ea9bdb2c5e3e3e810c24"
+    },
+    {
+      "path": "docs/specs/TEMPLATE.md",
+      "size_bytes": 917,
+      "sha256": "0b53f90d0129e6e3feba0805916462cee8702135a9d8be0e725c613fec87e084"
+    },
+    {
+      "path": "docs/specs/account.md",
+      "size_bytes": 2374,
+      "sha256": "fa1a48bff0a30a1ba2d6775ac2df95c40f5eca0e43ba1c8c4eaad6ec7868cf2b"
+    },
+    {
+      "path": "docs/specs/entries.md",
+      "size_bytes": 2846,
+      "sha256": "0854d7253ae0fbaf5117e3cb067a40fd8a10d0997520fa2afc19afbb9e5385c6"
+    },
+    {
+      "path": "docs/specs/journal.md",
+      "size_bytes": 1449,
+      "sha256": "65fd4aaaa89d71e16649b3cef8fd1546fe486e561fe9e949565cf2cf1b98fcdd"
+    },
+    {
+      "path": "docs/specs/money.md",
+      "size_bytes": 2570,
+      "sha256": "bf409746a9b4aaf3d494b90db5c52b9af80992e30d1afd8c3d9ae0debeed9eed"
+    },
+    {
+      "path": "docs/specs/period.md",
+      "size_bytes": 2076,
+      "sha256": "4e164a36fd7b9e4d7a38d140bbcf59c15f3ac36a9315c3e48354bdaf0f26ca0f"
+    },
+    {
+      "path": "docs/specs/post-entry.md",
+      "size_bytes": 2378,
+      "sha256": "8204b565d1873a799a6f9bfee5d1390067d5b89f4db75329fa6dc3326ff8fd07"
+    },
+    {
+      "path": "docs/tasks/001-money.md",
+      "size_bytes": 831,
+      "sha256": "78579ec3d747a9bf315fff5f4e8ebf49711638ff1b13a0aed32e28a2bcc5b897"
+    },
+    {
+      "path": "docs/tasks/002-account.md",
+      "size_bytes": 839,
+      "sha256": "f7a9f8000c3163f3dee12f8f2abd14310162c1aa4dfa3371c7513ea9b4dc9a7c"
+    },
+    {
+      "path": "docs/tasks/003-journal.md",
+      "size_bytes": 823,
+      "sha256": "b6885abb74e5cbd9fc69455b1d881f19bd73925b2a5e3059726338cee150d588"
+    },
+    {
+      "path": "docs/tasks/004-period.md",
+      "size_bytes": 842,
+      "sha256": "e16e277b07ffb54db890b0f235a9cec0d03fe903653781392a80bbe4e662b145"
+    },
+    {
+      "path": "docs/tasks/005-entries.md",
+      "size_bytes": 839,
+      "sha256": "e221aed5f17904152100274f2dd9bd374913c51ff974804133fa887066fe6648"
+    },
+    {
+      "path": "docs/tasks/006-application.md",
+      "size_bytes": 949,
+      "sha256": "8713fb4d46933003d51f1199f929b966461807f3ca4fb273000e3544335c9a94"
+    },
+    {
+      "path": "docs/templates/HANDOFF.md",
+      "size_bytes": 410,
+      "sha256": "2432f0fb555542116ed8c46477bc08269a3d0b805d5c20616d265d7bae8394c7"
+    },
+    {
+      "path": "docs/templates/REVIEW.md",
+      "size_bytes": 633,
+      "sha256": "f66a32423d1ddd6b6b4e475925aa9e8072c8f7c019109f77b58f09ce713b65ad"
+    },
+    {
+      "path": "docs/templates/TASK.md",
+      "size_bytes": 464,
+      "sha256": "3af72020894f56d0ed4d0428556cd53aa36d8206a6798e260813c0d3bfa91832"
+    },
+    {
+      "path": "package.json",
+      "size_bytes": 749,
+      "sha256": "d621918b526380427f5b835e558eab55d7abe00429f953d7e3d2f479281cd961"
+    },
+    {
+      "path": "pnpm-lock.yaml",
+      "size_bytes": 439,
+      "sha256": "9747995ee6c20d5990a84006b6353d66070f7a2bb23b92133c1c81e02a1e5693"
+    },
+    {
+      "path": "scripts/check-project.mjs",
+      "size_bytes": 2924,
+      "sha256": "5ae190684afa882c8a0d02ed2f4858daf57551128ab9895d46a72a62eb8e208a"
+    },
+    {
+      "path": "scripts/run-tests.mjs",
+      "size_bytes": 745,
+      "sha256": "bcee8c2259e9fc95b0bdfa95c1bd7004e8e6f01a2a5281e5a360187a13adec59"
+    },
+    {
+      "path": "src/adapters/README.md",
+      "size_bytes": 195,
+      "sha256": "c0bde748677a297d4a1300b8dbbb449c4f2154329f3d714c47055638dd9cf444"
+    },
+    {
+      "path": "src/composition/README.md",
+      "size_bytes": 172,
+      "sha256": "df08fe7340ddb20515f766bc09a6deba57ed5ae3000c71626bcc294b983b042b"
+    },
+    {
+      "path": "src/core/application/README.md",
+      "size_bytes": 179,
+      "sha256": "149a64ec4daec8c145a701ce05137a61421a57657d0c614f7f1f7265eeca3b23"
+    },
+    {
+      "path": "src/core/application/contracts/README.md",
+      "size_bytes": 181,
+      "sha256": "9a9e26ad331f1aa730cb44da795a1451d85341cbe5f947a0b7cb5535ed50a3e3"
+    },
+    {
+      "path": "src/core/application/ports/README.md",
+      "size_bytes": 183,
+      "sha256": "920639246bcf68c9a951cd48b897b7d9e48a7769c0031607f73cf81d2a7df179"
+    },
+    {
+      "path": "src/core/application/use-cases/README.md",
+      "size_bytes": 177,
+      "sha256": "91d9670966a397d9f0e22ebf81fbe5167718cd69d13c1b869d9e155e3987300a"
+    },
+    {
+      "path": "src/core/domain/account/README.md",
+      "size_bytes": 325,
+      "sha256": "229feb74db860fe5a62ffc5ba0337b6eb98ca8aee441725270bbe91d0fe78e53"
+    },
+    {
+      "path": "src/core/domain/entries/README.md",
+      "size_bytes": 360,
+      "sha256": "e1b9a230a6f705c3bd6d861d88afdfdbc5e923e99529bd2b68c4f755ee264006"
+    },
+    {
+      "path": "src/core/domain/journal/README.md",
+      "size_bytes": 355,
+      "sha256": "a35d9f0a58a20f0f82c91723ebdbec6311f8bf47479577e6e687a37ec6c09b24"
+    },
+    {
+      "path": "src/core/domain/money/README.md",
+      "size_bytes": 322,
+      "sha256": "29ac743d700f81175b3e2987151867100a848ce602ae3827854f102f8fe978c3"
+    },
+    {
+      "path": "src/core/domain/period/README.md",
+      "size_bytes": 355,
+      "sha256": "c0d4a98bc0bbd5deb24bd4402e2141dc4b2eb4389925130f7aac78f8096ea568"
+    },
+    {
+      "path": "src/index.ts",
+      "size_bytes": 98,
+      "sha256": "8f3c280a9f640eec5aad47b4fc67bb41f62944f12123e2f86fd2a1a79856e468"
+    },
+    {
+      "path": "tests/README.md",
+      "size_bytes": 566,
+      "sha256": "7a47d8de97a0b81fc164dcb482bce4d8ebeacc9bd51f2cfc396f0893c749a3b0"
+    },
+    {
+      "path": "tsconfig.build.json",
+      "size_bytes": 83,
+      "sha256": "766d8f09971c4c7dd65bf59b604594d8b146ce076e1bf13293023ea14e50735b"
+    },
+    {
+      "path": "tsconfig.json",
+      "size_bytes": 699,
+      "sha256": "b7cad778c0609c44923c634f6a0979585125096fe9875f7b72a491e10439b7be"
+    }
+  ]
+}

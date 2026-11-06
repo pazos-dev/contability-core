@@ -1,0 +1,35 @@
+{
+  "name": "@pazos-dev/contability-core",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Núcleo contable reutilizable para integrar en distintas aplicaciones; reglas por implementar",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pazos-dev/contability-core.git"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=24",
+    "pnpm": ">=10"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "check:project": "node scripts/check-project.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node scripts/run-tests.mjs",
+    "check": "pnpm check:project && pnpm typecheck && pnpm build && pnpm test"
+  },
+  "devDependencies": {
+    "typescript": "5.9.3"
+  },
+  "packageManager": "pnpm@11.25.0"
+}
