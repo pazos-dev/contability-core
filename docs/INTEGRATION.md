@@ -20,6 +20,16 @@ Los objetos de dominio viven en memoria durante la ejecución. Un repositorio gu
 Sin adaptador durable, los datos se pierden al terminar el proceso. No hay BD configurada en este ZIP.
 PostgreSQL y un ORM son opciones futuras; no requisitos dentro del dominio.
 
+**Un importe se guarda con `minorUnits`, `code` y `scale`.** La escala es parte del dato contable, no un
+derivable: la tabla ISO 4217 puede cambiar y el código solo no alcanza para releer un valor histórico.
+`Money.toJSON()` ya la incluye; no la quites del esquema de la base ni del DTO por parecer redundante.
+Guardar solo `minorUnits` y `code` convierte un cambio de escala en una lectura 10 o 100 veces menor
+sin ningún error. Reconstruir sin escala, o con una escala que no coincide con la tabla, falla
+(`M14` y `M15` en `docs/specs/money.md`).
+
+Antes de persistir producción, resolver `IC-Q01` en `docs/specs/currency-catalog.md`: el catálogo
+solo contiene monedas vigentes, así que una moneda retirada del ISO deja de poder leerse.
+
 ## Atomicidad entre módulos
 
 Un core desacoplado no garantiza automáticamente que compra y asiento se confirmen juntos.
@@ -29,7 +39,7 @@ No añadir infraestructura distribuida en esta fase.
 
 ## Contratos de intercambio
 
-- Moneda y unidades mínimas explícitas; bigint como cadena en JSON.
+- Moneda, escala y unidades mínimas explícitas; bigint como cadena en JSON.
 - Fecha contable YYYY-MM-DD; instante de auditoría como concepto distinto.
 - IDs de libro, diario, período y cuentas sin valores mágicos.
 - Clave de idempotencia para operaciones repetibles, aislada por libro y operación.

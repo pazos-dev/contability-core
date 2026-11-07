@@ -67,7 +67,10 @@ más la convención de API pública por dominio (barrel `index.ts` en cada domin
 - Riesgo registrado (IC-Q01): la tabla solo contiene códigos vigentes; una moneda retirada del ISO
   romperá la lectura de importes históricos guardados con ella. Bloquea la primera persistencia real.
   Si un adaptador persiste solo `minorUnits` y `code`, un cambio de escala dejaría de fallar al leer y
-  pasaría a corromper el importe en silencio: guardar el `scale` en la persistencia real.
+  pasaría a corromper el importe en silencio. Mitigación aplicada: el `scale` se guarda con el importe y
+  se valida contra la tabla; reconstruir sin escala o con una escala que no coincide falla con
+  `INVALID_CURRENCY` en lugar de reinterpretar el valor (regla 11, M14 y M15). La regla de persistencia
+  está en `docs/INTEGRATION.md`.
 
 ### API pública
 
@@ -92,7 +95,7 @@ superficie de cada barrel y la del paquete.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 70 pruebas, 70 correctas, 0 fallos. |
+| `pnpm test` | 72 pruebas, 72 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 

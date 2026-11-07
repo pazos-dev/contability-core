@@ -23,6 +23,8 @@ No normalizar entradas inválidas silenciosamente.
 Money admite cero y negativos; JournalEntryLine restringe el importe a positivo.
 
 JSON: `{ "minorUnits": "1025", "currency": { "code": "UYU", "scale": 2 } }`.
+La escala forma parte del importe guardado: se persiste y no se deduce del código, porque la tabla
+ISO 4217 puede cambiar y el código solo no alcanza para releer un valor histórico.
 Validar datos unknown al reconstruir. `minorUnits` usa cadena entera canónica, sin decimales ni exponentes.
 Excepciones propuestas: INVALID_CURRENCY, INVALID_MONEY, CURRENCY_MISMATCH.
 
@@ -43,6 +45,8 @@ Excepciones propuestas: INVALID_CURRENCY, INVALID_MONEY, CURRENCY_MISMATCH.
 | M11 | Escala 0 con valor entero | Exactitud; rechazar parte decimal. |
 | M12 | Modificar objeto de entrada o salida | No altera un Money existente. |
 | M13 | Código bien formado y ausente del catálogo ISO | `INVALID_CURRENCY`; el catálogo cerrado vive en `docs/specs/currency-catalog.md`. |
+| M14 | JSON sin `scale`, solo con `code` | `INVALID_CURRENCY`; la escala se guarda, nunca se deduce del código. |
+| M15 | JSON con `scale` distinto del oficial | `INVALID_CURRENCY`; el importe no se reinterpreta con la escala nueva. |
 
 `rounding-mode.ts` se añade solo al especificar una operación que redondee.
 Conversión, reparto, multiplicación y límites fiscales quedan fuera del incremento.

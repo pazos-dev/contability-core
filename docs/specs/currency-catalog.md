@@ -58,6 +58,10 @@ decimal usa escala 2.
 10. La tabla se ordena por punto de código y registra fuente, fecha de publicación y SHA-256 del XML
     incorporado. La huella es trazabilidad, no una comprobación en ejecución: el ancla contra un
     cambio no buscado son los criterios IC10 e IC11.
+11. La escala se persiste junto al importe y **nunca se deduce del código**. Un importe reconstruido
+    sin escala, o con una escala que no coincide con la oficial, falla en lugar de reinterpretar el
+    valor. El catálogo responde "qué escala tiene hoy esta moneda", no "qué escala tenía el dato
+    guardado". Ver M14 y M15 en `docs/specs/money.md`.
 
 ## Errores
 
@@ -98,7 +102,7 @@ ausencia del catálogo.
 
 | ID | Tema | Estado e impacto |
 | --- | --- | --- |
-| IC-Q01 | Monedas retiradas del ISO | **Pendiente y bloqueante antes de persistir producción.** La tabla incorpora solo la lista vigente. Si ISO retira un código, `fromJSON` de un importe histórico guardado con ese código fallará. Opciones: incorporar la lista histórica de SIX, o aceptar la pérdida como error de lectura explícito. Hoy no bloquea: no hay persistencia ni datos históricos. |
+| IC-Q01 | Monedas retiradas del ISO | **Pendiente y bloqueante antes de persistir producción.** La tabla incorpora solo la lista vigente. Si ISO retira un código, `fromJSON` de un importe histórico guardado con ese código fallará. Opciones: incorporar la lista histórica de SIX, o aceptar la pérdida como error de lectura explícito. Mitigación aplicada (opción C): la escala se persiste y se valida contra la tabla (regla 11, M14-M15), así que un cambio de escala falla con error visible en lugar de corromper el importe en silencio. Hoy no bloquea: no hay persistencia ni datos históricos. |
 
 ## Integración y consistencia
 

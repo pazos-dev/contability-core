@@ -17,7 +17,7 @@ de preparación registradas en ADR 0002.
 | Q10 | Estados y cierre | DRAFT/POSTED, OPEN/CLOSED; reversión con otro asiento. | specs/entries.md y specs/period.md |
 | Q11 | Numeración oficial y concurrencia | Pendiente de contrato de aplicación/persistencia; usar IDs explícitos mientras tanto. | specs/post-entry.md |
 | Q12 | País y fiscalidad | Fuera de fase; especificar con fuentes y vigencia al incorporarlos. | SCOPE.md |
-| Q13 | Monedas retiradas del ISO 4217 | Pendiente; bloquea la primera persistencia con datos históricos. | specs/currency-catalog.md |
+| Q13 | Monedas retiradas del ISO 4217 | Pendiente; bloquea la primera persistencia con datos históricos. Mitigación aplicada: la escala se persiste y se valida (M14-M15). | specs/currency-catalog.md |
 
 Ejercicio, reapertura, cierres de resultados, contracuentas y contabilización multimoneda necesitan
 especificaciones propias. No se incluyen implícitamente al crear el primer período.

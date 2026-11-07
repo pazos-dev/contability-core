@@ -188,3 +188,23 @@ test('compare orders exact amounts within the same currency', () => {
   assert.equal(small.compare(Money.fromDecimal('0.10', uyu)), 0);
   assert.equal(Money.fromMinorUnits(0n, uyu).equals(Money.fromDecimal('0.00', uyu)), true);
 });
+
+// M14/M15 anchor option C: the scale is stored data, never something deduced from the code.
+// Dropping it from the persistence schema would turn a catalog change into silent corruption.
+test('M14: reconstruction refuses to deduce the scale from the code', () => {
+  assert.throws(
+    () => Money.fromJSON({ minorUnits: '1050', currency: { code: 'UYU' } }),
+    assertErrorCode('INVALID_CURRENCY'),
+  );
+  assert.throws(() => Money.fromJSON({ minorUnits: '1050', currency: 'UYU' }), assertErrorCode('INVALID_CURRENCY'));
+});
+
+test('M15: a stored scale that disagrees with the catalog fails instead of reinterpreting the amount', () => {
+  assert.throws(
+    () => Money.fromJSON({ minorUnits: '1050', currency: { code: 'UYU', scale: 3 } }),
+    assertErrorCode('INVALID_CURRENCY'),
+  );
+
+  // Only the stored official scale is an accepted reading: 1050 minor units are 10.50, never 1.050.
+  assert.equal(Money.fromJSON({ minorUnits: '1050', currency: { code: 'UYU', scale: 2 } }).toDecimal(), '10.50');
+});
