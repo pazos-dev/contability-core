@@ -19,6 +19,7 @@ Se incluye pnpm-lock.yaml real. El ZIP excluye node_modules, dist y archivos tem
 MANIFEST.json enumera tamaños y SHA-256 de todos los archivos entregados salvo el propio manifiesto.
 La integridad del ZIP y las huellas del manifiesto se verifican al empaquetar.
 
-**Actualización posterior (001-money y 002-account):** `src/index.ts` ya exporta `Currency`, `Money`
-y `MoneyError`, y después `Account`, `AccountCode` y `AccountError`; existen pruebas de negocio en
-`tests/money.test.mjs` y `tests/account.test.mjs`. Ver `docs/STATUS.md` para la evidencia vigente.
+**Actualización posterior (001-money, 002-account y 003-journal):** el core ya exporta `Currency`,
+`Money` y `MoneyError`; `Account`, `AccountCode` y `AccountError`; y `Journal` y `JournalError`.
+Hay pruebas de negocio en `tests/money.test.mjs`, `tests/account.test.mjs` y `tests/journal.test.mjs`.
+Ver `docs/STATUS.md` para la evidencia vigente.

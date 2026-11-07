@@ -12,3 +12,8 @@ export { AccountCode } from './core/domain/account/account-code.js';
 export { AccountError } from './core/domain/account/account-errors.js';
 export type { AccountErrorCode } from './core/domain/account/account-errors.js';
 export type { AccountType } from './core/domain/account/account-type.js';
+
+export { Journal } from './core/domain/journal/journal.js';
+export type { JournalInput, JournalStatus } from './core/domain/journal/journal.js';
+export { JournalError } from './core/domain/journal/journal-errors.js';
+export type { JournalErrorCode } from './core/domain/journal/journal-errors.js';
