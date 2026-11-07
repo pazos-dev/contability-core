@@ -1,6 +1,6 @@
 # 002-account — Implementar cuenta contable
 
-Estado: completada. Evidencia: `tests/account.test.mjs` (12 pruebas, A01-A03 y A08 en verde) y
+Estado: completada. Evidencia: `tests/account.test.mjs` (13 pruebas, A01-A03, A08 y A09 en verde) y
 `docs/STATUS.md`, que registra las validaciones pendientes de repositorio (A04-A07).
 Leer AGENTS.md y `docs/specs/account.md`.
 Dependencia: respetar el orden en docs/ROADMAP.md.

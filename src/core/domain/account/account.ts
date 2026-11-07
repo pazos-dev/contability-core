@@ -116,6 +116,11 @@ export class Account {
     return this.#copyWith({ status: 'INACTIVE' });
   }
 
+  /** Returns an active copy; reactivation keeps identity and history. */
+  activate(): Account {
+    return this.#copyWith({ status: 'ACTIVE' });
+  }
+
   #copyWith(changes: { readonly name?: string; readonly status?: AccountStatus }): Account {
     return new Account({
       id: this.#id,
@@ -133,6 +138,9 @@ export class Account {
 function requireIdentifier(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw invalidAccount(`${field} must be a non-empty string, received ${describeValue(value)}`);
+  }
+  if (value !== value.trim()) {
+    throw invalidAccount(`${field} must not have leading or trailing whitespace, received ${describeValue(value)}`);
   }
   return value;
 }
@@ -155,13 +163,11 @@ function requireType(value: unknown): AccountType {
 }
 
 function requireParentId(value: unknown, id: string): string {
-  if (typeof value !== 'string' || value.trim().length === 0) {
-    throw invalidAccount(`parentId must be a non-empty string, received ${describeValue(value)}`);
-  }
-  if (value === id) {
+  const parentId = requireIdentifier(value, 'parentId');
+  if (parentId === id) {
     throw accountSelfParent(id);
   }
-  return value;
+  return parentId;
 }
 
 function requirePostingAllowed(value: unknown): boolean {

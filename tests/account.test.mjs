@@ -111,7 +111,7 @@ test('postingAllowed must be an explicit boolean', () => {
 
 test('identifiers must be non-empty strings', () => {
   for (const field of ['id', 'chartOfAccountsId']) {
-    for (const value of ['', '   ', null, undefined, 5, {}]) {
+    for (const value of ['', '   ', ' acc-1', 'acc-1 ', null, undefined, 5, {}]) {
       assert.throws(
         () => Account.create({ ...base, [field]: value }),
         assertCode('INVALID_ACCOUNT'),
@@ -127,7 +127,7 @@ test('parentId is optional but must be a non-empty identifier', () => {
   assert.equal(Account.create({ ...base }).parentId, undefined);
   assert.equal(Account.create({ ...base, parentId: 'acc-parent' }).parentId, 'acc-parent');
 
-  for (const parentId of ['', '   ', 5, null]) {
+  for (const parentId of ['', '   ', ' acc-parent', 'acc-parent ', 5, null]) {
     assert.throws(() => Account.create({ ...base, parentId }), assertCode('INVALID_ACCOUNT'), `parentId: ${String(parentId)}`);
   }
 });
@@ -159,4 +159,19 @@ test('deactivate returns an inactive copy and keeps the original active', () => 
   assert.equal(inactive.id, original.id);
   assert.equal(inactive.postingAllowed, true);
   assert.equal(inactive.deactivate().status, 'INACTIVE');
+});
+
+test('activate returns an active copy keeping identity and history', () => {
+  const original = Account.create({ ...base });
+  const inactive = original.deactivate();
+  const active = inactive.activate();
+
+  assert.equal(active.status, 'ACTIVE');
+  assert.equal(active.isActive(), true);
+  assert.equal(inactive.status, 'INACTIVE');
+  assert.equal(active.id, original.id);
+  assert.equal(active.chartOfAccountsId, original.chartOfAccountsId);
+  assert.equal(active.code.value, original.code.value);
+  assert.equal(active.name, original.name);
+  assert.equal(active.activate().status, 'ACTIVE');
 });

@@ -12,15 +12,17 @@ Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificad
   `compare`, `equals`, `toDecimal`, `toJSON`/`fromJSON`.
 - `MoneyError` con códigos estables `INVALID_CURRENCY`, `INVALID_MONEY`, `CURRENCY_MISMATCH`.
 
-### 002-account — `docs/specs/account.md`, A01-A03 y A08
+### 002-account — `docs/specs/account.md`, A01-A03, A08 y A09
 
 - `src/core/domain/account/`: `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`.
 - `AccountCode`: valor inmutable de texto; conserva ceros iniciales y formato; rechaza vacío y
   espacios exteriores en lugar de recortarlos.
 - `Account`: inmutable, creado desde un DTO copiado; expone `id`, `chartOfAccountsId`, `code`,
-  `name`, `type`, `parentId`, `postingAllowed` y `status`; `rename` y `deactivate` devuelven copias.
-- Reglas locales: identificadores y nombre no vacíos, tipo dentro de `ASSET | LIABILITY | EQUITY |
-  REVENUE | EXPENSE`, `postingAllowed` booleano explícito y padre distinto de la propia cuenta.
+  `name`, `type`, `parentId`, `postingAllowed` y `status`; `rename`, `deactivate` y `activate`
+  devuelven copias.
+- Reglas locales: identificadores, código y nombre no vacíos y sin espacios exteriores (se rechazan,
+  no se recortan), tipo dentro de `ASSET | LIABILITY | EQUITY | REVENUE | EXPENSE`, `postingAllowed`
+  booleano explícito y padre distinto de la propia cuenta.
 - `AccountError` con códigos estables `INVALID_ACCOUNT`, `INVALID_ACCOUNT_CODE`, `ACCOUNT_SELF_PARENT`.
 
 ### API pública
@@ -35,13 +37,13 @@ y sus tipos. `describeValue` es un helper interno del dominio, no forma parte de
 | `pnpm check:project` | Correcto: rutas, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 28 pruebas, 28 correctas, 0 fallos. |
+| `pnpm test` | 29 pruebas, 29 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
-Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03 y A08 en
-`tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, `rename` y
-`deactivate`.
+Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y A09 en
+`tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
+interiores/exteriores, `rename`, `deactivate` y `activate`.
 
 ## Validaciones que esperan la capa de aplicación
 

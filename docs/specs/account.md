@@ -8,7 +8,8 @@ Ruta: `src/core/domain/account/`.
 Account: id, chartOfAccountsId, code, name, type, parentId opcional, postingAllowed y estado ACTIVE/INACTIVE.
 AccountType: ASSET, LIABILITY, EQUITY, REVENUE, EXPENSE.
 AccountCode es un valor; no se convierte a número: conservar ceros iniciales y el formato del plan.
-Propuesta inicial: código y nombre no vacíos, sin espacios exteriores; rechazar en lugar de recortar silenciosamente.
+Propuesta inicial: IDs, código y nombre no vacíos, sin espacios exteriores; rechazar en lugar de recortar
+silenciosamente.
 No imponer una máscara nacional ni deducir jerarquía del texto del código.
 
 ## Reglas y dueño de validación
@@ -24,7 +25,8 @@ No imponer una máscara nacional ni deducir jerarquía del texto del código.
 | Inactiva no admite nuevos asientos contabilizados | Caso contabilizar. |
 
 Una cuenta con hijos debe actuar como agrupadora en esta fase. Crear un hijo de una cuenta que ya tiene
-movimientos exige una política posterior; inicialmente rechazar. Desactivar no borra el historial.
+movimientos exige una política posterior; inicialmente rechazar. Desactivar no borra el historial y
+reactivar devuelve la cuenta a ACTIVE sin borrarlo.
 No almacenar un saldo editable. No exigir positividad de saldo por la naturaleza habitual de la cuenta.
 
 ## Aceptación
@@ -39,6 +41,7 @@ No almacenar un saldo editable. No exigir positividad de saldo por la naturaleza
 | A06 | Cuenta agrupadora o inactiva al contabilizar | No se registra el asiento. |
 | A07 | Cuenta ya usada | Se permite desactivar; no borrar su historial. |
 | A08 | Cambiar un DTO o referencia recibida | No altera estado protegido. |
+| A09 | Reactivar una cuenta inactiva | Vuelve a ACTIVE conservando identidad e historial. |
 
-Propuesta de API: create, rename, deactivate y consulta de estado. Cambios de código/padre/tipo quedan
+Propuesta de API: create, rename, deactivate, activate y consulta de estado. Cambios de código/padre/tipo quedan
 fuera del primer incremento para evitar prometer operaciones sin reglas de historial.

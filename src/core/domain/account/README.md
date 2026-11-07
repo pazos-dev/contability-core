@@ -2,15 +2,17 @@
 
 Responsabilidad: cuenta contable y su código.
 Especificación desde la raíz: `docs/specs/account.md`.
-Estado: reglas locales implementadas y probadas (A01-A03, A08) en `tests/account.test.mjs`.
+Estado: reglas locales implementadas y probadas (A01-A03, A08 y A09) en `tests/account.test.mjs`.
 
 Archivos:
 
 - `account.ts` — `Account` inmutable con identidad, plan, código, nombre, tipo, padre opcional,
-  `postingAllowed` y estado `ACTIVE`/`INACTIVE`; `rename` y `deactivate` devuelven copias.
+  `postingAllowed` y estado `ACTIVE`/`INACTIVE`; `rename`, `deactivate` y `activate` devuelven copias.
 - `account-code.ts` — `AccountCode` como texto inmutable; conserva ceros iniciales y formato del plan.
 - `account-type.ts` — conjunto cerrado `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`.
 - `account-errors.ts` — `AccountError` con códigos estables.
+
+Identificadores, código y nombre se rechazan si vienen vacíos o con espacios exteriores; no se recortan.
 
 Validaciones que **no** viven aquí y esperan repositorio: padre del mismo plan y ausencia de ciclos
 (A04), unicidad del código por plan (A05), agrupadora o inactiva sin nuevas contabilizaciones (A06)
