@@ -43,14 +43,9 @@ test('M04: mixing UYU and USD fails with CURRENCY_MISMATCH', () => {
   assert.throws(() => amount.compare(Money.fromDecimal('1.00', usd)), assertErrorCode('CURRENCY_MISMATCH'));
 });
 
-test('M05: same code with a different scale is incompatible', () => {
-  const uyuZero = Currency.create('UYU', 0);
-  const scaleTwo = Money.fromDecimal('1.00', uyu);
-  const scaleZero = Money.fromDecimal('1', uyuZero);
-
-  assert.equal(scaleTwo.equals(scaleZero), false);
-  assert.throws(() => scaleTwo.add(scaleZero), assertErrorCode('CURRENCY_MISMATCH'));
-  assert.throws(() => scaleTwo.compare(scaleZero), assertErrorCode('CURRENCY_MISMATCH'));
+test('M05: an ISO code with a scale other than the official one is rejected', () => {
+  assert.throws(() => Currency.create('UYU', 0), assertErrorCode('INVALID_CURRENCY'));
+  assert.throws(() => Currency.create('UYU', 3), assertErrorCode('INVALID_CURRENCY'));
 });
 
 test('M06: 1.001 in scale 2 is rejected instead of rounded', () => {

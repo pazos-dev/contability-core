@@ -6,6 +6,7 @@ Estado: reglas locales implementadas y probadas (A01-A03, A08 y A09) en `tests/a
 
 Archivos:
 
+- `index.ts` — barrel público del dominio; el resto de archivos es interno.
 - `account.ts` — `Account` inmutable con identidad, plan, código, nombre, tipo, padre opcional,
   `postingAllowed` y estado `ACTIVE`/`INACTIVE`; `rename`, `deactivate` y `activate` devuelven copias.
 - `account-code.ts` — `AccountCode` como texto inmutable; conserva ceros iniciales y formato del plan.

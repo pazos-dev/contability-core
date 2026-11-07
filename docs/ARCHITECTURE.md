@@ -14,7 +14,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 
 | Ruta | Archivos previstos; crear al implementar su especificación |
 | --- | --- |
-| `src/core/domain/money/` | `currency.ts`, `money.ts`, `money-errors.ts`; `rounding-mode.ts` solo al necesitar redondeo. |
+| `src/core/domain/money/` | `currency.ts`, `currency-catalog.ts`, `money.ts`, `money-errors.ts`; `rounding-mode.ts` solo al necesitar redondeo. |
 | `src/core/domain/account/` | `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`. |
 | `src/core/domain/journal/` | `journal.ts`, `journal-errors.ts`. |
 | `src/core/domain/entries/` | `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`, `posting-side.ts`, `entry-errors.ts`. |
@@ -24,10 +24,27 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/application/contracts/` | Entradas/salidas serializables; entidades y modelos ORM no son DTOs públicos. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
-| `src/index.ts` | Exportaciones públicas explícitas. Actualmente vacío. |
+| `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |
 
 Se incluyen README de responsabilidad en las carpetas preparadas. No hay clases vacías que aparenten implementación.
 La organización en singular es una normalización del kit: evitar duplicados con variantes en plural.
+
+## API pública por dominio
+
+Cada dominio expone su superficie en su propio `index.ts`. Fuera de esa carpeta nadie importa un archivo
+interno: el nombre de los archivos de implementación es libre de cambiar sin romper el contrato público.
+
+| Barrel | Superficie publicada |
+| --- | --- |
+| `src/core/domain/money/index.ts` | `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit`, `IsoCurrencyEntry` y sus tipos. |
+| `src/core/domain/account/index.ts` | `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos. |
+| `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
+| `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
+| `src/core/domain/entries/index.ts` | Vacío hasta que `entries` tenga capacidades implementadas. |
+
+`src/index.ts` solo re-exporta esos barrels, nunca archivos internos, y un tipo interno no se publica
+por accidente. `pnpm check:project` exige el `index.ts` de los cinco dominios; `tests/public-api.test.mjs`
+fixa la superficie de cada barrel y la del paquete.
 
 ## Límites importantes
 
@@ -35,6 +52,7 @@ La organización en singular es una normalización del kit: evitar duplicados co
 - La entidad asiento comprueba equilibrio, estados e importes. El caso de uso verifica cuentas, diario y período vigentes.
 - Un método `post()` del agregado por sí solo no prueba que el período esté abierto ni persiste nada.
 - Un saldo se calcula a partir de líneas contabilizadas; no es un campo editable de Account.
+- Un dominio no importa archivos internos de otro dominio: usa su `index.ts`.
 - El dominio no importa Node, DOM, HTTP, Prisma, adaptadores ni variables de entorno.
 - Aplicación no importa adaptadores. Componer desde fuera mediante puertos pequeños.
 - No usar reloj/UUID global en entidades. Recibir fechas e IDs explícitos.

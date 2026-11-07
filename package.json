@@ -23,6 +23,7 @@
   ],
   "scripts": {
     "check:project": "node scripts/check-project.mjs",
+    "sync:iso4217": "node scripts/sync-iso4217.mjs",
     "typecheck": "tsc --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "test": "node scripts/run-tests.mjs",

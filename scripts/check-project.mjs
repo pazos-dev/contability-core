@@ -13,7 +13,7 @@ const skills = ['accounting-spec', 'accounting-implement', 'accounting-review',
   'typescript-best-practices', 'nodejs-best-practices', 'clean-code-architecture'];
 for (const name of skills) required.push(`.agents/skills/${name}/SKILL.md`);
 for (const name of ['money', 'account', 'journal', 'entries', 'period']) {
-  required.push(`src/core/domain/${name}/README.md`, `docs/specs/${name}.md`);
+  required.push(`src/core/domain/${name}/README.md`, `src/core/domain/${name}/index.ts`, `docs/specs/${name}.md`);
 }
 for (const file of required) if (!existsSync(file)) errors.push(`Falta ${file}`);
 

@@ -1,26 +1,8 @@
 // Public API of the accounting core. Export only implemented and tested capabilities.
-export { Currency } from './core/domain/money/currency.js';
-export type { CurrencyJSON } from './core/domain/money/currency.js';
-export { Money } from './core/domain/money/money.js';
-export type { MoneyJSON } from './core/domain/money/money.js';
-export { MoneyError } from './core/domain/money/money-errors.js';
-export type { MoneyErrorCode } from './core/domain/money/money-errors.js';
-
-export { Account } from './core/domain/account/account.js';
-export type { AccountInput, AccountStatus } from './core/domain/account/account.js';
-export { AccountCode } from './core/domain/account/account-code.js';
-export { AccountError } from './core/domain/account/account-errors.js';
-export type { AccountErrorCode } from './core/domain/account/account-errors.js';
-export type { AccountType } from './core/domain/account/account-type.js';
-
-export { Journal } from './core/domain/journal/journal.js';
-export type { JournalInput, JournalStatus } from './core/domain/journal/journal.js';
-export { JournalError } from './core/domain/journal/journal-errors.js';
-export type { JournalErrorCode } from './core/domain/journal/journal-errors.js';
-
-export { AccountingDate } from './core/domain/period/accounting-date.js';
-export { AccountingPeriod } from './core/domain/period/accounting-period.js';
-export type { AccountingPeriodInput } from './core/domain/period/accounting-period.js';
-export { PeriodError } from './core/domain/period/period-errors.js';
-export type { PeriodErrorCode } from './core/domain/period/period-errors.js';
-export type { PeriodStatus } from './core/domain/period/period-status.js';
+// Each domain owns its public surface in its own index.ts; this file only aggregates those barrels.
+// Never import an internal domain file from outside its folder: use the barrel.
+export * from './core/domain/money/index.js';
+export * from './core/domain/account/index.js';
+export * from './core/domain/journal/index.js';
+export * from './core/domain/period/index.js';
+export * from './core/domain/entries/index.js';

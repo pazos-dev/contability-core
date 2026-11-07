@@ -3,9 +3,11 @@
 Proyecto preparado para desarrollar con IA un módulo contable reutilizable en TypeScript.
 Versión del paquete de preparación: 2.0 · 6 de noviembre de 2026.
 
-**Estado real:** estructura, documentación, especificaciones, seis skills de proyecto y configuración inicial.
-Las entidades y los casos de uso todavía no están implementados. No hay API, interfaz, ORM ni persistencia.
-`src/index.ts` es un módulo vacío intencional: no representa una API contable funcional.
+**Estado real:** estructura, documentación, especificaciones, seis skills de proyecto, configuración
+inicial y reglas locales implementadas de `money`, `account`, `journal` y `period`.
+Todavía no hay casos de uso, asientos, interfaz, ORM ni persistencia.
+`src/index.ts` agrega la API pública que cada dominio expone en su propio `index.ts`; al ser un paquete
+`private` en versión `0.0.0`, esa superficie todavía no es un contrato estable de producto.
 
 ## Empezar
 
@@ -23,7 +25,8 @@ Son elecciones técnicas para este scaffold; no una afirmación sobre las últim
 
 | Comando | Resultado |
 | --- | --- |
-| `pnpm check:project` | Comprueba rutas, enlaces Markdown locales, configuración y las seis skills. No verifica reglas contables. |
+| `pnpm check:project` | Comprueba rutas, barrels por dominio, enlaces Markdown locales, configuración y las seis skills. No verifica reglas contables. |
+| `pnpm sync:iso4217` | Regenera el catálogo ISO 4217 desde la lista oficial de SIX Group; `--input <archivo.xml>` usa una copia local. Requiere red salvo con `--input`. |
 | `pnpm typecheck` | Ejecuta TypeScript estricto sin emitir archivos. Requiere instalar dependencias. |
 | `pnpm build` | Compila a `dist/` con declaraciones de tipos. Requiere instalar dependencias. |
 | `pnpm test` | Ejecuta los archivos `*.test.mjs` de `tests/`. Falla explícitamente si todavía no existen pruebas. |

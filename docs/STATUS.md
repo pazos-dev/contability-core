@@ -1,6 +1,7 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 004-period.
+Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 005-currency-catalog,
+más la convención de API pública por dominio (barrel `index.ts` en cada dominio).
 
 ## Implementado y verificado
 
@@ -48,20 +49,50 @@ Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificad
 - Identificadores y nombre no vacíos y sin espacios exteriores, alineado con las otras áreas.
 - `PeriodError` con códigos estables `INVALID_DATE`, `INVALID_PERIOD`, `PERIOD_ALREADY_CLOSED`.
 
+### 005-currency-catalog — `docs/specs/currency-catalog.md`, IC01-IC10, más M05 y M13
+
+- `src/core/domain/money/currency-catalog.ts`: tabla ISO 4217 incorporada, generada desde la lista
+  oficial de SIX Group publicada el 2026-09-17, con fuente y huella del XML en el encabezado.
+- 165 monedas con unidad menor decimal (17 de escala 0, 139 de 2, 7 de 3 y 2 de 4) y 13 códigos ISO
+  sin unidad menor decimal (`XAG XAU XBA XBB XBC XBD XDR XPD XPT XSU XTS XUA XXX`).
+- `Currency.create` y `Currency.fromJSON` rechazan con `INVALID_CURRENCY`: código no ISO, escala que no
+  coincide con la oficial y moneda ISO sin unidad menor decimal, cada motivo con su propio mensaje.
+- `pnpm sync:iso4217` regenera la tabla desde la fuente oficial o desde `--input <archivo>`. Falla
+  cerrado sin escribir ante documento truncado, sin fecha, unidad menor fuera de patrón, entrada sin
+  código, escalas en conflicto o tabla con menos de 100 monedas; se probó a mano cada caso.
+- Cambio de contrato declarado: `Currency.create('ABC', 2)` y `Currency.create('UYU', 0)` ya no son
+  válidos. M05 se reescribe porque el caso "mismo código, escalas distintas" dejó de ser representable.
+- La tabla está anclada por IC11: las 26 monedas con escala distinta de 2 y los 13 códigos sin unidad
+  menor decimal se comparan código por código, así que un cambio de tabla no puede pasar inadvertido.
+- Riesgo registrado (IC-Q01): la tabla solo contiene códigos vigentes; una moneda retirada del ISO
+  romperá la lectura de importes históricos guardados con ella. Bloquea la primera persistencia real.
+  Si un adaptador persiste solo `minorUnits` y `code`, un cambio de escala dejaría de fallar al leer y
+  pasaría a corromper el importe en silencio: guardar el `scale` en la persistencia real.
+
 ### API pública
 
-`src/index.ts` exporta `Currency`, `Money`, `MoneyError`, `Account`, `AccountCode`, `AccountError`,
-`Journal`, `JournalError`, `AccountingDate`, `AccountingPeriod`, `PeriodError` y sus tipos.
-`describeValue` es un helper interno del dominio, no forma parte de la API pública.
+Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
+carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos barrels.
+
+- `money/index.ts`: `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`,
+  `listIsoCurrenciesWithoutMinorUnit` y sus tipos.
+- `account/index.ts`: `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos.
+- `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
+- `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
+- `entries/index.ts`: vacío a propósito hasta que existan capacidades de asientos.
+
+`describeValue` sigue siendo un helper interno del dominio, no forma parte de la API pública.
+`pnpm check:project` exige el `index.ts` de los cinco dominios y `tests/public-api.test.mjs` fija la
+superficie de cada barrel y la del paquete.
 
 ## Comprobaciones ejecutadas
 
 | Comando | Resultado |
 | --- | --- |
-| `pnpm check:project` | Correcto: rutas, enlaces, configuración y seis skills. |
+| `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 46 pruebas, 46 correctas, 0 fallos. |
+| `pnpm test` | 70 pruebas, 70 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -69,7 +100,8 @@ Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y 
 `tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
 conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
-`tests/period.test.mjs`.
+`tests/period.test.mjs`; IC01-IC11 en `tests/currency-catalog.test.mjs`; superficie pública por
+dominio y agregación del paquete en `tests/public-api.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
 

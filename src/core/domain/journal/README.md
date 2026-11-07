@@ -7,6 +7,7 @@ Estado: reglas locales implementadas y probadas (J01-J02, desactivación y react
 
 Archivos:
 
+- `index.ts` — barrel público del dominio; el resto de archivos es interno.
 - `journal.ts` — `Journal` inmutable que identifica un diario dentro de su libro: `id`, `ledgerId`,
   `code`, `name` y estado `ACTIVE`/`INACTIVE`; `deactivate` y `activate` devuelven copias que conservan
   los datos.

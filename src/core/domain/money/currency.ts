@@ -1,4 +1,5 @@
 import { describeValue } from '../describe-value.js';
+import { isoHasNoMinorUnit, isoScaleOf } from './currency-catalog.js';
 import { invalidCurrency } from './money-errors.js';
 
 /** Serialized representation of a Currency. */
@@ -12,8 +13,9 @@ const MIN_SCALE = 0;
 const MAX_SCALE = 6;
 
 /**
- * Immutable currency identified by its ISO-shaped code and its explicit scale.
- * The scale is part of the identity: the same code with another scale is incompatible.
+ * Immutable currency identified by its ISO 4217 code.
+ * The code and its scale are not free: both come from the incorporated ISO 4217 catalog, so a
+ * currency cannot carry a scale other than the official one for its code.
  */
 export class Currency {
   readonly #code: string;
@@ -26,7 +28,9 @@ export class Currency {
   }
 
   static create(code: string, scale: number): Currency {
-    return new Currency(validateCode(code), validateScale(scale));
+    const validatedCode = validateCode(code);
+
+    return new Currency(validatedCode, validateScale(scale, validatedCode));
   }
 
   static fromJSON(value: unknown): Currency {
@@ -37,7 +41,9 @@ export class Currency {
       throw invalidCurrency(`expected "code" and "scale", received ${describeValue(value)}`);
     }
 
-    return new Currency(validateCode(value.code), validateScale(value.scale));
+    const code = validateCode(value.code);
+
+    return new Currency(code, validateScale(value.scale, code));
   }
 
   get code(): string {
@@ -64,9 +70,22 @@ function validateCode(code: unknown): string {
   return code;
 }
 
-function validateScale(scale: unknown): number {
+function validateScale(scale: unknown, code: string): number {
   if (typeof scale !== 'number' || !Number.isInteger(scale) || scale < MIN_SCALE || scale > MAX_SCALE) {
     throw invalidCurrency(`scale ${describeValue(scale)} must be an integer between ${MIN_SCALE} and ${MAX_SCALE}`);
   }
+
+  const official = isoScaleOf(code);
+  if (official === undefined) {
+    if (isoHasNoMinorUnit(code)) {
+      throw invalidCurrency(`code ${describeValue(code)} is an ISO 4217 currency without a decimal minor unit`);
+    }
+    throw invalidCurrency(`code ${describeValue(code)} is not an ISO 4217 currency`);
+  }
+
+  if (scale !== official) {
+    throw invalidCurrency(`scale ${scale} does not match ISO 4217 scale ${official} for code ${describeValue(code)}`);
+  }
+
   return scale;
 }

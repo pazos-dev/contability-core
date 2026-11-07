@@ -6,6 +6,7 @@ Estado: reglas locales implementadas y probadas (P01-P04 y P06) en `tests/period
 
 Archivos:
 
+- `index.ts` — barrel público del dominio; el resto de archivos es interno.
 - `accounting-date.ts` — `AccountingDate`, fecha `YYYY-MM-DD` inmutable sin `Date`, sin zona horaria y
   sin normalización de fechas inexistentes; incluye años bisiestos reales.
 - `accounting-period.ts` — `AccountingPeriod` inmutable con límites inclusivos, `contains` y `close`;
