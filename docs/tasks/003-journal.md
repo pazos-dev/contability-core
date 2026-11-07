@@ -1,6 +1,8 @@
 # 003-journal — Implementar diario
 
-Estado: pendiente. Leer AGENTS.md y `docs/specs/journal.md`.
+Estado: completada. Evidencia: `tests/journal.test.mjs` (5 pruebas, J01-J02 y desactivación con datos
+conservados) y `docs/STATUS.md`, que registra las validaciones pendientes de repositorio (J03, J05).
+Leer AGENTS.md y `docs/specs/journal.md`.
 Dependencia: respetar el orden en docs/ROADMAP.md.
 
 ## Resultado
