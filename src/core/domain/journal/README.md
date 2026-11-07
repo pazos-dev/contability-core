@@ -2,13 +2,17 @@
 
 Responsabilidad: diario contable. `JournalEntry` vive en `entries`, no aquí.
 Especificación desde la raíz: `docs/specs/journal.md`.
-Estado: reglas locales implementadas y probadas (J01-J02 y desactivación) en `tests/journal.test.mjs`.
+Estado: reglas locales implementadas y probadas (J01-J02, desactivación y reactivación) en
+`tests/journal.test.mjs`.
 
 Archivos:
 
 - `journal.ts` — `Journal` inmutable que identifica un diario dentro de su libro: `id`, `ledgerId`,
-  `code`, `name` y estado `ACTIVE`/`INACTIVE`; `deactivate` devuelve una copia que conserva los datos.
+  `code`, `name` y estado `ACTIVE`/`INACTIVE`; `deactivate` y `activate` devuelven copias que conservan
+  los datos.
 - `journal-errors.ts` — `JournalError` con código estable `INVALID_JOURNAL`.
+
+Identificadores, código y nombre se rechazan si vienen vacíos o con espacios exteriores; no se recortan.
 
 Validaciones que **no** viven aquí y esperan repositorio: código único dentro del libro (J03),
 pertenencia del asiento al mismo libro que el diario y rechazo de contabilizar en un diario

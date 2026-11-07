@@ -35,7 +35,7 @@ test('J01: a valid journal is created active inside its ledger', () => {
 
 test('J02: empty id, ledger, code or name are rejected', () => {
   for (const field of ['id', 'ledgerId', 'code', 'name']) {
-    for (const value of ['', '   ', null, undefined, 5, {}]) {
+    for (const value of ['', '   ', ' jrn-1', 'jrn-1 ', null, undefined, 5, {}]) {
       assert.throws(
         () => Journal.create({ ...base, [field]: value }),
         assertCode('INVALID_JOURNAL'),
@@ -59,6 +59,21 @@ test('deactivating keeps identity and ledger and leaves the original active', ()
   assert.equal(inactive.name, original.name);
   assert.equal(original.status, 'ACTIVE');
   assert.equal(inactive.deactivate().status, 'INACTIVE');
+});
+
+test('activate returns an active copy keeping identity and history', () => {
+  const original = Journal.create({ ...base });
+  const inactive = original.deactivate();
+  const active = inactive.activate();
+
+  assert.equal(active.status, 'ACTIVE');
+  assert.equal(active.isActive(), true);
+  assert.equal(inactive.status, 'INACTIVE');
+  assert.equal(active.id, original.id);
+  assert.equal(active.ledgerId, original.ledgerId);
+  assert.equal(active.code, original.code);
+  assert.equal(active.name, original.name);
+  assert.equal(active.activate().status, 'ACTIVE');
 });
 
 test('mutating the received input does not alter an existing journal', () => {

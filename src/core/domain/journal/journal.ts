@@ -79,15 +79,23 @@ export class Journal {
     return this.#status === 'ACTIVE';
   }
 
-  /** Returns an inactive copy that keeps identity, ledger, code and name; deactivation is idempotent. */
+  /** Returns an inactive copy that keeps identity, ledger, code and name. */
   deactivate(): Journal {
-    if (!this.isActive()) return this;
+    return this.#copyWith('INACTIVE');
+  }
+
+  /** Returns an active copy that keeps identity, ledger, code and name. */
+  activate(): Journal {
+    return this.#copyWith('ACTIVE');
+  }
+
+  #copyWith(status: JournalStatus): Journal {
     return new Journal({
       id: this.#id,
       ledgerId: this.#ledgerId,
       code: this.#code,
       name: this.#name,
-      status: 'INACTIVE',
+      status,
     });
   }
 }
@@ -95,6 +103,9 @@ export class Journal {
 function requireText(value: unknown, field: string): string {
   if (typeof value !== 'string' || value.trim().length === 0) {
     throw invalidJournal(`${field} must be a non-empty string, received ${describeValue(value)}`);
+  }
+  if (value !== value.trim()) {
+    throw invalidJournal(`${field} must not have leading or trailing whitespace, received ${describeValue(value)}`);
   }
   return value;
 }

@@ -25,14 +25,15 @@ Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificad
   booleano explícito y padre distinto de la propia cuenta.
 - `AccountError` con códigos estables `INVALID_ACCOUNT`, `INVALID_ACCOUNT_CODE`, `ACCOUNT_SELF_PARENT`.
 
-### 003-journal — `docs/specs/journal.md`, J01-J02
+### 003-journal — `docs/specs/journal.md`, J01-J02, J04 y J06
 
 - `src/core/domain/journal/`: `journal.ts`, `journal-errors.ts`.
 - `Journal`: inmutable con `id`, `ledgerId`, `code`, `name` y estado `ACTIVE`/`INACTIVE`; nace activo
-  en el libro indicado y `deactivate` devuelve una copia que conserva identidad, libro, código y nombre.
+  en el libro indicado y `deactivate`/`activate` devuelven copias que conservan identidad, libro,
+  código y nombre.
 - No almacena asientos: `JournalEntry` vive en `entries` y referencia al diario.
-- Validación local: identificadores, código y nombre no vacíos. La spec solo exige no vacíos, así que
-  no se impone aquí la regla de espacios exteriores que sí aplica a `AccountCode`.
+- Validación local: identificadores, código y nombre no vacíos y sin espacios exteriores, alineado con
+  `Account` y `AccountCode`; se rechazan, no se recortan.
 - `JournalError` con código estable `INVALID_JOURNAL`.
 
 ### API pública
@@ -48,14 +49,14 @@ de la API pública.
 | `pnpm check:project` | Correcto: rutas, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 34 pruebas, 34 correctas, 0 fallos. |
+| `pnpm test` | 35 pruebas, 35 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
 Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y A09 en
 `tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
-exteriores, `rename`, `deactivate` y `activate`; J01, J02 y desactivación con datos conservados en
-`tests/journal.test.mjs`.
+exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
+conservados en `tests/journal.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
 
