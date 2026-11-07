@@ -1,4 +1,5 @@
-import { describeValue, invalidCurrency } from './money-errors.js';
+import { describeValue } from '../describe-value.js';
+import { invalidCurrency } from './money-errors.js';
 
 /** Serialized representation of a Currency. */
 export interface CurrencyJSON {

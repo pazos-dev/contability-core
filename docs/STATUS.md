@@ -1,16 +1,32 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 001-money.
+Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 002-account.
 
 ## Implementado y verificado
 
-- `docs/specs/money.md` completo: M01-M12 con prueba en `tests/money.test.mjs` (16 pruebas).
+### 001-money — `docs/specs/money.md`, M01-M12
+
 - `src/core/domain/money/`: `currency.ts`, `money.ts`, `money-errors.ts`.
 - `Currency`: código de tres letras A-Z y escala entera de 0 a 6; inmutable, `equals`, `toJSON`/`fromJSON`.
 - `Money`: `bigint` en unidades mínimas, parser decimal exacto sin redondeo, `add`, `subtract`,
   `compare`, `equals`, `toDecimal`, `toJSON`/`fromJSON`.
 - `MoneyError` con códigos estables `INVALID_CURRENCY`, `INVALID_MONEY`, `CURRENCY_MISMATCH`.
-- API pública desde `src/index.ts`: `Currency`, `Money`, `MoneyError`, `CurrencyJSON`, `MoneyJSON`, `MoneyErrorCode`.
+
+### 002-account — `docs/specs/account.md`, A01-A03 y A08
+
+- `src/core/domain/account/`: `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`.
+- `AccountCode`: valor inmutable de texto; conserva ceros iniciales y formato; rechaza vacío y
+  espacios exteriores en lugar de recortarlos.
+- `Account`: inmutable, creado desde un DTO copiado; expone `id`, `chartOfAccountsId`, `code`,
+  `name`, `type`, `parentId`, `postingAllowed` y `status`; `rename` y `deactivate` devuelven copias.
+- Reglas locales: identificadores y nombre no vacíos, tipo dentro de `ASSET | LIABILITY | EQUITY |
+  REVENUE | EXPENSE`, `postingAllowed` booleano explícito y padre distinto de la propia cuenta.
+- `AccountError` con códigos estables `INVALID_ACCOUNT`, `INVALID_ACCOUNT_CODE`, `ACCOUNT_SELF_PARENT`.
+
+### API pública
+
+`src/index.ts` exporta `Currency`, `Money`, `MoneyError`, `Account`, `AccountCode`, `AccountError`
+y sus tipos. `describeValue` es un helper interno del dominio, no forma parte de la API pública.
 
 ## Comprobaciones ejecutadas
 
@@ -19,26 +35,43 @@ Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificad
 | `pnpm check:project` | Correcto: rutas, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 16 pruebas, 16 correctas, 0 fallos (`tests/money.test.mjs`). |
+| `pnpm test` | 28 pruebas, 28 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
+
+Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03 y A08 en
+`tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, `rename` y
+`deactivate`.
+
+## Validaciones que esperan la capa de aplicación
+
+Registradas explícitamente para no prometerlas desde el dominio:
+
+| Regla | Dónde se verifica |
+| --- | --- |
+| A04 — padre de otro plan o ciclo | Caso de uso con repositorio de cuentas. |
+| A05 — código único dentro del plan, permitido en otro plan | Caso de uso y restricción única de BD. |
+| A06 — agrupadora o inactiva no recibe contabilizaciones | Caso de uso contabilizar. |
+| A07 — cuenta usada se desactiva, no se borra | Caso de uso con historial. |
+| Hijo de cuenta con movimientos | Política posterior; inicialmente rechazar en aplicación. |
 
 ## Límites de esta entrega
 
 Sin redondeo (`rounding-mode.ts` no existe aún), sin conversión de moneda, sin multiplicación,
 división ni reparto. La escala admitida es 0-6 y el código de moneda es la forma A-Z de tres letras,
 no un catálogo oficial. `Money` admite cero y negativos; la restricción a importes positivos
-pertenece a las líneas de asiento (tarea 005).
+pertenece a las líneas de asiento (tarea 005). `Account` no cambia código, padre ni tipo: quedan
+fuera hasta definir reglas de historial. No hay saldo editable ni serialización JSON de cuentas.
 
 ## Pendiente de implementar
 
-Cuentas, diario, períodos, asientos, casos de uso, adaptadores y la API pública restante.
+Diario, períodos, asientos, casos de uso, adaptadores y la API pública restante.
 Sin ORM, HTTP ni interfaz visual.
 
 ## Siguiente tarea
 
-`docs/tasks/002-account.md`. Invariantes locales A01-A03 y A08; mantener las validaciones que
-cruzan entidades en aplicación.
+`docs/tasks/003-journal.md`. Criterios J01-J02 y estado del diario; unicidad y pertenencia de
+asientos quedan en aplicación.
 
 ## Relevo de sesión
 

@@ -1,5 +1,6 @@
+import { describeValue } from '../describe-value.js';
 import { Currency, type CurrencyJSON } from './currency.js';
-import { currencyMismatch, describeValue, invalidMoney } from './money-errors.js';
+import { currencyMismatch, invalidMoney } from './money-errors.js';
 
 /** Serialized representation of a Money value. */
 export interface MoneyJSON {
