@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 003-journal.
+Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 004-period.
 
 ## Implementado y verificado
 
@@ -36,11 +36,23 @@ Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificad
   `Account` y `AccountCode`; se rechazan, no se recortan.
 - `JournalError` con código estable `INVALID_JOURNAL`.
 
+### 004-period — `docs/specs/period.md`, P01-P04 y P06
+
+- `src/core/domain/period/`: `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`,
+  `period-errors.ts`.
+- `AccountingDate`: fecha de calendario `YYYY-MM-DD` sin `Date`, sin zona horaria y sin normalización;
+  rechaza meses y días inexistentes, incluidos los 29 de febrero no bisiestos (1900, 2026).
+- `AccountingPeriod`: inmutable con `id`, `ledgerId`, `name`, `startDate`, `endDate` y estado
+  `OPEN`/`CLOSED`; `contains` incluye ambos extremos y `close` devuelve una copia CLOSED, fallando con
+  `PERIOD_ALREADY_CLOSED` en el segundo cierre.
+- Identificadores y nombre no vacíos y sin espacios exteriores, alineado con las otras áreas.
+- `PeriodError` con códigos estables `INVALID_DATE`, `INVALID_PERIOD`, `PERIOD_ALREADY_CLOSED`.
+
 ### API pública
 
 `src/index.ts` exporta `Currency`, `Money`, `MoneyError`, `Account`, `AccountCode`, `AccountError`,
-`Journal`, `JournalError` y sus tipos. `describeValue` es un helper interno del dominio, no forma parte
-de la API pública.
+`Journal`, `JournalError`, `AccountingDate`, `AccountingPeriod`, `PeriodError` y sus tipos.
+`describeValue` es un helper interno del dominio, no forma parte de la API pública.
 
 ## Comprobaciones ejecutadas
 
@@ -49,14 +61,15 @@ de la API pública.
 | `pnpm check:project` | Correcto: rutas, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 35 pruebas, 35 correctas, 0 fallos. |
+| `pnpm test` | 46 pruebas, 46 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
 Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y A09 en
 `tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
-conservados en `tests/journal.test.mjs`.
+conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
+`tests/period.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
 
@@ -70,6 +83,9 @@ Registradas explícitamente para no prometerlas desde el dominio:
 | A07 — cuenta usada se desactiva, no se borra | Caso de uso con historial. |
 | J03 — código de diario único dentro del libro | Caso de uso y restricción única de BD. |
 | J05 — contabilizar en diario inactivo o de otro libro | Caso de uso contabilizar; rechazo sin escrituras. |
+| P05 — contabilizar en período CLOSED | Caso de uso contabilizar; rechazo sin cambios. |
+| P07 — dos períodos solapados del mismo libro | Caso de uso y consulta/restricción en BD. |
+| P08 — cierre y contabilización simultáneos | Persistencia serializa o detecta conflicto. |
 | Hijo de cuenta con movimientos | Política posterior; inicialmente rechazar en aplicación. |
 
 ## Límites de esta entrega
@@ -81,6 +97,8 @@ pertenece a las líneas de asiento (tarea 005). `Account` no cambia código, pad
 fuera hasta definir reglas de historial. No hay saldo editable ni serialización JSON de cuentas.
 `Journal` no guarda asientos, no numera asientos y no valida pertenencia de asientos al libro;
 la numeración secuencial y su ámbito siguen pendientes del contrato de aplicación.
+`AccountingPeriod` no verifica solapamientos, no serializa el cierre y no reabre períodos: el cierre
+no altera asientos ni borradores, no genera asientos de resultados y no equivale a un cierre fiscal.
 
 ## Pendiente de implementar
 
@@ -89,8 +107,8 @@ Sin ORM, HTTP ni interfaz visual.
 
 ## Siguiente tarea
 
-`docs/tasks/004-period.md`. `AccountingDate` y `AccountingPeriod` con P01-P04 y P06; sin prometer
-cierre transaccional desde el dominio.
+`docs/tasks/005-entries.md`. `JournalEntry` y sus líneas con E01-E11, reversión como borrador y sin
+mutación externa; la restricción de importes positivos y el equilibrio pertenecen al asiento.
 
 ## Relevo de sesión
 

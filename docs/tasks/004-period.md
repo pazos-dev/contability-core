@@ -1,6 +1,9 @@
 # 004-period — Implementar fecha y período
 
-Estado: pendiente. Leer AGENTS.md y `docs/specs/period.md`.
+Estado: completada. Evidencia: `tests/period.test.mjs` (11 pruebas, P01-P04 y P06 en verde, más cierre
+repetido y validación de fechas) y `docs/STATUS.md`, que registra las validaciones pendientes de
+aplicación/persistencia (P05, P07, P08).
+Leer AGENTS.md y `docs/specs/period.md`.
 Dependencia: respetar el orden en docs/ROADMAP.md.
 
 ## Resultado

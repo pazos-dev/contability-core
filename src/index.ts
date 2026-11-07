@@ -17,3 +17,10 @@ export { Journal } from './core/domain/journal/journal.js';
 export type { JournalInput, JournalStatus } from './core/domain/journal/journal.js';
 export { JournalError } from './core/domain/journal/journal-errors.js';
 export type { JournalErrorCode } from './core/domain/journal/journal-errors.js';
+
+export { AccountingDate } from './core/domain/period/accounting-date.js';
+export { AccountingPeriod } from './core/domain/period/accounting-period.js';
+export type { AccountingPeriodInput } from './core/domain/period/accounting-period.js';
+export { PeriodError } from './core/domain/period/period-errors.js';
+export type { PeriodErrorCode } from './core/domain/period/period-errors.js';
+export type { PeriodStatus } from './core/domain/period/period-status.js';
