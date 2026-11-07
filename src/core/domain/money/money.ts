@@ -36,7 +36,7 @@ export class Money {
    * Rejects whitespace, sign prefixes, leading zeros, exponents, separators and
    * any decimal count above the currency scale, even when the extra decimals are zeros.
    */
-  static fromDecimal(text: unknown, currency: Currency): Money {
+  static fromDecimal(text: string, currency: Currency): Money {
     const target = requireCurrency(currency);
     if (typeof text !== 'string' || !DECIMAL_PATTERN.test(text)) {
       throw invalidMoney(`decimal ${describeValue(text)} must match ${DECIMAL_PATTERN.source}`);
