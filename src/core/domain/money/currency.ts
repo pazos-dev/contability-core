@@ -13,9 +13,9 @@ const MIN_SCALE = 0;
 const MAX_SCALE = 6;
 
 /**
- * Immutable currency identified by its ISO 4217 code.
- * The code and its scale are not free: both come from the incorporated ISO 4217 catalog, so a
- * currency cannot carry a scale other than the official one for its code.
+ * Immutable currency identified by a three-letter code and a scale.
+ * An ISO 4217 code with a decimal minor unit fixes its scale: the official one, so the caller cannot
+ * choose it. Any other well-formed code is an own currency and the caller owns its scale.
  */
 export class Currency {
   readonly #code: string;
@@ -75,15 +75,14 @@ function validateScale(scale: unknown, code: string): number {
     throw invalidCurrency(`scale ${describeValue(scale)} must be an integer between ${MIN_SCALE} and ${MAX_SCALE}`);
   }
 
-  const official = isoScaleOf(code);
-  if (official === undefined) {
-    if (isoHasNoMinorUnit(code)) {
-      throw invalidCurrency(`code ${describeValue(code)} is an ISO 4217 currency without a decimal minor unit`);
-    }
-    throw invalidCurrency(`code ${describeValue(code)} is not an ISO 4217 currency`);
+  // An ISO code without a decimal minor unit has no own-currency regime: the core cannot represent
+  // a currency that has no minor unit at all.
+  if (isoHasNoMinorUnit(code)) {
+    throw invalidCurrency(`code ${describeValue(code)} is an ISO 4217 currency without a decimal minor unit`);
   }
 
-  if (scale !== official) {
+  const official = isoScaleOf(code);
+  if (official !== undefined && scale !== official) {
     throw invalidCurrency(`scale ${scale} does not match ISO 4217 scale ${official} for code ${describeValue(code)}`);
   }
 

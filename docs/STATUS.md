@@ -1,7 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-06. Entrega: preparación 2.0. Último incremento verificado: 005-currency-catalog,
-más la convención de API pública por dominio (barrel `index.ts` en cada dominio).
+Actualizado: 2026-11-08. Entrega: preparación 2.0. Último incremento verificado: 005-currency-catalog,
+revisado al modelo mixto de monedas, más la convención de API pública por dominio (barrel `index.ts`
+en cada dominio).
 
 ## Implementado y verificado
 
@@ -49,28 +50,28 @@ más la convención de API pública por dominio (barrel `index.ts` en cada domin
 - Identificadores y nombre no vacíos y sin espacios exteriores, alineado con las otras áreas.
 - `PeriodError` con códigos estables `INVALID_DATE`, `INVALID_PERIOD`, `PERIOD_ALREADY_CLOSED`.
 
-### 005-currency-catalog — `docs/specs/currency-catalog.md`, IC01-IC10, más M05 y M13
+### 005-currency-catalog — `docs/specs/currency-catalog.md`, IC01-IC14, más M05 y M13-M15
 
 - `src/core/domain/money/currency-catalog.ts`: tabla ISO 4217 incorporada, generada desde la lista
   oficial de SIX Group publicada el 2026-09-17, con fuente y huella del XML en el encabezado.
 - 165 monedas con unidad menor decimal (17 de escala 0, 139 de 2, 7 de 3 y 2 de 4) y 13 códigos ISO
   sin unidad menor decimal (`XAG XAU XBA XBB XBC XBD XDR XPD XPT XSU XTS XUA XXX`).
-- `Currency.create` y `Currency.fromJSON` rechazan con `INVALID_CURRENCY`: código no ISO, escala que no
-  coincide con la oficial y moneda ISO sin unidad menor decimal, cada motivo con su propio mensaje.
+- `Currency.create` y `Currency.fromJSON` aplican dos regímenes: rechazan con `INVALID_CURRENCY` la
+  escala que no coincide con la oficial y la moneda ISO sin unidad menor decimal, cada motivo con su
+  propio mensaje, y aceptan un código ausente del catálogo como moneda propia con la escala declarada.
 - `pnpm sync:iso4217` regenera la tabla desde la fuente oficial o desde `--input <archivo>`. Falla
   cerrado sin escribir ante documento truncado, sin fecha, unidad menor fuera de patrón, entrada sin
   código, escalas en conflicto o tabla con menos de 100 monedas; se probó a mano cada caso.
-- Cambio de contrato declarado: `Currency.create('ABC', 2)` y `Currency.create('UYU', 0)` ya no son
-  válidos. M05 se reescribe porque el caso "mismo código, escalas distintas" dejó de ser representable.
+- Cambio de contrato declarado en dos pasos. Primero, `Currency.create('ABC', 2)` y
+  `Currency.create('UYU', 0)` dejaron de ser válidos y M05 se reescribió porque el caso "mismo código,
+  escalas distintas" dejó de ser representable. Después, el modelo mixto devolvió `Currency.create`
+  `('ABC', 2)` a válido como moneda propia, así que IC03 e IC06 se reescribieron y M13 cambió de
+  rechazo a aceptación. `Currency.create('UYU', 0)` sigue siendo inválido: ese par no existe.
 - La tabla está anclada por IC11: las 26 monedas con escala distinta de 2 y los 13 códigos sin unidad
   menor decimal se comparan código por código, así que un cambio de tabla no puede pasar inadvertido.
-- Riesgo registrado (IC-Q01): la tabla solo contiene códigos vigentes; una moneda retirada del ISO
-  romperá la lectura de importes históricos guardados con ella. Bloquea la primera persistencia real.
-  Si un adaptador persiste solo `minorUnits` y `code`, un cambio de escala dejaría de fallar al leer y
-  pasaría a corromper el importe en silencio. Mitigación aplicada: el `scale` se guarda con el importe y
-  se valida contra la tabla; reconstruir sin escala o con una escala que no coincide falla con
-  `INVALID_CURRENCY` en lugar de reinterpretar el valor (regla 11, M14 y M15). La regla de persistencia
-  está en `docs/INTEGRATION.md`.
+- Dos monedas propias con el mismo código y distinta escala son monedas distintas: `equals` las
+  distingue y `Money` las rechaza juntas con `CURRENCY_MISMATCH` (IC13). La identidad sigue siendo el
+  par `(code, scale)` completo.
 
 ### API pública
 
@@ -95,7 +96,7 @@ superficie de cada barrel y la del paquete.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 72 pruebas, 72 correctas, 0 fallos. |
+| `pnpm test` | 75 pruebas, 75 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -103,7 +104,7 @@ Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y 
 `tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
 conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
-`tests/period.test.mjs`; IC01-IC11 en `tests/currency-catalog.test.mjs`; superficie pública por
+`tests/period.test.mjs`; IC01-IC14 en `tests/currency-catalog.test.mjs`; superficie pública por
 dominio y agregación del paquete en `tests/public-api.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
@@ -126,9 +127,10 @@ Registradas explícitamente para no prometerlas desde el dominio:
 ## Límites de esta entrega
 
 Sin redondeo (`rounding-mode.ts` no existe aún), sin conversión de moneda, sin multiplicación,
-división ni reparto. La escala admitida es 0-6 y el código de moneda es la forma A-Z de tres letras,
-no un catálogo oficial. `Money` admite cero y negativos; la restricción a importes positivos
-pertenece a las líneas de asiento (tarea 005). `Account` no cambia código, padre ni tipo: quedan
+división ni reparto. La escala admitida es 0-6; el catálogo ISO 4217 fija la escala oficial de los
+códigos que publica y un código ausente del catálogo se acepta como moneda propia con escala
+declarada. La escala se persiste junto al importe y nunca se deduce del código. `Money` admite cero y
+negativos; la restricción a importes positivos pertenece a las líneas de asiento (tarea 005). `Account` no cambia código, padre ni tipo: quedan
 fuera hasta definir reglas de historial. No hay saldo editable ni serialización JSON de cuentas.
 `Journal` no guarda asientos, no numera asientos y no valida pertenencia de asientos al libro;
 la numeración secuencial y su ámbito siguen pendientes del contrato de aplicación.
@@ -137,7 +139,7 @@ no altera asientos ni borradores, no genera asientos de resultados y no equivale
 
 ## Pendiente de implementar
 
-Diario, períodos, asientos, casos de uso, adaptadores y la API pública restante.
+Asientos, casos de uso, adaptadores y la API pública restante.
 Sin ORM, HTTP ni interfaz visual.
 
 ## Siguiente tarea

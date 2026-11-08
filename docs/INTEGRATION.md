@@ -27,8 +27,9 @@ Guardar solo `minorUnits` y `code` convierte un cambio de escala en una lectura 
 sin ningún error. Reconstruir sin escala, o con una escala que no coincide con la tabla, falla
 (`M14` y `M15` en `docs/specs/money.md`).
 
-Antes de persistir producción, resolver `IC-Q01` en `docs/specs/currency-catalog.md`: el catálogo
-solo contiene monedas vigentes, así que una moneda retirada del ISO deja de poder leerse.
+Un código fuera del catálogo ISO no es un error: es una moneda propia y la escala viaja con el dato.
+Eso cubre las monedas que ISO todavía no publica y las que retiró. El adaptador no debe completar la
+escala desde una tabla propia ni deducirla del código: la que viene en el registro es la autoridad.
 
 ## Atomicidad entre módulos
 

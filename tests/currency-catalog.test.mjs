@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 
 import {
   Currency,
+  Money,
   MoneyError,
   ISO_4217_PUBLISHED,
   listIsoCurrencies,
@@ -12,7 +13,6 @@ import {
 // Reason-specific matchers: the spec requires the error to distinguish why a currency was rejected.
 const FORMAT = /must be three uppercase letters A-Z/;
 const RANGE = /must be an integer between 0 and 6/;
-const NOT_ISO = /is not an ISO 4217 currency/;
 const NO_MINOR_UNIT = /is an ISO 4217 currency without a decimal minor unit/;
 const OFFICIAL_SCALE = /does not match ISO 4217 scale/;
 
@@ -39,8 +39,12 @@ test('IC02: an ISO code with a scale other than the official one is rejected', (
   }
 });
 
-test('IC03: a well-formed code missing from ISO 4217 is rejected', () => {
-  assert.throws(() => Currency.create('ABC', 2), assertInvalidCurrency(NOT_ISO));
+test('IC03: a well-formed code missing from ISO 4217 is accepted as an own currency', () => {
+  const own = Currency.create('ABC', 2);
+
+  assert.equal(own.code, 'ABC');
+  assert.equal(own.scale, 2);
+  assert.deepEqual(own.toJSON(), { code: 'ABC', scale: 2 });
 });
 
 test('IC04: an ISO code without a decimal minor unit is rejected with its own reason', () => {
@@ -56,8 +60,8 @@ test('IC05: the official scales 0, 3 and 4 are representable', () => {
   assert.equal(Currency.create('JPY', 0).scale, 0);
 });
 
-test('IC06: fromJSON with a code outside ISO 4217 fails like create', () => {
-  assert.throws(() => Currency.fromJSON({ code: 'ABC', scale: 2 }), assertInvalidCurrency(NOT_ISO));
+test('IC06: fromJSON accepts a code outside ISO 4217 and keeps its stored scale', () => {
+  assert.deepEqual(Currency.fromJSON({ code: 'ABC', scale: 3 }), Currency.create('ABC', 3));
 });
 
 test('IC07: fromJSON with a non-official scale fails like create', () => {
@@ -121,4 +125,37 @@ test('IC11: the codes without a decimal minor unit are anchored', () => {
   assert.deepEqual(listIsoCurrenciesWithoutMinorUnit(), [
     'XAG', 'XAU', 'XBA', 'XBB', 'XBC', 'XBD', 'XDR', 'XPD', 'XPT', 'XSU', 'XTS', 'XUA', 'XXX',
   ]);
+});
+
+// Own currencies: the caller owns the scale, and the range stays structural.
+test('IC12: an own currency is accepted at both ends of the scale range', () => {
+  assert.equal(Currency.create('ABC', 0).scale, 0);
+  assert.equal(Currency.create('XYZ', 6).scale, 6);
+
+  for (const scale of [-1, 7, 1.5]) {
+    assert.throws(() => Currency.create('ABC', scale), assertInvalidCurrency(RANGE), `scale: ${String(scale)}`);
+  }
+});
+
+test('IC13: the same own code with two scales is two different currencies', () => {
+  const whole = Currency.create('XBT', 0);
+  const fractional = Currency.create('XBT', 6);
+
+  assert.equal(whole.equals(fractional), false);
+  assert.throws(
+    () => Money.fromDecimal('1', whole).add(Money.fromDecimal('1', fractional)),
+    (error) => {
+      assert.equal(error.code, 'CURRENCY_MISMATCH');
+      return true;
+    },
+  );
+});
+
+// A code ISO retired leaves the catalog and falls into the own-currency regime, so the
+// persisted scale becomes the only authority and the historical amount stays readable.
+test('IC14: a code retired by ISO is read with the scale that was persisted', () => {
+  const hrk = Currency.fromJSON({ code: 'HRK', scale: 2 });
+
+  assert.equal(hrk.scale, 2);
+  assert.equal(Money.fromJSON({ minorUnits: '1050', currency: { code: 'HRK', scale: 2 } }).toDecimal(), '10.50');
 });
