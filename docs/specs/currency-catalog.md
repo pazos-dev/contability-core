@@ -132,7 +132,9 @@ versionado con el código. Actualizarla exige una revisión del diff de la tabla
 
 ## Verificación
 
-`tests/currency-catalog.test.mjs` cubre IC01-IC14 y `tests/money.test.mjs` conserva M01-M12 adaptados,
-más M13-M15. Comando: `pnpm check`. El generador se probó además a mano contra documentos truncados,
+`tests/currency-catalog.test.mjs` cubre IC01-IC14, incluidos M05 y M13: la aceptación de un código
+ausente del catálogo y la autoridad de la escala persistida. `tests/money.test.mjs` conserva M01-M12
+adaptados, más M14 y M15, que anclan la persistencia de la escala; M13 no tiene prueba en ese archivo.
+Comando: `pnpm check`. El generador se probó además a mano contra documentos truncados,
 sin fecha, con unidad menor fuera de patrón, sin código y con escalas en conflicto: los seis casos
 salen con código 1 sin escribir el catálogo. Evidencia al terminar en `docs/STATUS.md`.
