@@ -3,3 +3,5 @@ export { makePostEntry } from './post-entry.js';
 export type { PostEntry } from './post-entry.js';
 export { makeReversePostedEntry } from './reverse-entry.js';
 export type { ReversePostedEntry } from './reverse-entry.js';
+export { makeCreateEntryDraft } from './create-entry-draft.js';
+export type { CreateEntryDraft } from './create-entry-draft.js';

@@ -10,7 +10,7 @@ Inventario, compras y ventas mantienen sus propios dominios y se conectan median
 - Instrucciones de agente y las seis skills completas del kit anterior, sin cambios.
 - Arquitectura, glosario, integración, decisiones y workflow.
 - Especificaciones de money, account, journal, entries, period, registro de cuentas/diarios/períodos,
-  contabilización, cierre de período y reversión.
+  borrador de asiento, contabilización, cierre de período y reversión.
 - Árbol de carpetas real con responsabilidades y tareas de implementación secuenciales.
 - Configuración TypeScript/ESM y comandos pnpm; validador del paquete preparado.
 - Registro exacto de validaciones ejecutadas y pendientes.

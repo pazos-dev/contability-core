@@ -29,6 +29,8 @@ for (const path of [
   'src/core/application/use-cases/periods/index.ts',
   'src/core/application/use-cases/entries/index.ts',
   'src/core/application/use-cases/shared/idempotency.ts',
+  'src/core/application/use-cases/entries/create-entry-draft.ts',
+  'src/core/application/use-cases/entries/entry-result.ts',
   'src/adapters/README.md',
   'src/adapters/memory/README.md',
   'src/adapters/memory/index.ts',

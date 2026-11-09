@@ -8,6 +8,9 @@ export type {
 } from './journals.js';
 export type { ClosePeriodInput, ClosePeriodResult, RegisterPeriodInput, RegisterPeriodResult } from './periods.js';
 export type {
+  CreateEntryDraftInput,
+  CreateEntryDraftResult,
+  EntryLineInput,
   PostEntryInput,
   PostEntryResult,
   PostedLineResult,

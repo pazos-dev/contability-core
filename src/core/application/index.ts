@@ -16,6 +16,9 @@ export type {
 } from './ports/index.js';
 export type {
   ClosePeriodInput,
+  CreateEntryDraftInput,
+  CreateEntryDraftResult,
+  EntryLineInput,
   ClosePeriodResult,
   PostEntryInput,
   PostEntryResult,
@@ -39,5 +42,5 @@ export { makeRegisterJournal, makeSetJournalStatus } from './use-cases/journals/
 export type { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js';
 export { makeClosePeriod, makeRegisterPeriod } from './use-cases/periods/index.js';
 export type { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
-export { makePostEntry, makeReversePostedEntry } from './use-cases/entries/index.js';
-export type { PostEntry, ReversePostedEntry } from './use-cases/entries/index.js';
+export { makeCreateEntryDraft, makePostEntry, makeReversePostedEntry } from './use-cases/entries/index.js';
+export type { CreateEntryDraft, PostEntry, ReversePostedEntry } from './use-cases/entries/index.js';

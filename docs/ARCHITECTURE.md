@@ -41,6 +41,8 @@ interno: el nombre de los archivos de implementación es libre de cambiar sin ro
 | `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
 | `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
 | `src/core/domain/entries/index.ts` | `JournalEntry`, `JournalEntryLine`, `EntryError`, `EntryStatus`, `PostingSide`, `JournalEntryInput`, `JournalEntryReversalInput`, `JournalEntryLineInput` y `EntryErrorCode`. |
+| `src/core/application/index.ts` | `ApplicationError`, los `make*` de los seis casos de uso y sus tipos de contrato y de puerto. |
+| `src/adapters/memory/index.ts` | `createInMemoryAccounting` y sus tipos. |
 
 `src/index.ts` solo re-exporta esos barrels, nunca archivos internos, y un tipo interno no se publica
 por accidente. `pnpm check:project` exige el `index.ts` de los cinco dominios; `tests/public-api.test.mjs`

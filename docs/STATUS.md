@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006b-application
-(contabilización, cierre y reversión sobre un adaptador en memoria), sobre 006a-application, 006-entries
-y 005-currency-catalog revisado al modelo mixto de monedas.
+Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006c-application
+(alta de borradores de asiento), sobre 006b y 006a-application, 006-entries y 005-currency-catalog
+revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -157,6 +157,22 @@ y 005-currency-catalog revisado al modelo mixto de monedas.
   (`ENTRY_ALREADY_REVERSED`). Sin esas dos guardas, un id repetido sobrescribía un asiento y una segunda
   reversión se colaba por `postEntry`.
 
+### 006c-application — `docs/specs/entry-draft.md`, D01-D13
+
+- `createEntryDraft` en `src/core/application/use-cases/entries/create-entry-draft.ts`: alta de un
+  borrador con cabecera y líneas en una sola unidad de trabajo.
+- Cierra el circuito. Hasta 006b, `postEntry` exigía un borrador persistido y **ninguna operación del core
+  lo producía**; el hueco quedó registrado como decisión pendiente y ahora está resuelto.
+- Valida sólo lo que hace coherente al borrador: libro conocido, id libre (`ENTRY_ALREADY_EXISTS`), diario,
+  período y cuentas del plan existentes. **No** exige diario activo, período abierto ni asiento equilibrado:
+  eso es asunto de `postEntry`, que vuelve a comprobarlo todo al contabilizar.
+- No devuelve totales: un borrador puede estar vacío o desbalanceado, así que un total es una noción de la
+  contabilización. El anfitrión los calcula de las líneas si los necesita.
+- `serializeLine` y `sumSide` viven en `entries/entry-result.ts`, compartidos con `postEntry`, para que haya
+  una sola definición de "cómo se serializa una línea".
+- Sigue sin existir **edición** de borradores (`addEntryLine`, `removeEntryLine`, cambiar cabecera). El
+  dominio sabe hacerlo sobre copias; exponerlo necesita su propia spec.
+
 ### API pública
 
 Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
@@ -170,7 +186,7 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 - `core/application/index.ts`: `ApplicationError`, `makeRegisterAccount`, `makeSetAccountStatus`,
   `makeRegisterJournal`, `makeSetJournalStatus`, `makeRegisterPeriod`, `makePostEntry`, `makeClosePeriod`,
-  `makeReversePostedEntry` y sus tipos.
+  `makeReversePostedEntry`, `makeCreateEntryDraft` y sus tipos.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos para que el anfitrión persista borradores: crear borradores por caso de uso no está especificado
   todavía, así que hoy es responsabilidad del anfitrión (ver Decisiones pendientes).
@@ -187,7 +203,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 176 pruebas, 176 correctas, 0 fallos. |
+| `pnpm test` | 198 pruebas, 198 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -200,7 +216,8 @@ conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validac
 inexistente y la reversión rechazada; R01-R17 en `tests/registration.test.mjs`, incluidos el fallo de
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
 agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U17 en `tests/post-entry.test.mjs`;
-C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V13 en `tests/reverse-entry.test.mjs`.
+C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V15 en `tests/reverse-entry.test.mjs`; D01-D13 en
+`tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar.
 
 ## Validaciones que esperan la capa de aplicación
 
@@ -243,7 +260,7 @@ JSON del asiento.
 
 | Tema | Impacto |
 | --- | --- |
-| Crear y editar borradores por caso de uso | Ninguna spec lo cubre: `postEntry` contabiliza un borrador persistido y hoy lo persiste el anfitrión con el puerto de asientos. Un caso de uso `createEntryDraft`/`addEntryLine` necesita su propia especificación. |
+| Editar un borrador existente | `createEntryDraft` ya existe; falta `addEntryLine`, `removeEntryLine` y cambio de cabecera, con sus reglas de bloqueo. |
 | Reversión parcial y cancelación de una reversión | Fuera de alcance por spec. |
 
 ## Pendiente de implementar

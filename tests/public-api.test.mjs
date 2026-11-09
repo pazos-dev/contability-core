@@ -19,6 +19,7 @@ const barrels = {
   'core/application': [
     'ApplicationError',
     'makeClosePeriod',
+    'makeCreateEntryDraft',
     'makePostEntry',
     'makeRegisterAccount',
     'makeRegisterJournal',

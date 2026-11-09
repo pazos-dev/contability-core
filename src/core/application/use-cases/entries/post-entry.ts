@@ -1,6 +1,5 @@
-import type { JournalEntry, JournalEntryLine, PostingSide } from '../../../domain/entries/index.js';
-import { Money } from '../../../domain/money/index.js';
-import type { PostEntryInput, PostEntryResult, PostedLineResult } from '../../contracts/entries.js';
+import type { JournalEntry } from '../../../domain/entries/index.js';
+import type { PostEntryInput, PostEntryResult } from '../../contracts/entries.js';
 import {
   accountInactive,
   entryAlreadyReversed,
@@ -16,6 +15,7 @@ import {
 } from '../../errors.js';
 import type { ApplicationDeps } from '../../ports/index.js';
 import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
+import { serializeLine, sumSide } from './entry-result.js';
 
 const OPERATION = 'postEntry';
 
@@ -98,27 +98,4 @@ export function resultOf(entry: JournalEntry): PostEntryResult {
     totalDebit: sumSide(entry.lines, 'DEBIT').toJSON(),
     totalCredit: sumSide(entry.lines, 'CREDIT').toJSON(),
   };
-}
-
-function serializeLine(line: JournalEntryLine): PostedLineResult {
-  return {
-    lineId: line.id,
-    accountId: line.accountId,
-    side: line.side,
-    amount: line.amount.toJSON(),
-    ...(line.description === undefined ? {} : { description: line.description }),
-  };
-}
-
-function sumSide(lines: readonly JournalEntryLine[], side: PostingSide): Money {
-  let total: Money | undefined;
-  for (const line of lines) {
-    if (line.side !== side) continue;
-    total = total === undefined ? line.amount : total.add(line.amount);
-  }
-  if (total === undefined) {
-    // A posted entry is balanced with at least two positive lines, so a side can never be empty here.
-    throw new Error(`Invariant violated: a posted entry must have at least one ${side} line.`);
-  }
-  return total;
 }
