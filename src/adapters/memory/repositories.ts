@@ -23,7 +23,8 @@ export interface StoreHolder {
 export function createPorts(store: StoreHolder, chartOfAccountsByLedger: Readonly<Record<string, string>>) {
   const ledgers: LedgerDirectory = {
     async chartOfAccountsIdOf(ledgerId) {
-      return chartOfAccountsByLedger[ledgerId];
+      // Own properties only: a ledger id such as "constructor" must be unknown, not inherited.
+      return Object.hasOwn(chartOfAccountsByLedger, ledgerId) ? chartOfAccountsByLedger[ledgerId] : undefined;
     },
   };
 

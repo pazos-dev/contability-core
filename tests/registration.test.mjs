@@ -658,3 +658,37 @@ test('a parent added to a replayed account request is a conflict, not an ignored
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 });
+
+// The composite keys of the memory adapter must not collide when an id contains the old separator,
+// and the ledger lookup must read own properties only.
+
+test('entries of two ledgers whose names straddle the separator do not collide', async () => {
+  // key = first + separator + second, so ("a", "b\0c") and ("a\0b", "c") must not share a key.
+  const ledgerA = 'a';
+  const ledgerB = 'a\u0000b';
+  const { memory, registerJournal } = harness({
+    chartOfAccountsByLedger: { [ledgerA]: 'chart-1', [ledgerB]: 'chart-2' },
+  });
+
+  await registerJournal({ ledgerId: ledgerA, journalId: 'b\u0000c', code: 'PRIMERO', name: 'Primero' });
+  await registerJournal({ ledgerId: ledgerB, journalId: 'c', code: 'SEGUNDO', name: 'Segundo' });
+
+  const journals = storedJournals(memory);
+  assert.equal(journals.length, 2);
+  assert.equal(journals.find((journal) => journal.ledgerId === ledgerA).name, 'Primero');
+  assert.equal(journals.find((journal) => journal.ledgerId === ledgerB).name, 'Segundo');
+});
+
+test('an inherited property name is not a known ledger', async () => {
+  const { memory, registerJournal } = harness({ chartOfAccountsByLedger: {} });
+
+  for (const ledgerId of ['constructor', 'toString', '__proto__']) {
+    await assert.rejects(
+      registerJournal({ ledgerId, journalId: `jrn-${ledgerId}`, code: 'X', name: 'X' }),
+      assertCode('LEDGER_NOT_FOUND'),
+      ledgerId,
+    );
+  }
+
+  assert.equal(storedJournals(memory).length, 0);
+});

@@ -36,9 +36,12 @@ export interface MemoryMaps {
   readonly idempotency: Map<string, StoredIdempotency>;
 }
 
-/** Composite key built from a separator. */
+/**
+ * Composite keys are built from a JSON array, not from a separator: any separator can appear inside an
+ * id, and then two different pairs would produce the same key and overwrite each other.
+ */
 export function keyOf(...parts: readonly string[]): string {
-  return parts.join('\u0000');
+  return JSON.stringify(parts);
 }
 
 export function emptyMaps(): MemoryMaps {
