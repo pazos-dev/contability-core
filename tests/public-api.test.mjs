@@ -15,7 +15,7 @@ const domainBarrels = {
   account: ['Account', 'AccountCode', 'AccountError'],
   journal: ['Journal', 'JournalError'],
   period: ['AccountingDate', 'AccountingPeriod', 'PeriodError'],
-  entries: [],
+  entries: ['EntryError', 'JournalEntry', 'JournalEntryLine'],
 };
 
 for (const [domain, expected] of Object.entries(domainBarrels)) {

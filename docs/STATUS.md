@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-08. Entrega: preparación 2.0. Último incremento verificado: 005-currency-catalog,
-revisado al modelo mixto de monedas, más la convención de API pública por dominio (barrel `index.ts`
-en cada dominio).
+Actualizado: 2026-11-08. Entrega: preparación 2.0. Último incremento verificado: 006-entries, sobre
+005-currency-catalog revisado al modelo mixto de monedas, más la convención de API pública por dominio
+(barrel `index.ts` en cada dominio).
 
 ## Implementado y verificado
 
@@ -73,6 +73,28 @@ en cada dominio).
   distingue y `Money` las rechaza juntas con `CURRENCY_MISMATCH` (IC13). La identidad sigue siendo el
   par `(code, scale)` completo.
 
+### 006-entries — `docs/specs/entries.md`, E01-E11
+
+- `src/core/domain/entries/`: `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`,
+  `posting-side.ts`, `entry-errors.ts` y `entry-text.ts` (helper interno de validación de texto).
+- `JournalEntryLine`: inmutable con `id`, `accountId`, `side` DEBIT/CREDIT, `amount` Money y
+  `description` opcional. Rechaza importe cero o negativo: `Money` admite ambos, la línea no.
+- `JournalEntry`: agregado inmutable con identidad (`id`, `ledgerId`, `journalId`, `periodId`),
+  `accountingDate`, `description`, estado `DRAFT`/`POSTED`, líneas y `reversalOfEntryId` opcional.
+  `addLine`, `removeLine`, `post` y `createReversalDraft` devuelven copias; el receptor nunca cambia.
+- `post()` exige estado DRAFT, al menos dos líneas, una sola definición de moneda y débitos iguales a
+  créditos en `bigint`. Un post rechazado deja el borrador intacto: no hay estado que deshacer.
+- Reversión: solo desde un asiento POSTED; el borrador nuevo recibe id, período y fecha explícitos,
+  invierte los lados, conserva los importes y se enlaza con `reversalOfEntryId`. El original sigue
+  POSTED y sin cambios, así que revertir no reabre ni reescribe nada.
+- `lines` devuelve una copia congelada en cada lectura: empujar, truncar o editar un elemento no
+  alcanza al agregado.
+- `EntryError` con códigos estables `INVALID_ENTRY`, `INVALID_ENTRY_LINE`, `DUPLICATE_LINE_ID`,
+  `ENTRY_LINE_NOT_FOUND`, `ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED` y
+  `ENTRY_CURRENCY_MISMATCH`; cada criterio de rechazo se distingue por código.
+- Decisión registrada: las líneas de la reversión reutilizan los ids de las líneas originales, que son
+  únicos dentro de su asiento. Un id de línea único a nivel global es asunto de la persistencia (007).
+
 ### API pública
 
 Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
@@ -83,7 +105,7 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `account/index.ts`: `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos.
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
-- `entries/index.ts`: vacío a propósito hasta que existan capacidades de asientos.
+- `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 
 `describeValue` sigue siendo un helper interno del dominio, no forma parte de la API pública.
 `pnpm check:project` exige el `index.ts` de los cinco dominios y `tests/public-api.test.mjs` fija la
@@ -96,7 +118,7 @@ superficie de cada barrel y la del paquete.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 75 pruebas, 75 correctas, 0 fallos. |
+| `pnpm test` | 90 pruebas, 90 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -104,8 +126,10 @@ Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y 
 `tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
 conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
-`tests/period.test.mjs`; IC01-IC14 en `tests/currency-catalog.test.mjs`; superficie pública por
-dominio y agregación del paquete en `tests/public-api.test.mjs`.
+`tests/period.test.mjs`; IC01-IC14 en `tests/currency-catalog.test.mjs`; E01-E11 en
+`tests/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
+inexistente y la reversión rechazada; superficie pública por dominio y agregación del paquete en
+`tests/public-api.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
 
@@ -130,22 +154,29 @@ Sin redondeo (`rounding-mode.ts` no existe aún), sin conversión de moneda, sin
 división ni reparto. La escala admitida es 0-6; el catálogo ISO 4217 fija la escala oficial de los
 códigos que publica y un código ausente del catálogo se acepta como moneda propia con escala
 declarada. La escala se persiste junto al importe y nunca se deduce del código. `Money` admite cero y
-negativos; la restricción a importes positivos pertenece a las líneas de asiento (tarea 005). `Account` no cambia código, padre ni tipo: quedan
-fuera hasta definir reglas de historial. No hay saldo editable ni serialización JSON de cuentas.
+negativos; la restricción a importes positivos vive en `JournalEntryLine`. `Account` no cambia código,
+padre ni tipo: quedan fuera hasta definir reglas de historial. No hay saldo editable ni serialización
+JSON de cuentas.
 `Journal` no guarda asientos, no numera asientos y no valida pertenencia de asientos al libro;
 la numeración secuencial y su ámbito siguen pendientes del contrato de aplicación.
 `AccountingPeriod` no verifica solapamientos, no serializa el cierre y no reabre períodos: el cierre
 no altera asientos ni borradores, no genera asientos de resultados y no equivale a un cierre fiscal.
+`JournalEntry.post()` no verifica cuentas activas ni contabilizables, pertenencia al diario o al libro,
+ni la apertura del período: `periodId` no demuestra que la fecha caiga dentro de ese período. No impide
+una segunda reversión del mismo asiento ni serializa carreras. No hay edición directa de líneas (se
+quita y se añade sobre un borrador), no hay borrado de asientos contabilizados y no hay serialización
+JSON del asiento.
 
 ## Pendiente de implementar
 
-Asientos, casos de uso, adaptadores y la API pública restante.
+Casos de uso, adaptadores y la API pública restante.
 Sin ORM, HTTP ni interfaz visual.
 
 ## Siguiente tarea
 
-`docs/tasks/005-entries.md`. `JournalEntry` y sus líneas con E01-E11, reversión como borrador y sin
-mutación externa; la restricción de importes positivos y el equilibrio pertenecen al asiento.
+`docs/tasks/006-application.md`. Registro, contabilización, cierre, reversión y aislamiento por libro
+con un adaptador en memoria. Es la capa donde se verifican A04-A07, J03, J05, P05, P07 y P08, más la
+prohibición de una segunda reversión completa por asiento.
 
 ## Relevo de sesión
 

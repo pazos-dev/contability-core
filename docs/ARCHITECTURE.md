@@ -17,7 +17,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/money/` | `currency.ts`, `currency-catalog.ts`, `money.ts`, `money-errors.ts`; `rounding-mode.ts` solo al necesitar redondeo. |
 | `src/core/domain/account/` | `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`. |
 | `src/core/domain/journal/` | `journal.ts`, `journal-errors.ts`. |
-| `src/core/domain/entries/` | `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`, `posting-side.ts`, `entry-errors.ts`. |
+| `src/core/domain/entries/` | `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`, `posting-side.ts`, `entry-errors.ts`, `entry-text.ts`. |
 | `src/core/domain/period/` | `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`, `period-errors.ts`. |
 | `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. |
 | `src/core/application/use-cases/` | Crear/contabilizar/revertir asiento y cerrar período. |
@@ -40,7 +40,7 @@ interno: el nombre de los archivos de implementación es libre de cambiar sin ro
 | `src/core/domain/account/index.ts` | `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos. |
 | `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
 | `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
-| `src/core/domain/entries/index.ts` | Vacío hasta que `entries` tenga capacidades implementadas. |
+| `src/core/domain/entries/index.ts` | `JournalEntry`, `JournalEntryLine`, `EntryError`, `EntryStatus`, `PostingSide`, `JournalEntryInput`, `JournalEntryReversalInput`, `JournalEntryLineInput` y `EntryErrorCode`. |
 
 `src/index.ts` solo re-exporta esos barrels, nunca archivos internos, y un tipo interno no se publica
 por accidente. `pnpm check:project` exige el `index.ts` de los cinco dominios; `tests/public-api.test.mjs`
