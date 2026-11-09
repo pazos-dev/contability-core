@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-08. Entrega: preparación 2.0. Último incremento verificado: 006-entries, sobre
+Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006-entries, sobre
 005-currency-catalog revisado al modelo mixto de monedas, más la convención de API pública por dominio
 (barrel `index.ts` en cada dominio).
 
@@ -172,11 +172,30 @@ JSON del asiento.
 Casos de uso, adaptadores y la API pública restante.
 Sin ORM, HTTP ni interfaz visual.
 
+## Especificado y sin implementar
+
+El alcance del incremento 006 se revisó con el usuario y quedó congelado en `docs/tasks/006-application.md`:
+dos entregas, `LedgerDirectory` como única fuente de la relación libro-plan, `periodId` como autoridad con
+validación de fecha, idempotencia en memoria con la concurrencia diferida, y padre agrupador exigido al
+registrar un hijo. Cuatro specs escritas y sin código todavía:
+
+| Spec | Criterios | Entrega |
+| --- | --- | --- |
+| `docs/specs/registration.md` | R01-R16 | 006a |
+| `docs/specs/post-entry.md` | U01-U05, U08-U17; U03b, U06 y U07 diferidos a 007 | 006b |
+| `docs/specs/close-period.md` | C01-C04, C06, C07; C05 diferido a 007 | 006b |
+| `docs/specs/reverse-entry.md` | V01-V13 | 006b |
+
+Diferido explícitamente a 007, sin pruebas verdes que lo aparenten: rollback de base real (U03b), dos
+contabilizaciones simultáneas (U06), cierre concurrente con contabilización (U07, P08, C05) y unicidad
+durable de la reversión.
+
 ## Siguiente tarea
 
-`docs/tasks/006-application.md`. Registro, contabilización, cierre, reversión y aislamiento por libro
-con un adaptador en memoria. Es la capa donde se verifican A04-A07, J03, J05, P05, P07 y P08, más la
-prohibición de una segunda reversión completa por asiento.
+`docs/tasks/006-application.md`, entrega **006a**. Registro de cuentas, diarios y períodos con
+`UnitOfWork`, sus puertos y el adaptador en memoria. Es la capa donde se verifican A04, A05, A07, A09,
+J03 y P07. Después, 006b: A06, J05, P05, la contención de fecha en el período y la prohibición de una
+segunda reversión completa.
 
 ## Relevo de sesión
 
