@@ -4,6 +4,7 @@ export type { ApplicationErrorCode } from './errors.js';
 export type {
   AccountRepository,
   ApplicationDeps,
+  EntryRepository,
   IdempotencyRegistry,
   JournalRepository,
   LedgerDirectory,
@@ -35,3 +36,9 @@ export { makeSetJournalStatus } from './use-cases/set-journal-status.js';
 export type { SetJournalStatus } from './use-cases/set-journal-status.js';
 export { makeRegisterPeriod } from './use-cases/register-period.js';
 export type { RegisterPeriod } from './use-cases/register-period.js';
+export { makePostEntry } from './use-cases/post-entry.js';
+export type { PostEntry } from './use-cases/post-entry.js';
+export { makeClosePeriod } from './use-cases/close-period.js';
+export type { ClosePeriod } from './use-cases/close-period.js';
+export { makeReversePostedEntry } from './use-cases/reverse-entry.js';
+export type { ReversePostedEntry } from './use-cases/reverse-entry.js';

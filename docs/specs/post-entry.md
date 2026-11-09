@@ -56,20 +56,18 @@ interface PostEntryResult {
   readonly periodId: string;
   readonly status: 'POSTED';
   readonly accountingDate: string;
-  readonly lines: readonly {
-    readonly lineId: string;
-    readonly accountId: string;
-    readonly side: 'DEBIT' | 'CREDIT';
-    readonly amount: { readonly minorUnits: string; readonly code: string; readonly scale: number };
-    readonly description?: string;
-  }[];
-  readonly totalDebit: { readonly minorUnits: string; readonly code: string; readonly scale: number };
-  readonly totalCredit: { readonly minorUnits: string; readonly code: string; readonly scale: number };
+  readonly lines: readonly PostedLineResult[];
+  readonly totalDebit: MoneyJSON;
+  readonly totalCredit: MoneyJSON;
 }
 ```
 
-La huella de idempotencia es `ledgerId` + `entryId`: es todo lo que la petición identifica además de la
-clave. Otra `entryId` con la misma clave y el mismo libro es otra petición (U05).
+`MoneyJSON` es el tipo que ya publica el dominio: `Money.toJSON()`, es decir
+`{ minorUnits: string, currency: { code, scale } }`. No se inventa un contrato paralelo para el dinero.
+
+La huella de idempotencia es `ledgerId` + `entryId`: es literalmente todo el campo de la petición además de
+la clave, tal como exige la regla 6 de `registration.md`. Otra `entryId` con la misma clave y el mismo libro
+es otra petición (U05).
 
 El resultado no expone la instancia del agregado ni nada mutable: `lines` es una copia serializada.
 

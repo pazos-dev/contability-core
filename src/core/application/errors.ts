@@ -16,6 +16,13 @@ export type ApplicationErrorCode =
   | 'PERIOD_NOT_FOUND'
   | 'PERIOD_ALREADY_EXISTS'
   | 'PERIOD_OVERLAP'
+  | 'ENTRY_NOT_FOUND'
+  | 'ENTRY_ALREADY_REVERSED'
+  | 'JOURNAL_INACTIVE'
+  | 'PERIOD_CLOSED'
+  | 'PERIOD_DATE_OUTSIDE'
+  | 'ACCOUNT_INACTIVE'
+  | 'ACCOUNT_NOT_POSTABLE'
   | 'IDEMPOTENCY_CONFLICT';
 
 /** Application exception with a stable code; the host translates it to its own error model. */
@@ -129,5 +136,47 @@ export function idempotencyConflict(ledgerId: string, operation: string, key: st
     'IDEMPOTENCY_CONFLICT',
     `Key ${JSON.stringify(key)} was already used for ${operation} in ledger ${JSON.stringify(ledgerId)} with another request.`,
     { ledgerId, operation, key },
+  );
+}
+
+export function entryNotFound(entryId: string): ApplicationError {
+  return new ApplicationError('ENTRY_NOT_FOUND', `Entry ${JSON.stringify(entryId)} is not available in this ledger.`, {
+    entryId,
+  });
+}
+
+export function entryAlreadyReversed(entryId: string): ApplicationError {
+  return new ApplicationError(
+    'ENTRY_ALREADY_REVERSED',
+    `Entry ${JSON.stringify(entryId)} already has a posted reversal; a second full reversal is not allowed.`,
+    { entryId },
+  );
+}
+
+export function journalInactive(journalId: string): ApplicationError {
+  return new ApplicationError('JOURNAL_INACTIVE', `Journal ${JSON.stringify(journalId)} is inactive.`, { journalId });
+}
+
+export function periodClosed(periodId: string): ApplicationError {
+  return new ApplicationError('PERIOD_CLOSED', `Period ${JSON.stringify(periodId)} is closed.`, { periodId });
+}
+
+export function periodDateOutside(periodId: string, accountingDate: string): ApplicationError {
+  return new ApplicationError(
+    'PERIOD_DATE_OUTSIDE',
+    `Accounting date ${JSON.stringify(accountingDate)} does not fall inside period ${JSON.stringify(periodId)}.`,
+    { periodId, accountingDate },
+  );
+}
+
+export function accountInactive(accountId: string): ApplicationError {
+  return new ApplicationError('ACCOUNT_INACTIVE', `Account ${JSON.stringify(accountId)} is inactive.`, { accountId });
+}
+
+export function accountNotPostable(accountId: string): ApplicationError {
+  return new ApplicationError(
+    'ACCOUNT_NOT_POSTABLE',
+    `Account ${JSON.stringify(accountId)} is a grouping account and does not admit postings.`,
+    { accountId },
   );
 }

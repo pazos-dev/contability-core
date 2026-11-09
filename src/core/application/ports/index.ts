@@ -1,4 +1,5 @@
 import type { Account } from '../../domain/account/index.js';
+import type { JournalEntry } from '../../domain/entries/index.js';
 import type { Journal } from '../../domain/journal/index.js';
 import type { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
 
@@ -35,6 +36,13 @@ export interface PeriodRepository {
   save(period: AccountingPeriod): Promise<void>;
 }
 
+/** Entries are scoped by ledger: an id of another ledger is indistinguishable from a missing one. */
+export interface EntryRepository {
+  findById(ledgerId: string, entryId: string): Promise<JournalEntry | undefined>;
+  findByReversalOf(ledgerId: string, originalEntryId: string): Promise<JournalEntry | undefined>;
+  save(entry: JournalEntry): Promise<void>;
+}
+
 /**
  * What a repeated request is matched against: a fingerprint of every field of the request except the
  * key, plus the result that request produced. A fingerprint over the entity identity alone would make
@@ -68,6 +76,7 @@ export interface UnitOfWorkScope {
   readonly accounts: AccountRepository;
   readonly journals: JournalRepository;
   readonly periods: PeriodRepository;
+  readonly entries: EntryRepository;
   readonly idempotency: IdempotencyRegistry;
   readonly postedMovements: PostedMovementsQuery;
 }

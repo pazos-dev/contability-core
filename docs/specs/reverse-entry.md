@@ -42,7 +42,8 @@ interface ReversePostedEntryInput {
 El diario no es una entrada: la reversión usa el mismo diario que el original. Tampoco lo son las líneas:
 se derivan del original con los lados intercambiados y los importes intactos.
 
-Salida: el mismo contrato que `PostEntryResult` en `post-entry.md`, más `reversalOfEntryId`.
+Salida: el mismo contrato que `PostEntryResult` en `post-entry.md`, más `reversalOfEntryId`. Los importes
+viajan como `MoneyJSON`, el mismo tipo que publica el dominio.
 
 ```ts
 interface ReversePostedEntryResult extends PostEntryResult {

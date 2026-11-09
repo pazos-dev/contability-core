@@ -1,6 +1,7 @@
 # 006 — Aplicación en memoria
 
-Estado: especificado, pendiente de implementar en dos entregas. Leer AGENTS.md.
+Estado: implementado en dos entregas (006a y 006b), 176 pruebas en verde. Ver `docs/STATUS.md`.
+Leer AGENTS.md.
 Reemplaza la versión anterior de este documento, que apuntaba a una sola spec inexistente.
 
 ## Resultado

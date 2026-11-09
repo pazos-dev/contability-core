@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006a-application
-(registro de cuentas, diarios y períodos sobre un adaptador en memoria), sobre 006-entries y
-005-currency-catalog revisado al modelo mixto de monedas.
+Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006b-application
+(contabilización, cierre y reversión sobre un adaptador en memoria), sobre 006a-application, 006-entries
+y 005-currency-catalog revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -125,6 +125,29 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
 - `postedMovements` se consulta a través de un puerto y en 006a responde siempre `false`, porque todavía
   no existe una operación que contabilice. Su adaptador real llega con 006b.
 
+### 006b-application — `docs/specs/post-entry.md`, `close-period.md` y `reverse-entry.md`
+
+- Casos de uso nuevos: `postEntry`, `closePeriod`, `reversePostedEntry`, con
+  `src/core/application/contracts/posting.ts` y un `EntryRepository` en el alcance de la unidad de trabajo.
+- `postEntry` resuelve el plan del libro (Q07) y exige, en este orden: diario activo del mismo libro (J05),
+  período `OPEN` que además contenga la fecha contable, cuentas activas y contabilizables del plan (A06), y
+  las invariantes del agregado. Un `periodId` que no contiene la fecha es `PERIOD_DATE_OUTSIDE`: el id no
+  demuestra pertenencia.
+- `closePeriod` cambia sólo el estado del período: no convierte borradores, no toca asientos y no genera
+  resultados. Cerrar dos veces con claves distintas es `PERIOD_ALREADY_CLOSED`; repetirlo con la misma clave
+  es un replay sin segundo efecto.
+- `reversePostedEntry` crea y contabiliza el asiento espejado en una sola unidad de trabajo, reutilizando los
+  ids de línea del original y enlazándolo con `reversalOfEntryId`. El original nunca se guarda. El período
+  **destino** debe estar abierto aunque el del original esté cerrado, y las cuentas deben seguir admitiendo
+  movimientos. La comprobación de reversión previa vive justo antes de escribir, para que 007 la sustituya
+  por una restricción única.
+- `PostedMovementsQuery` deja de ser un doble: `hasPostedLines` lee del repositorio de asientos, así que un
+  padre con movimientos contabilizados rechaza hijos con `ACCOUNT_HAS_MOVEMENTS` sobre datos reales.
+- Los importes de salida usan `MoneyJSON`, el tipo que ya publica el dominio; no hay un contrato paralelo de
+  dinero ni `bigint` crudo en el resultado.
+- `U03a` verificada: si el registro de idempotencia falla después de guardar el asiento, la unidad de trabajo
+  restaura el estado y el borrador sigue `DRAFT`.
+
 ### API pública
 
 Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
@@ -137,8 +160,11 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 - `core/application/index.ts`: `ApplicationError`, `makeRegisterAccount`, `makeSetAccountStatus`,
-  `makeRegisterJournal`, `makeSetJournalStatus`, `makeRegisterPeriod` y sus tipos.
-- `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos.
+  `makeRegisterJournal`, `makeSetJournalStatus`, `makeRegisterPeriod`, `makePostEntry`, `makeClosePeriod`,
+  `makeReversePostedEntry` y sus tipos.
+- `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
+  asientos para que el anfitrión persista borradores: crear borradores por caso de uso no está especificado
+  todavía, así que hoy es responsabilidad del anfitrión (ver Decisiones pendientes).
 
 `describeValue` sigue siendo un helper interno del dominio, no forma parte de la API pública.
 `pnpm check:project` exige el `index.ts` de los cinco dominios y los dos barrels nuevos;
@@ -152,7 +178,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 136 pruebas, 136 correctas, 0 fallos. |
+| `pnpm test` | 176 pruebas, 176 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -164,7 +190,8 @@ conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validac
 `tests/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
 inexistente y la reversión rechazada; R01-R17 en `tests/registration.test.mjs`, incluidos el fallo de
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
-agregación del paquete en `tests/public-api.test.mjs`.
+agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U17 en `tests/post-entry.test.mjs`;
+C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V13 en `tests/reverse-entry.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
 
@@ -179,9 +206,9 @@ Registradas explícitamente para no prometerlas desde el dominio:
 | J03 — código de diario único dentro del libro | Verificada (R12). La restricción única de BD queda para 007. |
 | P07 — dos períodos solapados del mismo libro | Verificada (R13). La consulta y el guardado comparten la unidad de trabajo. |
 | Hijo de cuenta con movimientos | Rechazado en aplicación (R09). En 006a el puerto responde `false`; la conexión real llega con 006b. |
-| A06 — agrupadora o inactiva no recibe contabilizaciones | Pendiente: caso de uso contabilizar (006b). |
-| J05 — contabilizar en diario inactivo o de otro libro | Pendiente: 006b. |
-| P05 — contabilizar en período CLOSED | Pendiente: 006b. |
+| A06 — agrupadora o inactiva no recibe contabilizaciones | Verificada (U11, U12, U13). |
+| J05 — contabilizar en diario inactivo o de otro libro | Verificada (U14). |
+| P05 — contabilizar en período CLOSED | Verificada (U09). |
 | P08 — cierre y contabilización simultáneos | Pendiente de persistencia real (007). |
 
 ## Límites de esta entrega
@@ -203,10 +230,19 @@ una segunda reversión del mismo asiento ni serializa carreras. No hay edición 
 quita y se añade sobre un borrador), no hay borrado de asientos contabilizados y no hay serialización
 JSON del asiento.
 
+## Decisiones pendientes
+
+| Tema | Impacto |
+| --- | --- |
+| Crear y editar borradores por caso de uso | Ninguna spec lo cubre: `postEntry` contabiliza un borrador persistido y hoy lo persiste el anfitrión con el puerto de asientos. Un caso de uso `createEntryDraft`/`addEntryLine` necesita su propia especificación. |
+| `chartOfAccountsByLedger` lee propiedades heredadas | Un `ledgerId` como `constructor` devuelve una función en vez de `undefined`. Falla cerrado por el dominio, pero el mensaje es confuso. Va con 007 o con el adaptador durable. |
+| Claves compuestas con `\u0000` sin escapar | Dos ids que contuvieran ese byte podrían colisionar en el adaptador en memoria. |
+| Reversión parcial y cancelación de una reversión | Fuera de alcance por spec. |
+
 ## Pendiente de implementar
 
-Contabilizar, cerrar y revertir (006b); persistencia real con transacciones, unicidad y concurrencia (007);
-consultas e informes (008). Sin ORM, HTTP ni interfaz visual.
+Persistencia real con transacciones, unicidad y concurrencia (007); consultas e informes (008). Sin ORM, HTTP
+ni interfaz visual.
 
 ## Especificado y sin implementar
 
@@ -228,10 +264,8 @@ durable de la reversión.
 
 ## Siguiente tarea
 
-`docs/tasks/006-application.md`, entrega **006b**. `postEntry`, `closePeriod` y `reversePostedEntry`
-sobre el mismo adaptador: A06, J05, P05, la contención de la fecha en el período y la prohibición de una
-segunda reversión completa. `PostedMovementsQuery` deja de ser un doble y pasa a leer del repositorio de
-asientos. U03b, U06, U07, C05 y P08 siguen diferidas a 007 y no se aprueban con pruebas en memoria.
+Especificar y construir el incremento **007** o el registro de borradores, según se decida. Las garantías
+que exigen base real siguen diferidas y sin pruebas verdes que las aparenten: U03b, U06, U07, C05 y P08.
 
 ## Relevo de sesión
 

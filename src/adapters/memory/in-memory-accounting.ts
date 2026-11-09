@@ -4,6 +4,7 @@ import type { Journal } from '../../core/domain/journal/index.js';
 import type { AccountingPeriod } from '../../core/domain/period/index.js';
 import type {
   AccountRepository,
+  EntryRepository,
   IdempotencyRegistry,
   JournalRepository,
   LedgerDirectory,
@@ -51,6 +52,12 @@ export interface InMemorySnapshot {
 
 export interface InMemoryAccounting {
   readonly unitOfWork: UnitOfWork;
+  /**
+   * Entry adapter, exposed for composition: a host that builds drafts from its own domain events has
+   * to persist them somewhere, and this memory adapter is the only implementation in this phase.
+   * The core use cases never reach it this way: they only see the unit of work scope.
+   */
+  readonly entries: EntryRepository;
   snapshot(): InMemorySnapshot;
 }
 
@@ -155,6 +162,21 @@ export function createInMemoryAccounting(options: InMemoryAccountingOptions = {}
     },
   };
 
+  const entries: EntryRepository = {
+    async findById(ledgerId, entryId) {
+      return store.maps.entries.get(pairKey(ledgerId, entryId));
+    },
+    async findByReversalOf(ledgerId, originalEntryId) {
+      for (const entry of store.maps.entries.values()) {
+        if (entry.ledgerId === ledgerId && entry.reversalOfEntryId === originalEntryId) return entry;
+      }
+      return undefined;
+    },
+    async save(entry) {
+      store.maps.entries.set(pairKey(entry.ledgerId, entry.id), entry);
+    },
+  };
+
   const idempotency: IdempotencyRegistry = {
     async find(ledgerId, operation, key) {
       const stored = store.maps.idempotency.get(tripleKey(ledgerId, operation, key));
@@ -174,7 +196,7 @@ export function createInMemoryAccounting(options: InMemoryAccountingOptions = {}
     },
   };
 
-  const defaults: UnitOfWorkScope = { ledgers, accounts, journals, periods, idempotency, postedMovements };
+  const defaults: UnitOfWorkScope = { ledgers, accounts, journals, periods, entries, idempotency, postedMovements };
   const scope: UnitOfWorkScope = { ...defaults, ...(options.overrides?.(defaults) ?? {}) };
 
   const unitOfWork: UnitOfWork = {
@@ -191,6 +213,7 @@ export function createInMemoryAccounting(options: InMemoryAccountingOptions = {}
 
   return {
     unitOfWork,
+    entries,
     snapshot() {
       return {
         accounts: [...store.maps.accounts.values()],

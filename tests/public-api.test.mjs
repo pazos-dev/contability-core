@@ -18,9 +18,12 @@ const barrels = {
   'core/domain/entries': ['EntryError', 'JournalEntry', 'JournalEntryLine'],
   'core/application': [
     'ApplicationError',
+    'makeClosePeriod',
+    'makePostEntry',
     'makeRegisterAccount',
     'makeRegisterJournal',
     'makeRegisterPeriod',
+    'makeReversePostedEntry',
     'makeSetAccountStatus',
     'makeSetJournalStatus',
   ],
