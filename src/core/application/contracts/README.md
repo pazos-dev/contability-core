@@ -2,4 +2,6 @@
 
 Datos de entrada y salida serializables, sin ORM ni bigint crudo en JSON.
 
-Estado: preparado; sin implementación. Consultar docs/ARCHITECTURE.md desde la raíz.
+Estado: implementado para el incremento 006a en `registration.ts`. Los contratos aceptan texto y
+booleanos; los casos de uso construyen los objetos de valor. Ninguna salida expone una instancia de
+dominio mutable.

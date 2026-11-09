@@ -15,6 +15,18 @@ for (const name of skills) required.push(`.agents/skills/${name}/SKILL.md`);
 for (const name of ['money', 'account', 'journal', 'entries', 'period']) {
   required.push(`src/core/domain/${name}/README.md`, `src/core/domain/${name}/index.ts`, `docs/specs/${name}.md`);
 }
+for (const path of [
+  'src/core/application/README.md',
+  'src/core/application/index.ts',
+  'src/core/application/ports/index.ts',
+  'src/core/application/contracts/registration.ts',
+  'src/core/application/use-cases/register-account.ts',
+  'src/adapters/README.md',
+  'src/adapters/memory/README.md',
+  'src/adapters/memory/index.ts',
+]) {
+  required.push(path);
+}
 for (const file of required) if (!existsSync(file)) errors.push(`Falta ${file}`);
 
 function filesIn(directory) {

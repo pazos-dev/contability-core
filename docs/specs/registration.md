@@ -52,6 +52,10 @@ Reglas de contrato:
 4. Las salidas son serializables y sin instancias de dominio. `Money` viaja como
    `{ minorUnits: string, code: string, scale: number }`.
 5. No hay reloj ni generador de identificadores: los ids y las fechas llegan en la entrada.
+6. La huella de idempotencia cubre **todos** los campos de la petición salvo `idempotencyKey`, no sólo la
+   identidad de la entidad. Misma clave, mismo id y código, nombre, tipo, padre, flag o fechas distintas es
+   otra petición y produce `IDEMPOTENCY_CONFLICT`. Huir de esta regla convierte un conflicto en un éxito
+   silencioso que ignora los argumentos nuevos del llamador.
 
 ### Puertos
 
@@ -74,7 +78,7 @@ interface LedgerDirectory {
 
 interface AccountRepository {
   findById(accountId: string): Promise<Account | undefined>;
-  findByCode(chartOfAccountsId: string, code: AccountCode): Promise<Account | undefined>;
+  findByCode(chartOfAccountsId: string, code: string): Promise<Account | undefined>;
   save(account: Account): Promise<void>;
 }
 
@@ -128,8 +132,8 @@ class ApplicationError extends Error {
 Los errores de dominio burbujean sin envolver: ya tienen códigos estables. `ApplicationError` sólo cubre
 las reglas que cruzan entidades. Códigos de este incremento:
 
-`LEDGER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_ALREADY_EXISTS`, `ACCOUNT_CODE_DUPLICATE`,
-`ACCOUNT_PARENT_CYCLE`, `ACCOUNT_PARENT_NOT_GROUPING`, `ACCOUNT_HAS_MOVEMENTS`,
+`INVALID_APPLICATION_INPUT`, `LEDGER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_ALREADY_EXISTS`,
+`ACCOUNT_CODE_DUPLICATE`, `ACCOUNT_PARENT_NOT_GROUPING`, `ACCOUNT_HAS_MOVEMENTS`,
 `JOURNAL_NOT_FOUND`, `JOURNAL_ALREADY_EXISTS`, `JOURNAL_CODE_DUPLICATE`,
 `PERIOD_NOT_FOUND`, `PERIOD_ALREADY_EXISTS`, `PERIOD_OVERLAP`, `IDEMPOTENCY_CONFLICT`.
 
@@ -145,7 +149,8 @@ Salida: `{ ledgerId, chartOfAccountsId, accountId, code, status }`.
 Orden de validación:
 
 1. `idempotencyKey` repetida con la misma huella devuelve el resultado guardado, sin segundo efecto;
-   con huella distinta es `IDEMPOTENCY_CONFLICT`. La huella es `ledgerId` + `accountId`.
+   con huella distinta es `IDEMPOTENCY_CONFLICT`. La huella cubre `ledgerId`, `accountId`, `code`, `name`,
+   `type`, `parentId` y `postingAllowed`.
 2. Plan del libro: `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
 3. Id repetido: `findById(accountId)` presente es `ACCOUNT_ALREADY_EXISTS` (nunca se sobrescribe).
 4. Código repetido en el plan: `findByCode(chart, code)` presente es `ACCOUNT_CODE_DUPLICATE` (A05).
@@ -153,13 +158,17 @@ Orden de validación:
 5. Padre: si hay `parentId`, el padre debe existir y pertenecer al mismo plan; si no, `ACCOUNT_NOT_FOUND`
    (A04). Un padre de otro plan no se distingue de uno inexistente: el aislamiento pesa más que el
    diagnóstico.
-6. Ciclo: recorrer `parentId` desde el padre; alcanzar `accountId` o repetir un nodo visitado es
-   `ACCOUNT_PARENT_CYCLE` (A04).
-7. Padre agrupador: `parent.postingAllowed` debe ser `false`; si no, `ACCOUNT_PARENT_NOT_GROUPING`.
+6. Padre agrupador: `parent.postingAllowed` debe ser `false`; si no, `ACCOUNT_PARENT_NOT_GROUPING`.
    Una cuenta con hijos actúa como agrupadora porque no puede tener hijos si admite movimientos.
-8. Movimientos: si `hasPostedLines(accountId)` para el padre, `ACCOUNT_HAS_MOVEMENTS`.
-9. `Account.create` con el plan resuelto; sus errores burbujean.
-10. Guardar la cuenta y registrar la idempotencia en la misma unidad de trabajo.
+7. Movimientos del padre: si `hasPostedLines(parentId)`, `ACCOUNT_HAS_MOVEMENTS`.
+8. `Account.create` con el plan resuelto; sus errores burbujean.
+9. Guardar la cuenta y registrar la idempotencia en la misma unidad de trabajo.
+
+No hay paso de detección de ciclos, y no es un olvido: **un ciclo no es representable por este camino**.
+Para cerrarlo habría que darle a una cuenta existente un padre que ya es su descendiente, y eso exige
+volver a registrar un id existente, que el paso 3 rechaza con `ACCOUNT_ALREADY_EXISTS`. La cuenta naciente
+tampoco puede ser ancestro de nada, porque no existe todavía. A04 queda satisfecha por construcción y no
+por una comprobación que nunca podría fallar; el dominio tampoco ofrece una operación que cambie `parentId`.
 
 La cuenta nace `ACTIVE`. `accountId`, `code` y `name` vacíos o con espacios exteriores son error de
 dominio (`INVALID_ACCOUNT`).
@@ -174,6 +183,9 @@ Salida: `{ ledgerId, accountId, status }`.
   identidad, plan, código, nombre, padre y `postingAllowed`.
 - Repetir el mismo estado no es error: es un no-op que devuelve el resultado. Por eso este caso de uso no
   pide `idempotencyKey`.
+- Un valor de `status` distinto de `ACTIVE` o `INACTIVE` es `INVALID_APPLICATION_INPUT` antes de abrir la
+  unidad de trabajo: sin esa comprobación un valor inválido caería en la rama de activación y parecería un
+  éxito.
 - No existe desactivar en cascada ni comprobar hijos activos: fuera de alcance.
 
 ### registerJournal
@@ -181,7 +193,7 @@ Salida: `{ ledgerId, accountId, status }`.
 Entrada: `{ ledgerId, journalId, code, name, idempotencyKey? }`.
 Salida: `{ ledgerId, journalId, code, status }`.
 
-1. Idempotencia como en `registerAccount`, con huella `ledgerId` + `journalId`.
+1. Idempotencia como en `registerAccount`, con huella de `ledgerId`, `journalId`, `code` y `name`.
 2. `chartOfAccountsIdOf(ledgerId)` presente, o `LEDGER_NOT_FOUND`. El diario no guarda plan, pero exige
   libro conocido.
 3. `findById(ledgerId, journalId)` presente es `JOURNAL_ALREADY_EXISTS`.
@@ -199,7 +211,7 @@ historial (J04) y no toca asientos.
 Entrada: `{ ledgerId, periodId, name, startDate, endDate, idempotencyKey? }`, con fechas `YYYY-MM-DD`.
 Salida: `{ ledgerId, periodId, startDate, endDate, status }`.
 
-1. Idempotencia con huella `ledgerId` + `periodId`.
+1. Idempotencia con huella de `ledgerId`, `periodId`, `name`, `startDate` y `endDate`.
 2. `chartOfAccountsIdOf(ledgerId)` presente, o `LEDGER_NOT_FOUND`.
 3. `findById(ledgerId, periodId)` presente es `PERIOD_ALREADY_EXISTS`.
 4. `AccountingDate.create` para ambas fechas y `AccountingPeriod.create`; sus errores burbujean
@@ -220,7 +232,7 @@ El cierre no está acá: ver `close-period.md`.
 | R03 | A05 | Una cuenta con código `1.1.01` en el plan | `registerAccount` con el mismo código | `ACCOUNT_CODE_DUPLICATE`; nada guardado |
 | R04 | A05 | Dos libros con planes distintos | El mismo código en cada plan | Las dos cuentas se registran |
 | R05 | A04 | Un padre en otro plan | `registerAccount` con ese `parentId` | `ACCOUNT_NOT_FOUND`; nada guardado |
-| R06 | A04 | A→B→C ya registradas | `registerAccount` de A con padre C | `ACCOUNT_PARENT_CYCLE`; nada guardado |
+| R06 | A04 | Una cadena A→B ya registrada | `registerAccount` de A otra vez, ahora con padre B | `ACCOUNT_ALREADY_EXISTS`; el padre de A no cambia, así que ningún ciclo puede cerrarse |
 | R07 | — | Un padre con `postingAllowed: true` | `registerAccount` de un hijo suyo | `ACCOUNT_PARENT_NOT_GROUPING`; nada guardado |
 | R08 | — | Un `accountId` ya registrado | `registerAccount` con otro código | `ACCOUNT_ALREADY_EXISTS`; la cuenta original queda intacta |
 | R09 | — | Un doble que informa movimientos contabilizados en el padre | `registerAccount` de un hijo | `ACCOUNT_HAS_MOVEMENTS`; nada guardado |
@@ -231,6 +243,8 @@ El cierre no está acá: ver `close-period.md`.
 | R14 | — | Un repositorio que falla al guardar | Cualquier caso de uso de este incremento | El error sube y no queda ninguna escritura previa |
 | R15 | — | Un `idempotencyKey` ya usado con la misma petición | Repetir el caso de uso | Mismo resultado, sin segunda escritura |
 | R16 | — | Un `idempotencyKey` ya usado con otra petición | Repetir con otro `accountId` o `journalId` | `IDEMPOTENCY_CONFLICT`; nada guardado |
+| R17 | — | Un `status` distinto de `ACTIVE` o `INACTIVE` | `setAccountStatus` o `setJournalStatus` | `INVALID_APPLICATION_INPUT`; el estado anterior no cambia |
+| R18 | — | Un `idempotencyKey` ya usado con el mismo id y otro `code`, `name`, `type`, `parentId`, `postingAllowed` o fechas | Repetir el caso de uso | `IDEMPOTENCY_CONFLICT`; el registro guardado queda intacto |
 
 ## Decisiones pendientes
 
@@ -239,6 +253,7 @@ El cierre no está acá: ver `close-period.md`.
 | Q07 | Relación empresa/libros y varios libros por plan | Hoy un libro tiene exactamente un plan y lo declara el puerto. Un libro con dos planes o un plan compartido entre libros requiere cambiar `LedgerDirectory`. |
 | — | Desactivar una cuenta con hijos activos | Sin regla: se permite. Bloquearlo exige una consulta de hijos y una decisión de negocio. |
 | — | Renombrar cuentas y diarios | `rename` existe en el dominio y ningún caso de uso lo expone todavía. |
+| — | Detección de ciclos | No se implementa porque no es alcanzable; si algún día existe una operación que cambie `parentId`, vuelve a hacer falta. |
 
 ## Integración y consistencia
 

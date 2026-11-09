@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006-entries, sobre
-005-currency-catalog revisado al modelo mixto de monedas, más la convención de API pública por dominio
-(barrel `index.ts` en cada dominio).
+Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006a-application
+(registro de cuentas, diarios y períodos sobre un adaptador en memoria), sobre 006-entries y
+005-currency-catalog revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -95,6 +95,36 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
 - Decisión registrada: las líneas de la reversión reutilizan los ids de las líneas originales, que son
   únicos dentro de su asiento. Un id de línea único a nivel global es asunto de la persistencia (007).
 
+### 006a-application — `docs/specs/registration.md`, R01-R17
+
+- `src/core/application/`: `errors.ts` (`ApplicationError` con códigos estables), `ports/index.ts`
+  (`UnitOfWork` y su alcance, `LedgerDirectory`, repositorios de cuentas, diarios y períodos,
+  `IdempotencyRegistry`, `PostedMovementsQuery`), `contracts/registration.ts` y cinco casos de uso.
+- `src/adapters/memory/`: mapas de valores inmutables, `snapshot()` de lectura y una unidad de trabajo
+  que restaura el estado anterior completo cuando el trabajo falla. Sin durabilidad ni aislamiento, dicho
+  en el README del adaptador.
+- Casos de uso: `registerAccount`, `setAccountStatus`, `registerJournal`, `setJournalStatus`,
+  `registerPeriod`. Cada uno es una fábrica de función asíncrona y corre entero dentro de una sola
+  llamada a `unitOfWork.run`, lecturas incluidas: los repositorios solo existen en el alcance de la
+  unidad de trabajo, así que no hay conexiones independientes disfrazadas de transacción.
+- `chartOfAccountsId` no es una entrada: lo resuelve `LedgerDirectory` desde el libro (Q07). El anfitrión
+  no puede declarar un plan distinto al del libro, y una cuenta de otro plan se reporta como
+  `ACCOUNT_NOT_FOUND`, sin distinguirla de una inexistente.
+- A05 y J03 verificadas: código único por plan y por libro, permitido en otro plan o en otro libro. P07
+  verificada con solapamiento de un solo día y con períodos contiguos aceptados.
+- Regla de jerarquía: un hijo solo se registra bajo un padre con `postingAllowed: false`
+  (`ACCOUNT_PARENT_NOT_GROUPING`) y sin movimientos contabilizados (`ACCOUNT_HAS_MOVEMENTS`). El dominio
+  no gana ninguna operación nueva para esto.
+- A04 se cumple por construcción en su parte de ciclos: cerrar un ciclo exigiría volver a registrar un id
+  existente, que se rechaza. No hay paso de detección de ciclos porque nunca podría fallar, y así queda
+  registrado en la spec.
+- A07 se cumple por ausencia de operación: no existe borrar cuenta, y desactivar conserva identidad,
+  plan, código, nombre, padre y `postingAllowed`.
+- Idempotencia opcional por libro y por operación: misma clave con la misma petición devuelve el
+  resultado guardado sin segunda escritura; con otra petición devuelve `IDEMPOTENCY_CONFLICT`.
+- `postedMovements` se consulta a través de un puerto y en 006a responde siempre `false`, porque todavía
+  no existe una operación que contabilice. Su adaptador real llega con 006b.
+
 ### API pública
 
 Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
@@ -106,10 +136,14 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
+- `core/application/index.ts`: `ApplicationError`, `makeRegisterAccount`, `makeSetAccountStatus`,
+  `makeRegisterJournal`, `makeSetJournalStatus`, `makeRegisterPeriod` y sus tipos.
+- `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos.
 
 `describeValue` sigue siendo un helper interno del dominio, no forma parte de la API pública.
-`pnpm check:project` exige el `index.ts` de los cinco dominios y `tests/public-api.test.mjs` fija la
-superficie de cada barrel y la del paquete.
+`pnpm check:project` exige el `index.ts` de los cinco dominios y los dos barrels nuevos;
+`tests/public-api.test.mjs` fija la superficie de cada barrel y la del paquete, y falla si el paquete
+exporta algo fuera de ellos.
 
 ## Comprobaciones ejecutadas
 
@@ -118,7 +152,7 @@ superficie de cada barrel y la del paquete.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 90 pruebas, 90 correctas, 0 fallos. |
+| `pnpm test` | 136 pruebas, 136 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -128,25 +162,27 @@ exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reac
 conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
 `tests/period.test.mjs`; IC01-IC14 en `tests/currency-catalog.test.mjs`; E01-E11 en
 `tests/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
-inexistente y la reversión rechazada; superficie pública por dominio y agregación del paquete en
-`tests/public-api.test.mjs`.
+inexistente y la reversión rechazada; R01-R17 en `tests/registration.test.mjs`, incluidos el fallo de
+guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
+agregación del paquete en `tests/public-api.test.mjs`.
 
 ## Validaciones que esperan la capa de aplicación
 
 Registradas explícitamente para no prometerlas desde el dominio:
 
-| Regla | Dónde se verifica |
+| Regla | estado |
 | --- | --- |
-| A04 — padre de otro plan o ciclo | Caso de uso con repositorio de cuentas. |
-| A05 — código único dentro del plan, permitido en otro plan | Caso de uso y restricción única de BD. |
-| A06 — agrupadora o inactiva no recibe contabilizaciones | Caso de uso contabilizar. |
-| A07 — cuenta usada se desactiva, no se borra | Caso de uso con historial. |
-| J03 — código de diario único dentro del libro | Caso de uso y restricción única de BD. |
-| J05 — contabilizar en diario inactivo o de otro libro | Caso de uso contabilizar; rechazo sin escrituras. |
-| P05 — contabilizar en período CLOSED | Caso de uso contabilizar; rechazo sin cambios. |
-| P07 — dos períodos solapados del mismo libro | Caso de uso y consulta/restricción en BD. |
-| P08 — cierre y contabilización simultáneos | Persistencia serializa o detecta conflicto. |
-| Hijo de cuenta con movimientos | Política posterior; inicialmente rechazar en aplicación. |
+| A04 — padre de otro plan | Verificada en `tests/registration.test.mjs` (R05). |
+| A04 — ciclo | Cumplida por construcción: no existe operación que cambie `parentId` y re-registrar un id se rechaza (A04 en la suite). Sin comprobación propia porque no podría fallar. |
+| A05 — código único dentro del plan, permitido en otro plan | Verificada (R03, R04). La restricción única de BD queda para 007. |
+| A07 — cuenta usada se desactiva, no se borra | Verificada por ausencia de operación de borrado (R10). |
+| J03 — código de diario único dentro del libro | Verificada (R12). La restricción única de BD queda para 007. |
+| P07 — dos períodos solapados del mismo libro | Verificada (R13). La consulta y el guardado comparten la unidad de trabajo. |
+| Hijo de cuenta con movimientos | Rechazado en aplicación (R09). En 006a el puerto responde `false`; la conexión real llega con 006b. |
+| A06 — agrupadora o inactiva no recibe contabilizaciones | Pendiente: caso de uso contabilizar (006b). |
+| J05 — contabilizar en diario inactivo o de otro libro | Pendiente: 006b. |
+| P05 — contabilizar en período CLOSED | Pendiente: 006b. |
+| P08 — cierre y contabilización simultáneos | Pendiente de persistencia real (007). |
 
 ## Límites de esta entrega
 
@@ -169,8 +205,8 @@ JSON del asiento.
 
 ## Pendiente de implementar
 
-Casos de uso, adaptadores y la API pública restante.
-Sin ORM, HTTP ni interfaz visual.
+Contabilizar, cerrar y revertir (006b); persistencia real con transacciones, unicidad y concurrencia (007);
+consultas e informes (008). Sin ORM, HTTP ni interfaz visual.
 
 ## Especificado y sin implementar
 
@@ -192,10 +228,10 @@ durable de la reversión.
 
 ## Siguiente tarea
 
-`docs/tasks/006-application.md`, entrega **006a**. Registro de cuentas, diarios y períodos con
-`UnitOfWork`, sus puertos y el adaptador en memoria. Es la capa donde se verifican A04, A05, A07, A09,
-J03 y P07. Después, 006b: A06, J05, P05, la contención de fecha en el período y la prohibición de una
-segunda reversión completa.
+`docs/tasks/006-application.md`, entrega **006b**. `postEntry`, `closePeriod` y `reversePostedEntry`
+sobre el mismo adaptador: A06, J05, P05, la contención de la fecha en el período y la prohibición de una
+segunda reversión completa. `PostedMovementsQuery` deja de ser un doble y pasa a leer del repositorio de
+asientos. U03b, U06, U07, C05 y P08 siguen diferidas a 007 y no se aprueban con pruebas en memoria.
 
 ## Relevo de sesión
 

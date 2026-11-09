@@ -6,3 +6,5 @@ export * from './core/domain/account/index.js';
 export * from './core/domain/journal/index.js';
 export * from './core/domain/period/index.js';
 export * from './core/domain/entries/index.js';
+export * from './core/application/index.js';
+export * from './adapters/memory/index.js';
