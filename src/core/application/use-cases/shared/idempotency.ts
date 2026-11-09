@@ -1,5 +1,5 @@
-import type { UnitOfWorkScope } from '../ports/index.js';
-import { idempotencyConflict } from '../errors.js';
+import type { UnitOfWorkScope } from '../../ports/index.js';
+import { idempotencyConflict } from '../../errors.js';
 
 /**
  * Fingerprint of the request a replay is compared against.

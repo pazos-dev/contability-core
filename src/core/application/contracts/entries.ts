@@ -28,18 +28,6 @@ export interface PostEntryResult {
   readonly totalCredit: MoneyJSON;
 }
 
-export interface ClosePeriodInput {
-  readonly ledgerId: string;
-  readonly periodId: string;
-  readonly idempotencyKey: string;
-}
-
-export interface ClosePeriodResult {
-  readonly ledgerId: string;
-  readonly periodId: string;
-  readonly status: 'CLOSED';
-}
-
 export interface ReversePostedEntryInput {
   readonly ledgerId: string;
   readonly originalEntryId: string;

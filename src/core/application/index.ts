@@ -15,30 +15,29 @@ export type {
   UnitOfWorkScope,
 } from './ports/index.js';
 export type {
+  ClosePeriodInput,
+  ClosePeriodResult,
+  PostEntryInput,
+  PostEntryResult,
+  PostedLineResult,
   RegisterAccountInput,
   RegisterAccountResult,
   RegisterJournalInput,
   RegisterJournalResult,
   RegisterPeriodInput,
   RegisterPeriodResult,
+  ReversePostedEntryInput,
+  ReversePostedEntryResult,
   SetAccountStatusInput,
   SetAccountStatusResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
-} from './contracts/registration.js';
-export { makeRegisterAccount } from './use-cases/register-account.js';
-export type { RegisterAccount } from './use-cases/register-account.js';
-export { makeSetAccountStatus } from './use-cases/set-account-status.js';
-export type { SetAccountStatus } from './use-cases/set-account-status.js';
-export { makeRegisterJournal } from './use-cases/register-journal.js';
-export type { RegisterJournal } from './use-cases/register-journal.js';
-export { makeSetJournalStatus } from './use-cases/set-journal-status.js';
-export type { SetJournalStatus } from './use-cases/set-journal-status.js';
-export { makeRegisterPeriod } from './use-cases/register-period.js';
-export type { RegisterPeriod } from './use-cases/register-period.js';
-export { makePostEntry } from './use-cases/post-entry.js';
-export type { PostEntry } from './use-cases/post-entry.js';
-export { makeClosePeriod } from './use-cases/close-period.js';
-export type { ClosePeriod } from './use-cases/close-period.js';
-export { makeReversePostedEntry } from './use-cases/reverse-entry.js';
-export type { ReversePostedEntry } from './use-cases/reverse-entry.js';
+} from './contracts/index.js';
+export { makeRegisterAccount, makeSetAccountStatus } from './use-cases/accounts/index.js';
+export type { RegisterAccount, SetAccountStatus } from './use-cases/accounts/index.js';
+export { makeRegisterJournal, makeSetJournalStatus } from './use-cases/journals/index.js';
+export type { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js';
+export { makeClosePeriod, makeRegisterPeriod } from './use-cases/periods/index.js';
+export type { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
+export { makePostEntry, makeReversePostedEntry } from './use-cases/entries/index.js';
+export type { PostEntry, ReversePostedEntry } from './use-cases/entries/index.js';

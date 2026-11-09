@@ -1,6 +1,6 @@
-import type { SetJournalStatusInput, SetJournalStatusResult } from '../contracts/registration.js';
-import { invalidApplicationInput, journalNotFound, ledgerNotFound } from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
+import type { SetJournalStatusInput, SetJournalStatusResult } from '../../contracts/journals.js';
+import { invalidApplicationInput, journalNotFound, ledgerNotFound } from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
 
 export type SetJournalStatus = (input: SetJournalStatusInput) => Promise<SetJournalStatusResult>;
 

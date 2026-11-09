@@ -1,6 +1,6 @@
-import type { JournalEntry, JournalEntryLine, PostingSide } from '../../domain/entries/index.js';
-import { Money } from '../../domain/money/index.js';
-import type { PostEntryInput, PostEntryResult, PostedLineResult } from '../contracts/posting.js';
+import type { JournalEntry, JournalEntryLine, PostingSide } from '../../../domain/entries/index.js';
+import { Money } from '../../../domain/money/index.js';
+import type { PostEntryInput, PostEntryResult, PostedLineResult } from '../../contracts/entries.js';
 import {
   accountInactive,
   entryAlreadyReversed,
@@ -13,9 +13,9 @@ import {
   periodClosed,
   periodDateOutside,
   periodNotFound,
-} from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
-import { fingerprintOf, remember, replay } from './idempotency.js';
+} from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
+import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'postEntry';
 

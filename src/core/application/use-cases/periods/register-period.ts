@@ -1,8 +1,8 @@
-import { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
-import type { RegisterPeriodInput, RegisterPeriodResult } from '../contracts/registration.js';
-import { ledgerNotFound, periodAlreadyExists, periodOverlap } from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
-import { fingerprintOf, remember, replay } from './idempotency.js';
+import { AccountingDate, AccountingPeriod } from '../../../domain/period/index.js';
+import type { RegisterPeriodInput, RegisterPeriodResult } from '../../contracts/periods.js';
+import { ledgerNotFound, periodAlreadyExists, periodOverlap } from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
+import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'registerPeriod';
 

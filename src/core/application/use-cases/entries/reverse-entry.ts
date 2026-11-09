@@ -1,5 +1,5 @@
-import { AccountingDate } from '../../domain/period/index.js';
-import type { ReversePostedEntryInput, ReversePostedEntryResult } from '../contracts/posting.js';
+import { AccountingDate } from '../../../domain/period/index.js';
+import type { ReversePostedEntryInput, ReversePostedEntryResult } from '../../contracts/entries.js';
 import {
   accountInactive,
   entryAlreadyExists,
@@ -13,10 +13,10 @@ import {
   periodClosed,
   periodDateOutside,
   periodNotFound,
-} from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
-import { fingerprintOf, remember, replay } from './idempotency.js';
-import { resultOf } from './post-entry.js';
+} from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
+import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
+import { resultOf } from '../entries/post-entry.js';
 
 const OPERATION = 'reversePostedEntry';
 

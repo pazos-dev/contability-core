@@ -1,8 +1,8 @@
-import { Journal } from '../../domain/journal/index.js';
-import type { RegisterJournalInput, RegisterJournalResult } from '../contracts/registration.js';
-import { journalAlreadyExists, journalCodeDuplicate, ledgerNotFound } from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
-import { fingerprintOf, remember, replay } from './idempotency.js';
+import { Journal } from '../../../domain/journal/index.js';
+import type { RegisterJournalInput, RegisterJournalResult } from '../../contracts/journals.js';
+import { journalAlreadyExists, journalCodeDuplicate, ledgerNotFound } from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
+import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'registerJournal';
 

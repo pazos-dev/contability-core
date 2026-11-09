@@ -1,5 +1,5 @@
-import { Account } from '../../domain/account/index.js';
-import type { RegisterAccountInput, RegisterAccountResult } from '../contracts/registration.js';
+import { Account } from '../../../domain/account/index.js';
+import type { RegisterAccountInput, RegisterAccountResult } from '../../contracts/accounts.js';
 import {
   accountAlreadyExists,
   accountCodeDuplicate,
@@ -7,9 +7,9 @@ import {
   accountNotFound,
   accountParentNotGrouping,
   ledgerNotFound,
-} from '../errors.js';
-import type { ApplicationDeps, UnitOfWorkScope } from '../ports/index.js';
-import { fingerprintOf, remember, replay } from './idempotency.js';
+} from '../../errors.js';
+import type { ApplicationDeps, UnitOfWorkScope } from '../../ports/index.js';
+import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'registerAccount';
 

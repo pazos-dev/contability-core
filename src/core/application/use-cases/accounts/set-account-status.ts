@@ -1,9 +1,9 @@
 import type {
   SetAccountStatusInput,
   SetAccountStatusResult,
-} from '../contracts/registration.js';
-import { accountNotFound, invalidApplicationInput, ledgerNotFound } from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
+} from '../../contracts/accounts.js';
+import { accountNotFound, invalidApplicationInput, ledgerNotFound } from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
 
 export type SetAccountStatus = (input: SetAccountStatusInput) => Promise<SetAccountStatusResult>;
 

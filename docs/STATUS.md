@@ -99,7 +99,7 @@ y 005-currency-catalog revisado al modelo mixto de monedas.
 
 - `src/core/application/`: `errors.ts` (`ApplicationError` con códigos estables), `ports/index.ts`
   (`UnitOfWork` y su alcance, `LedgerDirectory`, repositorios de cuentas, diarios y períodos,
-  `IdempotencyRegistry`, `PostedMovementsQuery`), `contracts/registration.ts` y cinco casos de uso.
+  `IdempotencyRegistry`, `PostedMovementsQuery`), los contratos y cinco casos de uso.
 - `src/adapters/memory/`: mapas de valores inmutables, `snapshot()` de lectura y una unidad de trabajo
   que restaura el estado anterior completo cuando el trabajo falla. Sin durabilidad ni aislamiento, dicho
   en el README del adaptador.
@@ -128,7 +128,7 @@ y 005-currency-catalog revisado al modelo mixto de monedas.
 ### 006b-application — `docs/specs/post-entry.md`, `close-period.md` y `reverse-entry.md`
 
 - Casos de uso nuevos: `postEntry`, `closePeriod`, `reversePostedEntry`, con
-  `src/core/application/contracts/posting.ts` y un `EntryRepository` en el alcance de la unidad de trabajo.
+  un `EntryRepository` en el alcance de la unidad de trabajo.
 - `postEntry` resuelve el plan del libro (Q07) y exige, en este orden: diario activo del mismo libro (J05),
   período `OPEN` que además contenga la fecha contable, cuentas activas y contabilizables del plan (A06), y
   las invariantes del agregado. Un `periodId` que no contiene la fecha es `PERIOD_DATE_OUTSIDE`: el id no
@@ -244,8 +244,6 @@ JSON del asiento.
 | Tema | Impacto |
 | --- | --- |
 | Crear y editar borradores por caso de uso | Ninguna spec lo cubre: `postEntry` contabiliza un borrador persistido y hoy lo persiste el anfitrión con el puerto de asientos. Un caso de uso `createEntryDraft`/`addEntryLine` necesita su propia especificación. |
-| `chartOfAccountsByLedger` lee propiedades heredadas | Un `ledgerId` como `constructor` devuelve una función en vez de `undefined`. Falla cerrado por el dominio, pero el mensaje es confuso. Va con 007 o con el adaptador durable. |
-| Claves compuestas con `\u0000` sin escapar | Dos ids que contuvieran ese byte podrían colisionar en el adaptador en memoria. |
 | Reversión parcial y cancelación de una reversión | Fuera de alcance por spec. |
 
 ## Pendiente de implementar

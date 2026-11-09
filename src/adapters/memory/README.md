@@ -2,8 +2,13 @@
 
 Adaptador en memoria para desarrollo y pruebas.
 
-Estado: implementado para el incremento 006a. Guarda valores de dominio inmutables en mapas y restaura el
-estado anterior completo cuando una unidad de trabajo falla.
+Estado: implementado para 006a y 006b.
+
+| Archivo | Responsabilidad |
+| --- | --- |
+| `store.ts` | Los mapas, las claves compuestas, la copia de respaldo y el snapshot. |
+| `repositories.ts` | Implementación de cada puerto sobre los mapas. |
+| `in-memory-accounting.ts` | Constructor público, costura de pruebas y unidad de trabajo que restaura. |
 
 Límites explícitos:
 

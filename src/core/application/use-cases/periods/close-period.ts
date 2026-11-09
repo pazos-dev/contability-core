@@ -1,7 +1,7 @@
-import type { ClosePeriodInput, ClosePeriodResult } from '../contracts/posting.js';
-import { ledgerNotFound, periodNotFound } from '../errors.js';
-import type { ApplicationDeps } from '../ports/index.js';
-import { fingerprintOf, remember, replay } from './idempotency.js';
+import type { ClosePeriodInput, ClosePeriodResult } from '../../contracts/periods.js';
+import { ledgerNotFound, periodNotFound } from '../../errors.js';
+import type { ApplicationDeps } from '../../ports/index.js';
+import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'closePeriod';
 
