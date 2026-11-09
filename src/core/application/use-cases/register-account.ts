@@ -78,6 +78,9 @@ async function requireGroupingParent(
   // A parent in another plan is reported as unavailable: the isolation of the ledger outweighs the diagnosis.
   if (parent === undefined || parent.chartOfAccountsId !== chartOfAccountsId) throw accountNotFound(parentId);
 
+  // Order matters. A postable account is rejected as a parent before the movements query runs, and only a
+  // postable account can receive postings, so ACCOUNT_HAS_MOVEMENTS cannot fire through this API: it is a
+  // defence-in-depth guard against a store where a grouping account already carries posted lines.
   if (parent.postingAllowed) throw accountParentNotGrouping(parentId);
   if (await scope.postedMovements.hasPostedLines(parentId)) throw accountHasMovements(parentId);
 }

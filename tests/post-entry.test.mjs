@@ -391,3 +391,41 @@ test('U17: with several invalid conditions the lowest rule wins', async () => {
     assertCode('JOURNAL_INACTIVE'),
   );
 });
+
+// R3-001: the movements query must read real postings, and the ACCOUNT_HAS_MOVEMENTS guard must be
+// described for what it is — defence in depth, not a rule this API can reach.
+
+test('the movements query reads real postings from the entry repository', async () => {
+  const { memory, postEntry } = await harness();
+  await memory.entries.save(balancedDraft());
+  await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+
+  const posted = await memory.unitOfWork.run((scope) => scope.postedMovements.hasPostedLines('acc-cash'));
+  const untouched = await memory.unitOfWork.run((scope) => scope.postedMovements.hasPostedLines('acc-rev-2'));
+
+  assert.equal(posted, true);
+  assert.equal(untouched, false);
+});
+
+test('a posted account is rejected as a parent by the grouping rule, before the movements guard', async () => {
+  const { memory, postEntry, registerAccount } = await harness();
+  await memory.entries.save(balancedDraft());
+  await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+
+  // Only a postable account can hold postings, and that same account cannot be a parent, so this is the
+  // code a caller always sees: ACCOUNT_HAS_MOVEMENTS stays unreachable through the public API.
+  await assert.rejects(
+    registerAccount({
+      ledgerId: 'ledger-1',
+      accountId: 'acc-child',
+      code: '1.1.02',
+      name: 'Hijo de caja',
+      type: 'ASSET',
+      parentId: 'acc-cash',
+      postingAllowed: true,
+    }),
+    assertCode('ACCOUNT_PARENT_NOT_GROUPING'),
+  );
+
+  assert.equal(memory.snapshot().accounts.some((account) => account.id === 'acc-child'), false);
+});

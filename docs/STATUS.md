@@ -141,8 +141,12 @@ y 005-currency-catalog revisado al modelo mixto de monedas.
   **destino** debe estar abierto aunque el del original esté cerrado, y las cuentas deben seguir admitiendo
   movimientos. La comprobación de reversión previa vive justo antes de escribir, para que 007 la sustituya
   por una restricción única.
-- `PostedMovementsQuery` deja de ser un doble: `hasPostedLines` lee del repositorio de asientos, así que un
-  padre con movimientos contabilizados rechaza hijos con `ACCOUNT_HAS_MOVEMENTS` sobre datos reales.
+- `PostedMovementsQuery` deja de ser un doble: `hasPostedLines` lee del repositorio de asientos y devuelve
+  `true` en las cuentas con líneas contabilizadas (probado con datos reales en `tests/post-entry.test.mjs`).
+  Pero `ACCOUNT_HAS_MOVEMENTS` es una guarda de defensa y no una regla alcanzable: sólo una cuenta
+  contabilizable puede recibir movimientos, y esa misma cuenta se rechaza antes como padre con
+  `ACCOUNT_PARENT_NOT_GROUPING`. El orden de comprobación es deliberado y la prueba fija cuál de los dos
+  códigos se reporta.
 - Los importes de salida usan `MoneyJSON`, el tipo que ya publica el dominio; no hay un contrato paralelo de
   dinero ni `bigint` crudo en el resultado.
 - `U03a` verificada: si el registro de idempotencia falla después de guardar el asiento, la unidad de trabajo
@@ -205,7 +209,7 @@ Registradas explícitamente para no prometerlas desde el dominio:
 | A07 — cuenta usada se desactiva, no se borra | Verificada por ausencia de operación de borrado (R10). |
 | J03 — código de diario único dentro del libro | Verificada (R12). La restricción única de BD queda para 007. |
 | P07 — dos períodos solapados del mismo libro | Verificada (R13). La consulta y el guardado comparten la unidad de trabajo. |
-| Hijo de cuenta con movimientos | Rechazado en aplicación (R09). En 006a el puerto responde `false`; la conexión real llega con 006b. |
+| Hijo de cuenta con movimientos | La regla existe (`ACCOUNT_HAS_MOVEMENTS`) y el puerto lee movimientos reales, pero no es alcanzable por la API: la cuenta que tiene movimientos es contabilizable y por lo tanto se rechaza antes como padre con `ACCOUNT_PARENT_NOT_GROUPING`. Verificado con un doble en R09 y documentado en 006b. |
 | A06 — agrupadora o inactiva no recibe contabilizaciones | Verificada (U11, U12, U13). |
 | J05 — contabilizar en diario inactivo o de otro libro | Verificada (U14). |
 | P05 — contabilizar en período CLOSED | Verificada (U09). |
