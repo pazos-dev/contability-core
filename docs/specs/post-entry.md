@@ -93,12 +93,16 @@ regla de menor número. Todas las lecturas y la escritura viven en una sola llam
    - `findById(accountId)`; ausente o de otro plan es `ACCOUNT_NOT_FOUND`.
    - `status` distinto de `ACTIVE` es `ACCOUNT_INACTIVE` (A06).
    - `postingAllowed` en `false` es `ACCOUNT_NOT_POSTABLE` (A06).
-7. **Invariantes del agregado.** `entry.post()`: sus errores burbujean tal cual
+7. **Reversión previa.** Si el borrador trae `reversalOfEntryId` —lo creó `createReversalDraft` o el
+   anfitrión lo armó con el dominio—, se consulta `findByReversalOf` y, si ya hay **otra** reversión
+   contabilizada de ese original, es `ENTRY_ALREADY_REVERSED`. Contabilizar por acá no puede producir una
+   segunda reversión completa que `reversePostedEntry` habría rechazado.
+8. **Invariantes del agregado.** `entry.post()`: sus errores burbujean tal cual
    (`ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED`, `ENTRY_CURRENCY_MISMATCH`). Un asiento ya
    `POSTED` sin coincidencia de idempotencia llega acá y recibe `ENTRY_STATE` (E11).
-8. **Escritura única.** Dentro de la misma unidad de trabajo: `entries.save(posted)` y
+9. **Escritura única.** Dentro de la misma unidad de trabajo: `entries.save(posted)` y
    `idempotency.record(...)` con la huella y el resultado. Si cualquiera falla, ninguno de los dos queda.
-9. **Resultado.** Se arma a partir del agregado posteado.
+10. **Resultado.** Se arma a partir del agregado posteado.
 
 Un fallo en cualquier paso no escribe nada: el borrador nunca se guarda a medias.
 
@@ -117,7 +121,7 @@ Un fallo en cualquier paso no escribe nada: el borrador nunca se guarda a medias
 
 ## Errores
 
-Códigos propios: `LEDGER_NOT_FOUND`, `ENTRY_NOT_FOUND`, `JOURNAL_NOT_FOUND`, `JOURNAL_INACTIVE`,
+Códigos propios: `LEDGER_NOT_FOUND`, `ENTRY_NOT_FOUND`, `ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`, `JOURNAL_INACTIVE`,
 `PERIOD_NOT_FOUND`, `PERIOD_CLOSED`, `PERIOD_DATE_OUTSIDE`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_INACTIVE`,
 `ACCOUNT_NOT_POSTABLE`, `IDEMPOTENCY_CONFLICT`.
 
@@ -145,6 +149,7 @@ Burban los de dominio sin envolver, con su código original.
 | U15 | E11 | Un asiento ya `POSTED` y una clave nueva | `postEntry` | `ENTRY_STATE` del dominio; sin escrituras |
 | U16 | — | Un borrador desequilibrado con todo lo demás válido | `postEntry` | `ENTRY_UNBALANCED` del dominio; sigue `DRAFT` con sus líneas |
 | U17 | — | Varias condiciones inválidas a la vez | `postEntry` | Se reporta el error de la regla de menor número del flujo |
+| U18 | — | Un borrador de reversión guardado por el anfitrión y un original que ya tiene una reversión contabilizada | `postEntry` | `ENTRY_ALREADY_REVERSED`; el borrador sigue `DRAFT` |
 
 ## Decisiones pendientes
 

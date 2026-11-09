@@ -151,6 +151,11 @@ y 005-currency-catalog revisado al modelo mixto de monedas.
   dinero ni `bigint` crudo en el resultado.
 - `U03a` verificada: si el registro de idempotencia falla después de guardar el asiento, la unidad de trabajo
   restaura el estado y el borrador sigue `DRAFT`.
+- Corrección de la revisión nativa: el guardado de asientos es un *upsert* por `(ledgerId, entryId)`, así que
+  `reversePostedEntry` ahora exige que el id de la reversión esté libre (`ENTRY_ALREADY_EXISTS`) y `postEntry`
+  aplica la regla de una sola reversión también a un borrador de reversión guardado por el anfitrión
+  (`ENTRY_ALREADY_REVERSED`). Sin esas dos guardas, un id repetido sobrescribía un asiento y una segunda
+  reversión se colaba por `postEntry`.
 
 ### API pública
 

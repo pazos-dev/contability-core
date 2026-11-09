@@ -17,6 +17,7 @@ export type ApplicationErrorCode =
   | 'PERIOD_ALREADY_EXISTS'
   | 'PERIOD_OVERLAP'
   | 'ENTRY_NOT_FOUND'
+  | 'ENTRY_ALREADY_EXISTS'
   | 'ENTRY_ALREADY_REVERSED'
   | 'JOURNAL_INACTIVE'
   | 'PERIOD_CLOSED'
@@ -143,6 +144,14 @@ export function entryNotFound(entryId: string): ApplicationError {
   return new ApplicationError('ENTRY_NOT_FOUND', `Entry ${JSON.stringify(entryId)} is not available in this ledger.`, {
     entryId,
   });
+}
+
+export function entryAlreadyExists(entryId: string): ApplicationError {
+  return new ApplicationError(
+    'ENTRY_ALREADY_EXISTS',
+    `Entry ${JSON.stringify(entryId)} already exists in this ledger; an entry id is never reused.`,
+    { entryId },
+  );
 }
 
 export function entryAlreadyReversed(entryId: string): ApplicationError {

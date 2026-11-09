@@ -287,3 +287,34 @@ test('V13: a failing save leaves no reversal behind', async () => {
   assert.equal(storedEntry(memory, 'original').status, 'POSTED');
   assert.equal(memory.snapshot().idempotency.filter((record) => record.operation === 'reversePostedEntry').length, 0);
 });
+
+test('V14: a reversal id that is already used is rejected instead of overwriting the entry', async () => {
+  const { memory, reversePostedEntry } = await harness();
+  await memory.entries.save(draftOf('neighbour'));
+
+  // "neighbour" is already stored in this ledger: reusing its id would silently replace that entry.
+  await assert.rejects(
+    reversePostedEntry(reversalInput({ reversalEntryId: 'neighbour' })),
+    assertCode('ENTRY_ALREADY_EXISTS'),
+  );
+
+  assert.equal(storedEntry(memory, 'neighbour').status, 'DRAFT');
+  const original = storedEntry(memory, 'original');
+  assert.equal(original.reversalOfEntryId, undefined);
+  assert.equal(original.status, 'POSTED');
+  assert.equal(original.lines.length, 4);
+  assert.equal(memory.snapshot().entries.length, 2);
+});
+
+test('V15: a draft reversal id blocks the reversal before any account or period check', async () => {
+  const { memory, reversePostedEntry } = await harness();
+  await memory.entries.save(draftOf('occupied'));
+
+  await assert.rejects(
+    reversePostedEntry(reversalInput({ reversalEntryId: 'occupied' })),
+    assertCode('ENTRY_ALREADY_EXISTS'),
+  );
+
+  assert.equal(storedEntry(memory, 'occupied').status, 'DRAFT');
+  assert.equal(storedEntry(memory, 'occupied').reversalOfEntryId, undefined);
+});

@@ -3,6 +3,7 @@ import { Money } from '../../domain/money/index.js';
 import type { PostEntryInput, PostEntryResult, PostedLineResult } from '../contracts/posting.js';
 import {
   accountInactive,
+  entryAlreadyReversed,
   accountNotFound,
   accountNotPostable,
   entryNotFound,
@@ -61,6 +62,15 @@ export function makePostEntry(deps: ApplicationDeps): PostEntry {
         if (account === undefined || account.chartOfAccountsId !== chartOfAccountsId) throw accountNotFound(line.accountId);
         if (account.status !== 'ACTIVE') throw accountInactive(line.accountId);
         if (!account.postingAllowed) throw accountNotPostable(line.accountId);
+      }
+
+      // A stored reversal draft must obey the same rule as the one created by the reverse use case:
+      // posting it here cannot create a second full reversal of the same original.
+      if (entry.reversalOfEntryId !== undefined) {
+        const existing = await scope.entries.findByReversalOf(ledgerId, entry.reversalOfEntryId);
+        if (existing !== undefined && existing.id !== entry.id && existing.status === 'POSTED') {
+          throw entryAlreadyReversed(entry.reversalOfEntryId);
+        }
       }
 
       const posted = entry.post();

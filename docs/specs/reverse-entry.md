@@ -76,14 +76,18 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
    existe o es de otro plan, `ACCOUNT_INACTIVE` si está inactiva, `ACCOUNT_NOT_POSTABLE` si no admite
    movimientos. Son las mismas reglas que `postEntry` aplica a un borrador nuevo: revertir no es una vía
    para contabilizar en una cuenta desactivada.
-8. **Reversión existente.** `entries.findByReversalOf(ledgerId, originalEntryId)` no vacío es
+8. **Id de reversión libre.** `findById(ledgerId, reversalEntryId)`: si ya existe un asiento con ese id, es
+   `ENTRY_ALREADY_EXISTS`. El guardado es un *upsert* por `(ledgerId, entryId)`, así que reutilizar un id
+   sobrescribiría el asiento guardado; en 007 la clave primaria lo impide. El dominio ya rechaza el caso
+   `reversalEntryId === originalEntryId` con `INVALID_ENTRY`.
+9. **Reversión existente.** `entries.findByReversalOf(ledgerId, originalEntryId)` no vacío es
    `ENTRY_ALREADY_REVERSED`. La comprobación va inmediatamente antes de escribir, dentro de la unidad de
    trabajo, para que 007 pueda sustituirla por una restricción única sin moverla.
-9. **Contabilizar.** `reversalDraft.post()`: sus errores burbujean (en la práctica no debería fallar,
+10. **Contabilizar.** `reversalDraft.post()`: sus errores burbujean (en la práctica no debería fallar,
    porque las líneas espejadas conservan equilibrio y moneda del original).
-10. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
+11. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
     trabajo. El original nunca se guarda: no se toca.
-11. **Resultado.** Se arma a partir de la reversión posteada.
+12. **Resultado.** Se arma a partir de la reversión posteada.
 
 ## Reglas e invariantes
 
@@ -96,7 +100,7 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 
 ## Errores
 
-Códigos propios: `LEDGER_NOT_FOUND`, `ENTRY_NOT_FOUND`, `ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`,
+Códigos propios: `LEDGER_NOT_FOUND`, `ENTRY_NOT_FOUND`, `ENTRY_ALREADY_EXISTS`, `ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`,
 `JOURNAL_INACTIVE`, `PERIOD_NOT_FOUND`, `PERIOD_CLOSED`, `PERIOD_DATE_OUTSIDE`, `ACCOUNT_NOT_FOUND`,
 `ACCOUNT_INACTIVE`, `ACCOUNT_NOT_POSTABLE`, `IDEMPOTENCY_CONFLICT`.
 
@@ -119,6 +123,8 @@ Burbujea `ENTRY_STATE` del dominio cuando el original no está POSTED.
 | V11 | — | La misma clave y la misma petición | Repetir `reversePostedEntry` | Mismo resultado, sin segunda reversión |
 | V12 | — | La misma clave y otro `reversalEntryId` | `reversePostedEntry` | `IDEMPOTENCY_CONFLICT`; nada escrito |
 | V13 | — | Un repositorio que falla al guardar | `reversePostedEntry` | El error sube; no queda reversión ni registro y el original sigue `POSTED` |
+| V14 | — | Un `reversalEntryId` que ya pertenece a otro asiento del libro | `reversePostedEntry` | `ENTRY_ALREADY_EXISTS`; el asiento existente y el original quedan intactos |
+| V15 | — | Un `reversalEntryId` que ya pertenece a un borrador del libro | `reversePostedEntry` | `ENTRY_ALREADY_EXISTS`; el borrador queda `DRAFT` y sin enlace de reversión |
 
 ## Decisiones pendientes
 

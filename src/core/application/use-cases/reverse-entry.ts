@@ -2,6 +2,7 @@ import { AccountingDate } from '../../domain/period/index.js';
 import type { ReversePostedEntryInput, ReversePostedEntryResult } from '../contracts/posting.js';
 import {
   accountInactive,
+  entryAlreadyExists,
   accountNotFound,
   accountNotPostable,
   entryAlreadyReversed,
@@ -75,6 +76,12 @@ export function makeReversePostedEntry(deps: ApplicationDeps): ReversePostedEntr
         if (account === undefined || account.chartOfAccountsId !== chartOfAccountsId) throw accountNotFound(line.accountId);
         if (account.status !== 'ACTIVE') throw accountInactive(line.accountId);
         if (!account.postingAllowed) throw accountNotPostable(line.accountId);
+      }
+
+      // The save is an upsert keyed by (ledgerId, entryId): reusing an id would overwrite the stored
+      // entry, so the id must be free before the reversal is written. In 007 this is the primary key.
+      if ((await scope.entries.findById(ledgerId, reversalEntryId)) !== undefined) {
+        throw entryAlreadyExists(reversalEntryId);
       }
 
       // Checked immediately before the write, inside the same unit of work, so 007 can replace it with

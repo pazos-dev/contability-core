@@ -429,3 +429,36 @@ test('a posted account is rejected as a parent by the grouping rule, before the 
 
   assert.equal(memory.snapshot().accounts.some((account) => account.id === 'acc-child'), false);
 });
+
+test('U18: posting a stored reversal draft cannot create a second reversal of the same original', async () => {
+  const { memory, postEntry, deps } = await harness();
+  const { makeReversePostedEntry } = await import('../dist/index.js');
+  const reversePostedEntry = makeReversePostedEntry(deps);
+
+  await memory.entries.save(balancedDraft());
+  await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+  await reversePostedEntry({
+    ledgerId: 'ledger-1',
+    originalEntryId: 'entry-1',
+    reversalEntryId: 'reversal-1',
+    periodId: 'per-2026',
+    accountingDate: '2026-04-01',
+    idempotencyKey: 'reverse-1',
+  });
+
+  // A host that builds a second reversal draft itself and posts it through postEntry must be stopped.
+  const posted = memory.snapshot().entries.find((entry) => entry.id === 'entry-1');
+  const secondDraft = posted.createReversalDraft({
+    id: 'reversal-2',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-04-02'),
+  });
+  await memory.entries.save(secondDraft);
+
+  await assert.rejects(
+    postEntry({ ledgerId: 'ledger-1', entryId: 'reversal-2', idempotencyKey: 'key-2' }),
+    assertCode('ENTRY_ALREADY_REVERSED'),
+  );
+
+  assert.equal(memory.snapshot().entries.find((entry) => entry.id === 'reversal-2').status, 'DRAFT');
+});
