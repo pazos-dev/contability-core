@@ -64,8 +64,9 @@ export interface CreateEntryDraftInput {
 
 /**
  * A draft reports no totals: it may be empty or unbalanced, so a total is a posting notion.
+ * It is also the result of every draft edit: the draft as it stands after the operation.
  */
-export interface CreateEntryDraftResult {
+export interface EntryDraftResult {
   readonly ledgerId: string;
   readonly entryId: string;
   readonly journalId: string;
@@ -74,4 +75,18 @@ export interface CreateEntryDraftResult {
   readonly accountingDate: string;
   readonly description: string;
   readonly lines: readonly PostedLineResult[];
+}
+
+export interface AddEntryLineInput {
+  readonly ledgerId: string;
+  readonly entryId: string;
+  readonly line: EntryLineInput;
+  readonly idempotencyKey?: string;
+}
+
+export interface RemoveEntryLineInput {
+  readonly ledgerId: string;
+  readonly entryId: string;
+  readonly lineId: string;
+  readonly idempotencyKey?: string;
 }

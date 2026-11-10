@@ -1,6 +1,6 @@
 # 006 — Aplicación en memoria
 
-Estado: implementado en tres entregas (006a, 006b y 006c), 198 pruebas en verde. Ver `docs/STATUS.md`.
+Estado: implementado en cuatro entregas (006a, 006b, 006c y 006d), 211 pruebas en verde. Ver `docs/STATUS.md`.
 Leer AGENTS.md.
 Reemplaza la versión anterior de este documento, que apuntaba a una sola spec inexistente.
 
@@ -33,6 +33,7 @@ Decisiones tomadas con el usuario antes de escribir las specs:
 | 006b | `docs/specs/close-period.md` | C01-C04, C06, C07 (C05 diferido) |
 | 006b | `docs/specs/reverse-entry.md` | V01-V13 |
 | 006c | `docs/specs/entry-draft.md` | D01-D13 |
+| 006d | `docs/specs/entry-draft-edit.md` | L01-L13 |
 
 Procedimiento común: cargar las skills `accounting-implement` y `typescript-best-practices`, y
 `clean-code-architecture` al distribuir responsabilidades. Implementar con test-first por regla. Actualizar

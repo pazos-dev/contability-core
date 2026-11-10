@@ -8,12 +8,14 @@ export type {
 } from './journals.js';
 export type { ClosePeriodInput, ClosePeriodResult, RegisterPeriodInput, RegisterPeriodResult } from './periods.js';
 export type {
+  AddEntryLineInput,
   CreateEntryDraftInput,
-  CreateEntryDraftResult,
+  EntryDraftResult,
   EntryLineInput,
   PostEntryInput,
   PostEntryResult,
   PostedLineResult,
+  RemoveEntryLineInput,
   ReversePostedEntryInput,
   ReversePostedEntryResult,
 } from './entries.js';

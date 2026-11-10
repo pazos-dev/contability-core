@@ -1,6 +1,6 @@
-import type { JournalEntryLine, PostingSide } from '../../../domain/entries/index.js';
+import type { JournalEntry, JournalEntryLine, PostingSide } from '../../../domain/entries/index.js';
 import { Money } from '../../../domain/money/index.js';
-import type { PostedLineResult } from '../../contracts/entries.js';
+import type { EntryDraftResult, PostedLineResult } from '../../contracts/entries.js';
 
 /** Serializes one line: a domain value never leaves the module raw. */
 export function serializeLine(line: JournalEntryLine): PostedLineResult {
@@ -28,4 +28,21 @@ export function sumSide(lines: readonly JournalEntryLine[], side: PostingSide): 
     throw new Error(`Invariant violated: a posted entry must have at least one ${side} line.`);
   }
   return total;
+}
+
+/**
+ * Serializes a draft. The status is always DRAFT here: every draft operation starts from a draft and the
+ * aggregate refuses to change a posted entry, so no other status can reach this function.
+ */
+export function draftResultOf(entry: JournalEntry): EntryDraftResult {
+  return {
+    ledgerId: entry.ledgerId,
+    entryId: entry.id,
+    journalId: entry.journalId,
+    periodId: entry.periodId,
+    status: 'DRAFT',
+    accountingDate: entry.accountingDate.value,
+    description: entry.description,
+    lines: entry.lines.map(serializeLine),
+  };
 }

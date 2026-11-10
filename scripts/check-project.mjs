@@ -31,6 +31,8 @@ for (const path of [
   'src/core/application/use-cases/shared/idempotency.ts',
   'src/core/application/use-cases/entries/create-entry-draft.ts',
   'src/core/application/use-cases/entries/entry-result.ts',
+  'src/core/application/use-cases/entries/add-entry-line.ts',
+  'src/core/application/use-cases/entries/remove-entry-line.ts',
   'src/adapters/README.md',
   'src/adapters/memory/README.md',
   'src/adapters/memory/index.ts',

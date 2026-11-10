@@ -1,7 +1,7 @@
 import { JournalEntry, JournalEntryLine } from '../../../domain/entries/index.js';
 import { Money } from '../../../domain/money/index.js';
 import { AccountingDate } from '../../../domain/period/index.js';
-import type { CreateEntryDraftInput, CreateEntryDraftResult, EntryLineInput } from '../../contracts/entries.js';
+import type { CreateEntryDraftInput, EntryDraftResult, EntryLineInput } from '../../contracts/entries.js';
 import {
   accountNotFound,
   entryAlreadyExists,
@@ -11,11 +11,11 @@ import {
 } from '../../errors.js';
 import type { ApplicationDeps } from '../../ports/index.js';
 import { fingerprintOf, remember, replay } from '../shared/index.js';
-import { serializeLine } from './entry-result.js';
+import { draftResultOf } from './entry-result.js';
 
 const OPERATION = 'createEntryDraft';
 
-export type CreateEntryDraft = (input: CreateEntryDraftInput) => Promise<CreateEntryDraftResult>;
+export type CreateEntryDraft = (input: CreateEntryDraftInput) => Promise<EntryDraftResult>;
 
 /**
  * Creates the draft that `postEntry` later posts.
@@ -48,7 +48,7 @@ export function makeCreateEntryDraft(deps: ApplicationDeps): CreateEntryDraft {
     });
 
     return deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<CreateEntryDraftResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
+      const stored = await replay<EntryDraftResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       const chartOfAccountsId = await scope.ledgers.chartOfAccountsIdOf(ledgerId);
@@ -79,16 +79,7 @@ export function makeCreateEntryDraft(deps: ApplicationDeps): CreateEntryDraft {
         }),
       );
 
-      const result: CreateEntryDraftResult = {
-        ledgerId,
-        entryId: draft.id,
-        journalId: draft.journalId,
-        periodId: draft.periodId,
-        status: 'DRAFT',
-        accountingDate: draft.accountingDate.value,
-        description: draft.description,
-        lines: draft.lines.map(serializeLine),
-      };
+      const result = draftResultOf(draft);
 
       await scope.entries.save(draft);
       await remember(scope, OPERATION, ledgerId, idempotencyKey, fingerprint, result);

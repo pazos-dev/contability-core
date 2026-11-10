@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006c-application
-(alta de borradores de asiento), sobre 006b y 006a-application, 006-entries y 005-currency-catalog
-revisado al modelo mixto de monedas.
+Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006d-application
+(edición de las líneas de un borrador), sobre 006c, 006b y 006a-application, 006-entries y
+005-currency-catalog revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -173,6 +173,24 @@ revisado al modelo mixto de monedas.
 - Sigue sin existir **edición** de borradores (`addEntryLine`, `removeEntryLine`, cambiar cabecera). El
   dominio sabe hacerlo sobre copias; exponerlo necesita su propia spec.
 
+### 006d-application — `docs/specs/entry-draft-edit.md`, L01-L13
+
+- `addEntryLine` y `removeEntryLine` en `src/core/application/use-cases/entries/`: corrigen un borrador
+  entregado al puerto sin borrarlo y sin que el anfitrión toque el repositorio de asientos.
+- Son cálculo puro sobre el agregado: `addLine` y `removeLine` ya existían y son los que deciden. Una
+  edición no agrega ningún puerto ni toca el adaptador.
+- Sólo se valida la coherencia de la línea que entra (la cuenta existe y es del plan); no se exige activa ni
+  contabilizable, y el resto del borrador no se revalida: sigue siendo un borrador, con las reglas de
+  contabilización diferidas a `postEntry`.
+- `removeEntryLine` no consulta cuentas: la línea que sale no necesita validarse.
+- `draftResultOf` en `entries/entry-result.ts` serializa el borrador resultante y lo comparten las tres
+  operaciones de borrador; `EntryDraftResult` reemplaza al antiguo `CreateEntryDraftResult`, que ya no
+  describía sólo un alta.
+- Cambiar la cabecera (diario, período, fecha, descripción) sigue fuera: el agregado no tiene operación para
+  eso y exponerla exige una decisión de dominio con sus reglas.
+- El core no persiste nada: calcula sobre valores inmutables y entrega el resultado al puerto que le da el
+  anfitrión. Sin conexiones, sin almacenamiento, sin sistema de archivos.
+
 ### API pública
 
 Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
@@ -186,7 +204,7 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 - `core/application/index.ts`: `ApplicationError`, `makeRegisterAccount`, `makeSetAccountStatus`,
   `makeRegisterJournal`, `makeSetJournalStatus`, `makeRegisterPeriod`, `makePostEntry`, `makeClosePeriod`,
-  `makeReversePostedEntry`, `makeCreateEntryDraft` y sus tipos.
+  `makeReversePostedEntry`, `makeCreateEntryDraft`, `makeAddEntryLine`, `makeRemoveEntryLine` y sus tipos.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos para que el anfitrión persista borradores: crear borradores por caso de uso no está especificado
   todavía, así que hoy es responsabilidad del anfitrión (ver Decisiones pendientes).
@@ -203,7 +221,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 198 pruebas, 198 correctas, 0 fallos. |
+| `pnpm test` | 211 pruebas, 211 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -217,7 +235,9 @@ inexistente y la reversión rechazada; R01-R17 en `tests/registration.test.mjs`,
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
 agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U17 en `tests/post-entry.test.mjs`;
 C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V15 en `tests/reverse-entry.test.mjs`; D01-D13 en
-`tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar.
+`tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
+`tests/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
+que faltaba.
 
 ## Validaciones que esperan la capa de aplicación
 
@@ -260,7 +280,7 @@ JSON del asiento.
 
 | Tema | Impacto |
 | --- | --- |
-| Editar un borrador existente | `createEntryDraft` ya existe; falta `addEntryLine`, `removeEntryLine` y cambio de cabecera, con sus reglas de bloqueo. |
+| Cambiar la cabecera de un borrador | Diario, período, fecha contable y descripción: `JournalEntry` no tiene operación y agregarla es un cambio de contrato del dominio con sus propias reglas. |
 | Reversión parcial y cancelación de una reversión | Fuera de alcance por spec. |
 
 ## Pendiente de implementar
