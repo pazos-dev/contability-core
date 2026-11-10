@@ -1,6 +1,7 @@
 # SPEC — Contabilizar un asiento
 
-Estado: lista para implementar (incremento 006b), con U06, U07 y U03b diferidos a 007.
+Estado: implementada (incremento 006b). U03b, U06 y U07 no son de este repositorio: son contrato del
+anfitrión (ver `../INTEGRATION.md`, frontera core/anfitrión).
 Ruta: `src/core/application/use-cases/`.
 Depende de: `entries.md` (E01-E11), `account.md` (A06), `journal.md` (J05), `period.md` (P05).
 Contrato general de casos de uso, puertos y errores: `registration.md`, que fija las convenciones que
@@ -22,11 +23,11 @@ Incluye:
 
 Excluye, declarado para no prometerlo:
 
-- **U03b — rollback de una base real.** El adaptador en memoria no prueba transacciones de producción.
-  Se verifica recién en 007, con una BD real.
-- **U06 — dos `postEntry` simultáneos.** Requiere aislamiento de transacción. Diferido a 007.
+- **U03b — rollback de una base real.** El adaptador en memoria no prueba transacciones de producción: lo
+  garantiza la `UnitOfWork` del anfitrión.
+- **U06 — dos `postEntry` simultáneos.** Requiere aislamiento de transacción: lo garantiza el anfitrión.
 - **U07 — cierre de período durante el `postEntry`.** Requiere bloqueo o detección de conflicto sobre el
-  período. Diferido a 007.
+  período: lo garantiza el anfitrión.
 - Numeración de asientos y su ámbito (Q11): los ids siguen siendo explícitos.
 - Publicación de eventos, reintentos automáticos del anfitrión y autorización.
 - Instante de auditoría: el caso de uso no lee reloj y el resultado no lleva marca de tiempo.
@@ -134,11 +135,11 @@ Burban los de dominio sin envolver, con su código original.
 | U01 | — | Borrador equilibrado con cuentas activas, diario activo y período abierto que contiene la fecha | `postEntry` | Devuelve `status: POSTED` con las líneas y los totales; queda un único asiento guardado |
 | U02 | — | Un borrador con una cuenta, diario o período inválido | `postEntry` | Error estable y el borrador sigue `DRAFT`; nada más escrito |
 | U03a | — | Una unidad de trabajo en memoria cuyo registro de idempotencia falla **después** de guardar el asiento | `postEntry` | El asiento guardado se revierte y no queda registro de idempotencia: no hay efecto parcial |
-| U03b | — | Fallo de base real tras preparar las líneas | `postEntry` | **Diferido a 007.** Rollback de cabecera, líneas e idempotencia con BD real |
+| U03b | — | Fallo de base real tras preparar las líneas | `postEntry` | **Anfitrión.** Su transacción hace rollback de cabecera, líneas e idempotencia |
 | U04 | — | La misma clave y la misma petición | Repetir `postEntry` | Mismo resultado, sin segundo efecto ni segunda escritura |
 | U05 | — | La misma clave y otro `entryId` en el mismo libro | `postEntry` | `IDEMPOTENCY_CONFLICT`; nada escrito |
-| U06 | — | Dos `postEntry` simultáneos | — | **Diferido a 007.** Requiere aislamiento de transacción |
-| U07 | — | Cierre de período durante el `postEntry` | — | **Diferido a 007.** Requiere bloqueo o detección de conflicto |
+| U06 | — | Dos `postEntry` simultáneos | — | **Anfitrión.** Requiere aislamiento de transacción |
+| U07 | — | Cierre de período durante el `postEntry` | — | **Anfitrión.** Requiere bloqueo o detección de conflicto |
 | U08 | — | Un `entryId` que existe en otro libro | `postEntry` en este libro | `ENTRY_NOT_FOUND`; el asiento del otro libro no se lee, ni se modifica, ni se menciona |
 | U09 | P05 | Un período `CLOSED` al que pertenece la fecha | `postEntry` | `PERIOD_CLOSED`; el borrador sigue `DRAFT` |
 | U10 | — | Un período `OPEN` de enero y un borrador con fecha de marzo | `postEntry` | `PERIOD_DATE_OUTSIDE`; el borrador sigue `DRAFT` |
@@ -162,12 +163,12 @@ Burban los de dominio sin envolver, con su código original.
 
 ## Integración y consistencia
 
-- Atomicidad real entre asiento e idempotencia es de 007. Este incremento fija el contrato de
-  `UnitOfWork` y demuestra que el caso de uso no deja escrituras sueltas.
+- La atomicidad real entre asiento e idempotencia la aporta la `UnitOfWork` del anfitrión. Este incremento
+  fija ese contrato y demuestra que el caso de uso no deja entregas sueltas.
 - El adaptador en memoria documenta que no hay aislamiento: dos llamadas concurrentes pueden intercalarse.
 - El asiento guardado es un valor inmutable; no queda ninguna ruta para devolverlo a `DRAFT`.
-- 007 deberá apoyarse en la huella registrada para detectar `IDEMPOTENCY_CONFLICT` con una restricción
-  única por `(ledgerId, operación, clave)`.
+- Un adaptador durable del anfitrión debería apoyarse en la huella registrada para detectar
+  `IDEMPOTENCY_CONFLICT` con una restricción única por `(ledgerId, operación, clave)`.
 
 ## Verificación
 

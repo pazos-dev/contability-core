@@ -217,8 +217,8 @@ Salida: `{ ledgerId, periodId, startDate, endDate, status }`.
 4. `AccountingDate.create` para ambas fechas y `AccountingPeriod.create`; sus errores burbujean
    (`INVALID_DATE`, `INVALID_PERIOD`).
 5. Solapamiento: `findOverlapping(ledgerId, startDate, endDate)` no vacío es `PERIOD_OVERLAP` (P07).
-   La consulta y el guardado comparten la unidad de trabajo para que 007 pueda apoyarse en una
-   restricción de base.
+   La consulta y la entrega al puerto comparten la unidad de trabajo para que un adaptador durable pueda
+   apoyarse en una restricción de base.
 6. Guardar. Nace `OPEN`.
 
 El cierre no está acá: ver `close-period.md`.
@@ -258,7 +258,7 @@ El cierre no está acá: ver `close-period.md`.
 ## Integración y consistencia
 
 - El adaptador en memoria no prueba durabilidad ni aislamiento de producción; el contrato de
-  `UnitOfWork` sí queda fijado para que 007 lo implemente sobre una transacción real.
+  `UnitOfWork` queda fijado para que el anfitrión lo implemente sobre una transacción real.
 - La comprobación de código único y de solapamiento vive dentro de la unidad de trabajo, no antes, para
   que una restricción de base pueda sustituirla sin mover el caso de uso.
 - `LedgerDirectory` es el único punto que conoce la relación libro–plan. No se crea una entidad `Ledger`

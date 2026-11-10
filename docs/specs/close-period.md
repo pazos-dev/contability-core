@@ -1,6 +1,6 @@
 # SPEC — Cerrar un período
 
-Estado: lista para implementar (incremento 006b), con C05 diferido a 007.
+Estado: implementada (incremento 006b). C05 y P08 son contrato del anfitrión (ver `../INTEGRATION.md`).
 Ruta: `src/core/application/use-cases/`.
 Depende de: `period.md` (P06, P08). Contrato general de casos de uso y puertos: `registration.md`.
 
@@ -18,8 +18,8 @@ Incluye:
 Excluye, declarado para no prometerlo:
 
 - **P08 — cierre y contabilización simultáneos.** Requiere serialización o detección de conflicto sobre el
-  período. Diferido a 007.
-- **C05 — fallo de base real durante el cierre.** Diferido a 007, con la misma forma que U03b.
+  período: lo garantiza el anfitrión.
+- **C05 — fallo de base real durante el cierre.** Lo garantiza la transacción del anfitrión, igual que U03b.
 - Reabrir un período cerrado. Necesita especificación propia.
 - Cierre fiscal, cierre de resultados, asientos de cierre y bloqueo por borradores pendientes.
 - Convertir borradores en POSTED al cerrar: el cierre no contabiliza nada.
@@ -81,7 +81,7 @@ Burbujea `PERIOD_ALREADY_CLOSED` del dominio.
 | C02 | — | Un período ya `CLOSED` y una clave nueva | `closePeriod` | `PERIOD_ALREADY_CLOSED`; nada escrito |
 | C03 | — | Un período cerrado con una clave ya registrada para él | Repetir `closePeriod` con la misma clave | Mismo resultado, sin segundo efecto |
 | C04 | — | Un `periodId` que existe en otro libro | `closePeriod` en este libro | `PERIOD_NOT_FOUND`; el período del otro libro no se lee ni se modifica |
-| C05 | P08 | Cierre y contabilización simultáneos | — | **Diferido a 007.** Requiere serialización en persistencia |
+| C05 | P08 | Cierre y contabilización simultáneos | — | **Anfitrión.** Requiere serialización en su persistencia |
 | C06 | — | Un repositorio que falla al guardar | `closePeriod` | El error sube y el período sigue `OPEN` |
 | C07 | — | Un período inexistente en un libro conocido | `closePeriod` | `PERIOD_NOT_FOUND`; nada escrito |
 
@@ -95,11 +95,11 @@ Burbujea `PERIOD_ALREADY_CLOSED` del dominio.
 
 ## Integración y consistencia
 
-- La atomicidad entre estado del período y registro de idempotencia es de 007. En memoria se verifica la
-  disciplina de escritura del caso de uso, no el aislamiento.
+- La atomicidad entre estado del período y registro de idempotencia la aporta la `UnitOfWork` del anfitrión.
+  En memoria se verifica la disciplina de las operaciones, no el aislamiento.
 - Un `postEntry` que corre después del cierre encuentra el período `CLOSED` y falla con `PERIOD_CLOSED`,
-  siempre que lea el estado ya guardado. La carrera entre ambos queda para 007 (P08).
-- 007 debe poder apoyarse en la versión del período para detectar el conflicto de cierre concurrente.
+  siempre que lea el estado ya guardado. La carrera entre ambos es P08, del anfitrión.
+- Un adaptador durable del anfitrión debería apoyarse en la versión del período para detectar el conflicto de cierre concurrente.
 
 ## Verificación
 

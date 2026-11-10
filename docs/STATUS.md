@@ -93,7 +93,7 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
   `ENTRY_LINE_NOT_FOUND`, `ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED` y
   `ENTRY_CURRENCY_MISMATCH`; cada criterio de rechazo se distingue por código.
 - Decisión registrada: las líneas de la reversión reutilizan los ids de las líneas originales, que son
-  únicos dentro de su asiento. Un id de línea único a nivel global es asunto de la persistencia (007).
+  únicos dentro de su asiento. Un id de línea único a nivel global es asunto del adaptador del anfitrión.
 
 ### 006a-application — `docs/specs/registration.md`, R01-R17
 
@@ -139,7 +139,7 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
 - `reversePostedEntry` crea y contabiliza el asiento espejado en una sola unidad de trabajo, reutilizando los
   ids de línea del original y enlazándolo con `reversalOfEntryId`. El original nunca se guarda. El período
   **destino** debe estar abierto aunque el del original esté cerrado, y las cuentas deben seguir admitiendo
-  movimientos. La comprobación de reversión previa vive justo antes de escribir, para que 007 la sustituya
+  movimientos. La comprobación de reversión previa vive justo antes de entregar al puerto, para que un adaptador durable la sustituya
   por una restricción única.
 - `PostedMovementsQuery` deja de ser un doble: `hasPostedLines` lee del repositorio de asientos y devuelve
   `true` en las cuentas con líneas contabilizadas (probado con datos reales en `tests/post-entry.test.mjs`).
@@ -247,15 +247,15 @@ Registradas explícitamente para no prometerlas desde el dominio:
 | --- | --- |
 | A04 — padre de otro plan | Verificada en `tests/registration.test.mjs` (R05). |
 | A04 — ciclo | Cumplida por construcción: no existe operación que cambie `parentId` y re-registrar un id se rechaza (A04 en la suite). Sin comprobación propia porque no podría fallar. |
-| A05 — código único dentro del plan, permitido en otro plan | Verificada (R03, R04). La restricción única de BD queda para 007. |
+| A05 — código único dentro del plan, permitido en otro plan | Verificada (R03, R04). La restricción única de BD es del anfitrión. |
 | A07 — cuenta usada se desactiva, no se borra | Verificada por ausencia de operación de borrado (R10). |
-| J03 — código de diario único dentro del libro | Verificada (R12). La restricción única de BD queda para 007. |
+| J03 — código de diario único dentro del libro | Verificada (R12). La restricción única de BD es del anfitrión. |
 | P07 — dos períodos solapados del mismo libro | Verificada (R13). La consulta y el guardado comparten la unidad de trabajo. |
 | Hijo de cuenta con movimientos | La regla existe (`ACCOUNT_HAS_MOVEMENTS`) y el puerto lee movimientos reales, pero no es alcanzable por la API: la cuenta que tiene movimientos es contabilizable y por lo tanto se rechaza antes como padre con `ACCOUNT_PARENT_NOT_GROUPING`. Verificado con un doble en R09 y documentado en 006b. |
 | A06 — agrupadora o inactiva no recibe contabilizaciones | Verificada (U11, U12, U13). |
 | J05 — contabilizar en diario inactivo o de otro libro | Verificada (U14). |
 | P05 — contabilizar en período CLOSED | Verificada (U09). |
-| P08 — cierre y contabilización simultáneos | Pendiente de persistencia real (007). |
+| P08 — cierre y contabilización simultáneos | Del anfitrión: requiere serialización en su persistencia. |
 
 ## Límites de esta entrega
 
@@ -283,33 +283,24 @@ JSON del asiento.
 | Cambiar la cabecera de un borrador | Diario, período, fecha contable y descripción: `JournalEntry` no tiene operación y agregarla es un cambio de contrato del dominio con sus propias reglas. |
 | Reversión parcial y cancelación de una reversión | Fuera de alcance por spec. |
 
+## Contrato del anfitrión
+
+Este repositorio es un motor embebible: no incluye base de datos, ORM, migraciones, HTTP ni procesos. Las
+garantías que dependen del almacenamiento —rollback real (U03b), dos contabilizaciones simultáneas (U06),
+cierre concurrente (U07, P08, C05), unicidad durable de la reversión y claves primarias— no son un incremento
+pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en `docs/INTEGRATION.md`.
+
 ## Pendiente de implementar
 
-Persistencia real con transacciones, unicidad y concurrencia (007); consultas e informes (008). Sin ORM, HTTP
-ni interfaz visual.
-
-## Especificado y sin implementar
-
-El alcance del incremento 006 se revisó con el usuario y quedó congelado en `docs/tasks/006-application.md`:
-dos entregas, `LedgerDirectory` como única fuente de la relación libro-plan, `periodId` como autoridad con
-validación de fecha, idempotencia en memoria con la concurrencia diferida, y padre agrupador exigido al
-registrar un hijo. Cuatro specs escritas y sin código todavía:
-
-| Spec | Criterios | Entrega |
-| --- | --- | --- |
-| `docs/specs/registration.md` | R01-R16 | 006a |
-| `docs/specs/post-entry.md` | U01-U05, U08-U17; U03b, U06 y U07 diferidos a 007 | 006b |
-| `docs/specs/close-period.md` | C01-C04, C06, C07; C05 diferido a 007 | 006b |
-| `docs/specs/reverse-entry.md` | V01-V13 | 006b |
-
-Diferido explícitamente a 007, sin pruebas verdes que lo aparenten: rollback de base real (U03b), dos
-contabilizaciones simultáneas (U06), cierre concurrente con contabilización (U07, P08, C05) y unicidad
-durable de la reversión.
+Consultas e informes (008) y extensiones (009), más el contrato escrito del adaptador del anfitrión (007).
+Sin ORM, HTTP ni interfaz visual en este repositorio.
 
 ## Siguiente tarea
 
-Especificar y construir el incremento **007** o el registro de borradores, según se decida. Las garantías
-que exigen base real siguen diferidas y sin pruebas verdes que las aparenten: U03b, U06, U07, C05 y P08.
+El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir) y
+consulta de referencias. Lo que falta para que un sistema anfitrión pueda mostrar algo es **008: consultas e
+informes** — saldos por cuenta, mayor y balance de comprobación como cálculo del core, con sus puertos de
+consulta. Alternativa inmediata: escribir el **contrato del adaptador del anfitrión** (007).
 
 ## Relevo de sesión
 

@@ -14,11 +14,29 @@ No existen todavía funciones exportadas: el ejemplo siguiente describe el contr
 La UI consume la API del anfitrión. Un navegador no se conecta directamente a un repositorio PostgreSQL del core.
 El catálogo de productos y los documentos comerciales permanecen en sus módulos.
 
+## Frontera: qué garantiza el core y qué debe garantizar el anfitrión
+
+Este repositorio es un motor contable embebible. **No incluye base de datos, ORM, migraciones, HTTP ni
+procesos.** Por eso las garantías que dependen del almacenamiento no son un incremento pendiente del core: son
+un contrato que el anfitrión debe cumplir al implementar los puertos.
+
+| El core garantiza | El anfitrión debe garantizar |
+| --- | --- |
+| Las reglas contables y de coherencia, con códigos de error estables | Una `UnitOfWork` que sea una transacción real de su motor |
+| Que todas las lecturas y entregas al puerto ocurran dentro de ese alcance | Atomicidad y rollback de su motor |
+| Consultar unicidad antes de entregar: código de cuenta, código de diario, solapamiento de períodos, una sola reversión | Restricciones únicas en su esquema que cierren la ventana entre la consulta y la escritura |
+| Un identificador de asiento que nunca se reutiliza, comprobado antes de entregar | Clave primaria sobre `(ledgerId, entryId)`, que es la garantía durable |
+| Rechazar un asiento si el período ya está cerrado en el momento de la lectura | Serialización o detección de versión entre cierre y contabilización |
+
+Consecuencia práctica: en este repositorio las pruebas del adaptador en memoria demuestran **la disciplina de
+las operaciones**, no atomicidad ni aislamiento. Un adaptador durable del anfitrión debe probar eso con su
+base real, y esas pruebas viven en el anfitrión.
+
 ## Persistencia
 
 Los objetos de dominio viven en memoria durante la ejecución. Un repositorio guarda y reconstruye su estado.
-Sin adaptador durable, los datos se pierden al terminar el proceso. No hay BD configurada en este ZIP.
-PostgreSQL y un ORM son opciones futuras; no requisitos dentro del dominio.
+Sin adaptador durable **del anfitrión**, los datos se pierden al terminar el proceso. Este repositorio no
+configura ninguna base: incluir PostgreSQL, un ORM o migraciones queda fuera de su alcance por diseño.
 
 **Un importe se guarda con `minorUnits`, `code` y `scale`.** La escala es parte del dato contable, no un
 derivable: la tabla ISO 4217 puede cambiar y el código solo no alcanza para releer un valor histórico.

@@ -66,6 +66,8 @@ Contabilizar y cerrar período deben coordinarse dentro de una transacción real
 Consultar el período antes de escribir sin proteger la concurrencia permite contabilizar durante un cierre.
 Prever versión/bloqueo del período y asiento, unicidad por libro y control de idempotencia.
 El adaptador en memoria sirve para comportamiento funcional; no demuestra aislamiento ni durabilidad.
+Esas garantías no son un pendiente del core: son el contrato que cumple el adaptador del anfitrión. Ver la
+tabla de frontera en `INTEGRATION.md`.
 
 ## API y errores
 

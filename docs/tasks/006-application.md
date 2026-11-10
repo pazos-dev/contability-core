@@ -10,7 +10,7 @@ Casos de uso de registro, contabilización, cierre y reversión sobre un adaptad
 validaciones cruzadas de `account.md`, `journal.md`, `period.md` y `entries.md`. Sin HTTP, ORM ni interfaz.
 
 Las garantías que exigen una base real —rollback de base, aislamiento entre transacciones concurrentes, unicidad
-durable— quedan declaradas como diferidas al incremento 007 y no se escriben como pruebas verdes.
+durable— se declaran como contrato del anfitrión y no se escriben como pruebas verdes.
 
 ## Alcance congelado
 
@@ -21,7 +21,7 @@ Decisiones tomadas con el usuario antes de escribir las specs:
 | Corte | Dos entregas: 006a registro y catálogo; 006b contabilización, cierre y reversión. |
 | Q07 libro–plan | Puerto `LedgerDirectory`: el libro resuelve su plan. Sin entidad `Ledger` en esta fase. |
 | Período al contabilizar | `periodId` del borrador es autoridad **y** se exige `contains(accountingDate)` sobre un período `OPEN`. |
-| Idempotencia | Puerto y adaptador en memoria: U04/U05 verificados. U06 y la atomicidad de base diferidos a 007. |
+| Idempotencia | Puerto y adaptador en memoria: U04/U05 verificados. U06 y la atomicidad de base son del anfitrión. |
 | Cuenta agrupadora | Un hijo sólo se registra bajo un padre con `postingAllowed: false` (`ACCOUNT_PARENT_NOT_GROUPING`). No se agrega una operación nueva al dominio. |
 
 ## Specs
@@ -69,13 +69,16 @@ memoria, el adaptador real de `PostedMovementsQuery` y una prueba por criterio d
 Reglas verificadas acá: A06, J05, P05, la contención de fecha en el período, la prohibición de una segunda
 reversión completa y la idempotencia de las tres operaciones.
 
-## Diferido a 007, declarado en las specs
+## Contrato del anfitrión, declarado en las specs
 
-| Criterio | Por qué |
+Estos criterios no se resuelven en este repositorio: dependen de la persistencia y los garantiza quien
+integra el core, implementando `UnitOfWork` sobre una transacción real. Ver `docs/INTEGRATION.md`.
+
+| Criterio | Qué debe aportar el anfitrión |
 | --- | --- |
-| U03b | Rollback con base real. |
-| U06 | Dos `postEntry` simultáneos: requiere aislamiento. |
-| U07 / P08 / C05 | Cierre y contabilización concurrentes: requiere serialización. |
+| U03b | Rollback real de su motor. |
+| U06 | Aislamiento entre dos contabilizaciones simultáneas. |
+| U07 / P08 / C05 | Serialización o detección de conflicto entre cierre y contabilización. |
 | Unicidad durable de la reversión | Restricción única sobre `reversalOfEntryId`. |
 
 ## Cierre de la entrega

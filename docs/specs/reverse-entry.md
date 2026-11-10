@@ -22,8 +22,8 @@ Excluye, declarado para no prometerlo:
 - Cancelar una reversión ya contabilizada: se corrige con otra reversión de la reversión, fuera de alcance.
 - Editar el asiento original o devolverlo a DRAFT.
 - Numeración de asientos (Q11).
-- Carreras entre dos reversiones simultáneas del mismo original: diferido a 007, donde la unicidad la
-  garantiza la persistencia.
+- Carreras entre dos reversiones simultáneas del mismo original: la unicidad la garantiza el adaptador del
+  anfitrión, no este repositorio.
 
 ## Entrada y salida
 
@@ -78,11 +78,11 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
    para contabilizar en una cuenta desactivada.
 8. **Id de reversión libre.** `findById(ledgerId, reversalEntryId)`: si ya existe un asiento con ese id, es
    `ENTRY_ALREADY_EXISTS`. El guardado es un *upsert* por `(ledgerId, entryId)`, así que reutilizar un id
-   sobrescribiría el asiento guardado; en 007 la clave primaria lo impide. El dominio ya rechaza el caso
+   sobrescribiría el asiento guardado; en el adaptador del anfitrión la clave primaria lo impide. El dominio ya rechaza el caso
    `reversalEntryId === originalEntryId` con `INVALID_ENTRY`.
 9. **Reversión existente.** `entries.findByReversalOf(ledgerId, originalEntryId)` no vacío es
    `ENTRY_ALREADY_REVERSED`. La comprobación va inmediatamente antes de escribir, dentro de la unidad de
-   trabajo, para que 007 pueda sustituirla por una restricción única sin moverla.
+   trabajo, para que un adaptador durable pueda sustituirla por una restricción única sin moverla.
 10. **Contabilizar.** `reversalDraft.post()`: sus errores burbujean (en la práctica no debería fallar,
    porque las líneas espejadas conservan equilibrio y moneda del original).
 11. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
@@ -131,13 +131,13 @@ Burbujea `ENTRY_STATE` del dominio cuando el original no está POSTED.
 | ID | Tema | Impacto |
 | --- | --- | --- |
 | — | Reversión parcial y cancelación de una reversión | Necesitan especificación propia; hoy sólo existe la reversión completa simple. |
-| — | Dos reversiones simultáneas del mismo original | Diferido a 007: hoy la comprobación previa es de aplicación, sin unicidad durable. |
+| — | Dos reversiones simultáneas del mismo original | Del anfitrión: la comprobación previa es de aplicación, sin unicidad durable. |
 | Q11 | Numeración del asiento de reversión | Sin numeración en esta fase; ids explícitos. |
 
 ## Integración y consistencia
 
 - La unicidad "una sola reversión completa por original" se verifica en aplicación dentro de la unidad de
-  trabajo. Su garantía durable (restricción única sobre `reversalOfEntryId`) queda para 007.
+  trabajo. Su garantía durable (restricción única sobre `reversalOfEntryId`) es del adaptador del anfitrión.
 - El adaptador en memoria no prueba concurrencia ni durabilidad.
 - La reversión no participa del cierre de período: puede revertirse un asiento de un período cerrado
   siempre que el destino esté abierto.
