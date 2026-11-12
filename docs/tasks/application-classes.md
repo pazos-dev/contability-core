@@ -54,11 +54,9 @@ funciones. Una clase alrededor de un cálculo puro no aporta y el proyecto no ag
 
 | ID | Spec | Tarea | Commit |
 | --- | --- | --- | --- |
-| T1 | S2, S5 | Clases `RegisterAccount`, `SetAccountStatus`, `RegisterJournal`, `SetJournalStatus`, `RegisterPeriod`, `ClosePeriod` con `execute(input)` y su `index.ts` por área | `refactor(application): use case classes for accounts, journals and periods` |
-| T2 | S2, S5 | Clases `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`, `ReversePostedEntry` y su `index.ts` | `refactor(application): use case classes for entry drafts, posting and reversal` |
-| T3 | S2, S5 | Fachada `Accounting` con un método por caso de uso, un `index.ts` que exporta las clases y el test de la fachada | `feat(application): add the Accounting facade over the use case classes` |
-| T4 | S3 | Borrar las fábricas `makeX` y sus alias de tipo; migrar los 9 archivos de test y `public-api` a clases y fachada | `refactor(application)!: remove the makeX factories` |
-| T5 | S1, S5 | Specs (contrato de casos de uso, quince menciones a `makeX`), `ARCHITECTURE.md`, `STATUS.md` y READMEs de la capa | `docs(application): document the class contract and the facade` |
+| T1 | S2, S5 | Once clases con `execute(input)` y los cuatro barrels por área; fachada `Accounting` y barrel de aplicación | `refactor(application)!: turn use cases into classes and add the Accounting facade` |
+| T2 | S3, S5 | Migrar los siete archivos de test que componían casos de uso, `public-api` a la nueva superficie, y `tests/application-facade.test.mjs` | el mismo commit de T1 |
+| T3 | S1, S5 | Specs y documentos: contrato de casos de uso, `ARCHITECTURE.md`, `STATUS.md`, READMEs de la capa y este documento | `docs(application): document the class contract and the facade` |
 
 ## Log
 
@@ -75,5 +73,16 @@ en rama.
 L4. Decisiones internas (rutinarias, no consultadas): la fachada se llama `Accounting` porque así está escrito
 en el preview aprobado de S2, aunque el adaptador se llame `InMemoryAccounting`; la fachada compone las 11
 clases en el constructor y no tiene estado propio; cada clase guarda `ApplicationDeps` en un campo privado
-`#deps` y expone sólo `execute`; el orden de la cadena de commits es «agregar clases y fachada, migrar tests»
-y después «borrar las fábricas», para que cada commit quede verde.
+`#deps` y expone sólo `execute`.
+
+L5. Cambio de plan sobre la cadena de commits: el plan inicial era «agregar clases junto a las fábricas,
+migrar tests, borrar fábricas» para que cada commit quedara verde. Se descartó porque el puente dejaba 11
+fábricas de una línea como código muerto por un commit. Resultado: dos commits, los dos verdes. El primero
+(1f653f3) trae las once clases, la fachada, los barrels, la migración de los siete archivos de test,
+`public-api` y el test nuevo de la fachada; el segundo trae los documentos. Además, las menciones reales a
+`makeX` en la documentación eran cuatro, no quince: `docs/specs/registration.md`, tres en `docs/STATUS.md` y
+una en `src/core/application/use-cases/README.md`.
+
+L6. Resultado verificado: `pnpm check` en verde en la rama, 217 pruebas (214 previas + 3 de la fachada), 0
+fallos, con `typecheck` y `build` limpios. La suite migrada no cambió ni una expectativa: sólo la forma de
+invocar (`makeX(deps)(input)` → `new X(deps).execute(input)`).
