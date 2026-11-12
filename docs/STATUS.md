@@ -1,8 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: 006d-application
-(edición de las líneas de un borrador), sobre 006c, 006b y 006a-application, 006-entries y
-005-currency-catalog revisado al modelo mixto de monedas.
+Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: contrato de clases y
+fachada `Accounting` en la capa de aplicación, sobre 006d-application (edición de las líneas de un borrador),
+006c, 006b y 006a-application, 006-entries y 005-currency-catalog revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -201,6 +201,24 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
 - El core no persiste nada: calcula sobre valores inmutables y entrega el resultado al puerto que le da el
   anfitrión. Sin conexiones, sin almacenamiento, sin sistema de archivos.
 
+### Contrato de la capa de aplicación — clases y fachada
+
+- Los once casos de uso son clases con `execute(input)` (`new PostEntry(deps)`), no fábricas `makeX(deps)`.
+  La clase es la unidad de inyección de dependencias: recibe `ApplicationDeps` (sólo `unitOfWork`) y no
+  guarda nada más.
+- `Accounting` (`src/core/application/accounting.ts`) compone las once y expone un método por caso de uso
+  (`app.postEntry(input)`). Sólo delega: no agrega validación, estado ni traducción de errores, y usa el
+  mismo `unitOfWork`, así que la fachada y una clase suelta comparten los mismos almacenes.
+- No se convirtieron en clases los ayudantes puros (`fingerprintOf`, `replay`, `remember`, `serializeLine`,
+  `sumSide`, `draftResultOf`): una clase alrededor de un cálculo no aporta.
+- Sin cambios de comportamiento: `ApplicationDeps`, contratos, códigos de error, unidad de trabajo, dominio
+  y adaptadores quedaron igual.
+- Corte limpio, sin alias: el paquete es `private` en 0.0.0 y no hay consumidores registrados. Un anfitrión
+  migra `makePostEntry(deps)(input)` → `new PostEntry(deps).execute(input)`, o `makePostEntry(deps)` →
+  `new Accounting(deps).postEntry` si usa varios casos de uso.
+- `tests/application-facade.test.mjs` recorre los once métodos de la fachada, la propagación de errores sin
+  escritura parcial y la interoperación entre la fachada y una clase suelta.
+
 ### API pública
 
 Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
@@ -212,9 +230,10 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
-- `core/application/index.ts`: `ApplicationError`, `makeRegisterAccount`, `makeSetAccountStatus`,
-  `makeRegisterJournal`, `makeSetJournalStatus`, `makeRegisterPeriod`, `makePostEntry`, `makeClosePeriod`,
-  `makeReversePostedEntry`, `makeCreateEntryDraft`, `makeAddEntryLine`, `makeRemoveEntryLine` y sus tipos.
+- `core/application/index.ts`: `Accounting`, las once clases de caso de uso (`RegisterAccount`,
+  `SetAccountStatus`, `RegisterJournal`, `SetJournalStatus`, `RegisterPeriod`, `ClosePeriod`,
+  `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`, `ReversePostedEntry`),
+  `ApplicationError` y sus tipos de contrato y de puerto.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos para que el anfitrión persista borradores: crear borradores por caso de uso no está especificado
   todavía, así que hoy es responsabilidad del anfitrión (ver Decisiones pendientes).
@@ -231,7 +250,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 214 pruebas, 214 correctas, 0 fallos. |
+| `pnpm test` | 217 pruebas, 217 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -248,7 +267,8 @@ agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U18b en
 C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V16 en `tests/reverse-entry.test.mjs`; D01-D13 en
 `tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
 `tests/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
-que faltaba.
+que faltaba; `tests/application-facade.test.mjs` para los once métodos de `Accounting`, la propagación de
+errores y la interoperación con una clase suelta.
 
 ## Validaciones que esperan la capa de aplicación
 

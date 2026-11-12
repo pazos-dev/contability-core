@@ -32,13 +32,29 @@ Excluye:
 
 ## Contrato general de los casos de uso
 
-Un caso de uso es una fábrica de funciones asíncronas, sin clases ni decoradores:
+Un caso de uso es una clase con un único método asíncrono, `execute`, sin decoradores ni metadatos:
 
 ```ts
-export function makeRegisterAccount(deps: RegistrationDeps): RegisterAccount;
-type RegisterAccount = (input: RegisterAccountInput) => Promise<RegisterAccountResult>;
+export class RegisterAccount {
+  constructor(deps: RegistrationDeps);
+  execute(input: RegisterAccountInput): Promise<RegisterAccountResult>;
+}
 interface RegistrationDeps { readonly unitOfWork: UnitOfWork; }
 ```
+
+La fachada `Accounting` compone los once casos de uso del módulo detrás de un objeto con un método por caso
+de uso, para el anfitrión que los usa a todos:
+
+```ts
+const app = new Accounting({ unitOfWork });
+await app.registerAccount(input);
+await app.postEntry(input);
+```
+
+La fachada delega en la clase del mismo nombre y no agrega nada: no valida, no guarda estado y no traduce
+errores. Un anfitrión que usa una sola operación instancia esa clase (`new PostEntry(deps)`) y se ahorra las
+otras diez; los dos caminos comparten el mismo `unitOfWork`. Las funciones puras de apoyo
+(`fingerprintOf`, `replay`, `remember`, `serializeLine`, `sumSide`) siguen siendo funciones.
 
 Reglas de contrato:
 
