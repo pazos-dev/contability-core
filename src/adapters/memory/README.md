@@ -17,6 +17,17 @@ Límites explícitos:
   hay bloqueo.
 - Un rollback en memoria no prueba una transacción de base real. Las garantías de 007 se verifican con BD.
 
+Decisiones de copia, que son parte del contrato y no un detalle:
+
+- La copia de respaldo de la unidad de trabajo y la del snapshot son **superficiales**: todo valor guardado
+  en los mapas es un objeto de dominio congelado.
+- El resultado de una operación no lo es: es un grafo de objetos planos que se entrega al llamador. El
+  registro de idempotencia lo copia al guardarlo y al recuperarlo (`copyResult`), así que mutar un
+  resultado devuelto no reescribe lo que responderá un replay, y el único grafo mutable del mapa entró
+  copiado y nunca sale entero.
+- `findReversalsOf` recorre el mapa y devuelve **todas** las coincidencias: el adaptador no elige una
+  "primera" reversión, porque ese orden no significa nada fuera del mapa.
+
 `snapshot()` es una vista de lectura para composición y pruebas; nunca es un camino de escritura.
 `options.overrides` existe para reemplazar un puerto puntual en una prueba, por ejemplo para forzar un
 fallo de guardado y comprobar que no queda ninguna escritura a medias.

@@ -65,12 +65,15 @@ export function makePostEntry(deps: ApplicationDeps): PostEntry {
       }
 
       // A stored reversal draft must obey the same rule as the one created by the reverse use case:
-      // posting it here cannot create a second full reversal of the same original.
+      // posting it here cannot create a second *posted* reversal of the same original. Every reversal is
+      // read, not the first one found, and this entry is excluded: a draft saved before the posted
+      // reversal must not hide it, and the entry being posted is not another reversal of its own original.
       if (entry.reversalOfEntryId !== undefined) {
-        const existing = await scope.entries.findByReversalOf(ledgerId, entry.reversalOfEntryId);
-        if (existing !== undefined && existing.id !== entry.id && existing.status === 'POSTED') {
-          throw entryAlreadyReversed(entry.reversalOfEntryId);
-        }
+        const reversals = await scope.entries.findReversalsOf(ledgerId, entry.reversalOfEntryId);
+        const alreadyPosted = reversals.some(
+          (reversal) => reversal.id !== entry.id && reversal.status === 'POSTED',
+        );
+        if (alreadyPosted) throw entryAlreadyReversed(entry.reversalOfEntryId);
       }
 
       const posted = entry.post();

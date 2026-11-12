@@ -1,3 +1,4 @@
+import type { JournalEntry } from '../../core/domain/entries/index.js';
 import type {
   AccountRepository,
   EntryRepository,
@@ -7,7 +8,7 @@ import type {
   PeriodRepository,
   PostedMovementsQuery,
 } from '../../core/application/ports/index.js';
-import { keyOf, type MemoryMaps } from './store.js';
+import { copyResult, keyOf, type MemoryMaps } from './store.js';
 
 /** The store holder exists so a failing unit of work can swap the whole set of maps at once. */
 export interface StoreHolder {
@@ -79,11 +80,12 @@ export function createPorts(store: StoreHolder, chartOfAccountsByLedger: Readonl
     async findById(ledgerId, entryId) {
       return store.maps.entries.get(keyOf(ledgerId, entryId));
     },
-    async findByReversalOf(ledgerId, originalEntryId) {
+    async findReversalsOf(ledgerId, originalEntryId) {
+      const reversals: JournalEntry[] = [];
       for (const entry of store.maps.entries.values()) {
-        if (entry.ledgerId === ledgerId && entry.reversalOfEntryId === originalEntryId) return entry;
+        if (entry.ledgerId === ledgerId && entry.reversalOfEntryId === originalEntryId) reversals.push(entry);
       }
-      return undefined;
+      return reversals;
     },
     async save(entry) {
       store.maps.entries.set(keyOf(entry.ledgerId, entry.id), entry);
@@ -93,10 +95,19 @@ export function createPorts(store: StoreHolder, chartOfAccountsByLedger: Readonl
   const idempotency: IdempotencyRegistry = {
     async find(ledgerId, operation, key) {
       const stored = store.maps.idempotency.get(keyOf(ledgerId, operation, key));
-      return stored === undefined ? undefined : { fingerprint: stored.fingerprint, result: stored.result };
+      if (stored === undefined) return undefined;
+      return { fingerprint: stored.fingerprint, result: copyResult(stored.result) };
     },
     async record(ledgerId, operation, key, entry) {
-      store.maps.idempotency.set(keyOf(ledgerId, operation, key), { ledgerId, operation, key, ...entry });
+      // The result is copied in, not referenced: the caller keeps the object it received and may mutate
+      // it, and a replay must still answer what the operation produced.
+      store.maps.idempotency.set(keyOf(ledgerId, operation, key), {
+        ledgerId,
+        operation,
+        key,
+        fingerprint: entry.fingerprint,
+        result: copyResult(entry.result),
+      });
     },
   };
 

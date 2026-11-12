@@ -462,3 +462,66 @@ test('U18: posting a stored reversal draft cannot create a second reversal of th
 
   assert.equal(memory.snapshot().entries.find((entry) => entry.id === 'reversal-2').status, 'DRAFT');
 });
+
+test('U18b: a stored reversal draft cannot hide the reversal already posted of the same original', async () => {
+  const { memory, postEntry } = await harness();
+  await memory.entries.save(balancedDraft());
+  await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+
+  // The host saves two reversal drafts before posting either one. The first one stays a draft for good,
+  // so a lookup that answers with a single entry can return that draft and never see the reversal that
+  // the second one becomes when it is posted.
+  const original = storedEntry(memory);
+  await memory.entries.save(
+    original.createReversalDraft({
+      id: 'reversal-1',
+      periodId: 'per-2026',
+      accountingDate: AccountingDate.create('2026-04-01'),
+    }),
+  );
+  await memory.entries.save(
+    original.createReversalDraft({
+      id: 'reversal-2',
+      periodId: 'per-2026',
+      accountingDate: AccountingDate.create('2026-04-02'),
+    }),
+  );
+
+  await postEntry({ ledgerId: 'ledger-1', entryId: 'reversal-2', idempotencyKey: 'key-2' });
+  assert.equal(storedEntry(memory, 'ledger-1', 'reversal-2').status, 'POSTED');
+
+  await assert.rejects(
+    postEntry({ ledgerId: 'ledger-1', entryId: 'reversal-1', idempotencyKey: 'key-3' }),
+    assertCode('ENTRY_ALREADY_REVERSED'),
+  );
+
+  assert.equal(storedEntry(memory, 'ledger-1', 'reversal-1').status, 'DRAFT');
+  assert.deepEqual(
+    memory
+      .snapshot()
+      .entries.filter((entry) => entry.reversalOfEntryId === 'entry-1' && entry.status === 'POSTED')
+      .map((entry) => entry.id),
+    ['reversal-2'],
+  );
+});
+
+test('U04b: a replay hands out a copy, so a caller cannot rewrite the remembered result', async () => {
+  const { memory, postEntry } = await harness();
+  await memory.entries.save(balancedDraft());
+
+  const first = await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+  const asPosted = structuredClone(first);
+
+  // `readonly` and `Readonly<>` are compile-time only: at run time the result is a plain object graph.
+  first.lines[0].accountId = 'acc-tampered';
+  first.totalDebit.minorUnits = '1';
+
+  const second = await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+  assert.notEqual(second, first);
+  assert.deepEqual(second, asPosted);
+
+  second.lines[0].accountId = 'acc-tampered-again';
+  const third = await postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+  assert.deepEqual(third, asPosted);
+  assert.equal(storedEntry(memory, 'ledger-1').status, 'POSTED');
+});

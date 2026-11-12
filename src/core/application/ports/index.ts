@@ -39,7 +39,14 @@ export interface PeriodRepository {
 /** Entries are scoped by ledger: an id of another ledger is indistinguishable from a missing one. */
 export interface EntryRepository {
   findById(ledgerId: string, entryId: string): Promise<JournalEntry | undefined>;
-  findByReversalOf(ledgerId: string, originalEntryId: string): Promise<JournalEntry | undefined>;
+  /**
+   * Every entry of this ledger that reverses the given original, in any status.
+   *
+   * A list, never a single entry: a reversal draft and a posted reversal of the same original can
+   * coexist, so answering with the first match in whatever order the storage returns lets one hide the
+   * other. Which of them count as an existing reversal is decided by the rule that asks, not by storage.
+   */
+  findReversalsOf(ledgerId: string, originalEntryId: string): Promise<readonly JournalEntry[]>;
   save(entry: JournalEntry): Promise<void>;
 }
 
@@ -53,7 +60,13 @@ export interface StoredOperation {
   readonly result: unknown;
 }
 
-/** Idempotency is isolated by ledger and by operation, never by key alone. */
+/**
+ * Idempotency is isolated by ledger and by operation, never by key alone.
+ *
+ * `record` and `find` copy the result in and out, as a durable registry that serializes it to a row
+ * does: the object the caller receives is never the object stored, so mutating a result — which
+ * `readonly` only forbids at compile time — cannot rewrite what a later replay answers.
+ */
 export interface IdempotencyRegistry {
   find(ledgerId: string, operation: string, key: string): Promise<StoredOperation | undefined>;
   record(ledgerId: string, operation: string, key: string, entry: StoredOperation): Promise<void>;

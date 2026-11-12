@@ -318,3 +318,24 @@ test('V15: a draft reversal id blocks the reversal before any account or period 
   assert.equal(storedEntry(memory, 'occupied').status, 'DRAFT');
   assert.equal(storedEntry(memory, 'occupied').reversalOfEntryId, undefined);
 });
+
+test('V16: a stored reversal draft blocks a new reversal even before it is posted', async () => {
+  const { memory, reversePostedEntry } = await harness();
+
+  // Rule 9 of the spec is status-blind on purpose: a reversal that already exists in any state means
+  // this original is being reversed elsewhere, and the missing delete operation makes a second one a
+  // decision, not a shortcut.
+  const original = storedEntry(memory, 'original');
+  await memory.entries.save(
+    original.createReversalDraft({
+      id: 'draft-reversal',
+      periodId: 'per-ledger-1',
+      accountingDate: AccountingDate.create('2026-04-01'),
+    }),
+  );
+
+  await assert.rejects(reversePostedEntry(reversalInput()), assertCode('ENTRY_ALREADY_REVERSED'));
+
+  assert.equal(storedEntry(memory, 'reversal'), undefined);
+  assert.equal(storedEntry(memory, 'draft-reversal').status, 'DRAFT');
+});

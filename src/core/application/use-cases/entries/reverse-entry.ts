@@ -85,8 +85,10 @@ export function makeReversePostedEntry(deps: ApplicationDeps): ReversePostedEntr
       }
 
       // Checked immediately before the write, inside the same unit of work, so 007 can replace it with
-      // a unique constraint on reversalOfEntryId without moving anything.
-      if ((await scope.entries.findByReversalOf(ledgerId, originalEntryId)) !== undefined) {
+      // a unique constraint on reversalOfEntryId without moving anything. Every reversal counts, in any
+      // status: a reversal that already exists means this original is being reversed elsewhere, and
+      // adding another one would leave two entries claiming the same original.
+      if ((await scope.entries.findReversalsOf(ledgerId, originalEntryId)).length > 0) {
         throw entryAlreadyReversed(originalEntryId);
       }
 

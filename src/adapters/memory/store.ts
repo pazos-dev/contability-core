@@ -27,13 +27,33 @@ export interface StoredIdempotency extends StoredOperation {
   readonly key: string;
 }
 
-/** Every store of the adapter. Values are immutable domain objects, so a copy of a map is a backup. */
+/** Every store of the adapter. Domain values are deeply frozen, so a copy of a map is a backup. */
 export interface MemoryMaps {
   readonly accounts: Map<string, Account>;
   readonly journals: Map<string, Journal>;
   readonly periods: Map<string, AccountingPeriod>;
   readonly entries: Map<string, JournalEntry>;
   readonly idempotency: Map<string, StoredIdempotency>;
+}
+
+// `structuredClone` is a JavaScript platform built-in (Node 17+), not a Node API, so an adapter may rely
+// on it. The declaration is local because this package compiles with `lib: ES2022` and `types: []`, and
+// adding DOM or Node types to the whole project for one symbol would let runtime APIs into the domain.
+declare function structuredClone<T>(value: T): T;
+
+/**
+ * Deep copy of an operation result.
+ *
+ * The parameter is always a serialized contract graph — plain objects, arrays and strings — never a domain
+ * instance, so a clone is enough and drops nothing the caller can observe.
+ *
+ * A copy of the maps is shallow because the values stored there are immutable domain objects. The result of
+ * an operation is not one: it is a plain object graph handed to the caller, who may mutate it at run time.
+ * The registry copies it in and out, so the only mutable graph a map holds was copied at the door and is
+ * never handed out again.
+ */
+export function copyResult<T>(value: T): T {
+  return structuredClone(value);
 }
 
 /**
