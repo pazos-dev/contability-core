@@ -8,8 +8,6 @@ import { draftResultOf } from './entry-result.js';
 
 const OPERATION = 'addEntryLine';
 
-export type AddEntryLine = (input: AddEntryLineInput) => Promise<EntryDraftResult>;
-
 /**
  * Adds one line to an existing draft.
  *
@@ -17,8 +15,14 @@ export type AddEntryLine = (input: AddEntryLineInput) => Promise<EntryDraftResul
  * of accounts. It does not require the account to be active or postable, and it does not re-check the rest
  * of the draft — an unfinished draft is a legitimate state and `postEntry` re-validates everything.
  */
-export function makeAddEntryLine(deps: ApplicationDeps): AddEntryLine {
-  return async (input) => {
+export class AddEntryLine {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: AddEntryLineInput): Promise<EntryDraftResult> {
     const { ledgerId, entryId, line, idempotencyKey } = input;
     const fingerprint = fingerprintOf({
       ledgerId,
@@ -35,7 +39,7 @@ export function makeAddEntryLine(deps: ApplicationDeps): AddEntryLine {
       ],
     });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<EntryDraftResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -67,5 +71,5 @@ export function makeAddEntryLine(deps: ApplicationDeps): AddEntryLine {
 
       return result;
     });
-  };
+  }
 }

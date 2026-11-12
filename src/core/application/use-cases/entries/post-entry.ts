@@ -19,8 +19,6 @@ import { serializeLine, sumSide } from './entry-result.js';
 
 const OPERATION = 'postEntry';
 
-export type PostEntry = (input: PostEntryInput) => Promise<PostEntryResult>;
-
 /**
  * Posts a persisted draft.
  *
@@ -32,12 +30,18 @@ export type PostEntry = (input: PostEntryInput) => Promise<PostEntryResult>;
  * The entry is never edited here: it is loaded, posted in memory and saved once, together with the
  * idempotency record, inside one unit of work.
  */
-export function makePostEntry(deps: ApplicationDeps): PostEntry {
-  return async (input) => {
+export class PostEntry {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: PostEntryInput): Promise<PostEntryResult> {
     const { ledgerId, entryId, idempotencyKey } = input;
     const fingerprint = fingerprintOf({ ledgerId, entryId });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<PostEntryResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -84,7 +88,7 @@ export function makePostEntry(deps: ApplicationDeps): PostEntry {
 
       return result;
     });
-  };
+  }
 }
 
 /** Serializes a posted entry for the host: domain values never leave the module raw. */

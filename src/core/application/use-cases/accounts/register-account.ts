@@ -13,8 +13,6 @@ import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'registerAccount';
 
-export type RegisterAccount = (input: RegisterAccountInput) => Promise<RegisterAccountResult>;
-
 /**
  * Registers an account inside the chart of accounts the ledger resolves.
  *
@@ -23,12 +21,18 @@ export type RegisterAccount = (input: RegisterAccountInput) => Promise<RegisterA
  * movements (A06 precondition). A cycle is not reachable here: `parentId` never changes and a new id
  * has no descendants, so hierarchy stays acyclic by construction.
  */
-export function makeRegisterAccount(deps: ApplicationDeps): RegisterAccount {
-  return async (input) => {
+export class RegisterAccount {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: RegisterAccountInput): Promise<RegisterAccountResult> {
     const { ledgerId, accountId, code, name, type, parentId, postingAllowed, idempotencyKey } = input;
     const fingerprint = fingerprintOf({ ledgerId, accountId, code, name, type, parentId, postingAllowed });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<RegisterAccountResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -66,7 +70,7 @@ export function makeRegisterAccount(deps: ApplicationDeps): RegisterAccount {
 
       return result;
     });
-  };
+  }
 }
 
 async function requireGroupingParent(

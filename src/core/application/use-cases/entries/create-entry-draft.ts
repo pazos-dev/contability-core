@@ -15,8 +15,6 @@ import { draftResultOf } from './entry-result.js';
 
 const OPERATION = 'createEntryDraft';
 
-export type CreateEntryDraft = (input: CreateEntryDraftInput) => Promise<EntryDraftResult>;
-
 /**
  * Creates the draft that `postEntry` later posts.
  *
@@ -25,8 +23,14 @@ export type CreateEntryDraft = (input: CreateEntryDraftInput) => Promise<EntryDr
  * an open period or a balanced entry: a draft may be prepared against a journal that is reactivated
  * later, and every posting rule is re-checked by `postEntry` anyway.
  */
-export function makeCreateEntryDraft(deps: ApplicationDeps): CreateEntryDraft {
-  return async (input) => {
+export class CreateEntryDraft {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: CreateEntryDraftInput): Promise<EntryDraftResult> {
     const { ledgerId, entryId, journalId, periodId, accountingDate, description, lines, idempotencyKey } = input;
     const fingerprint = fingerprintOf({
       ledgerId,
@@ -47,7 +51,7 @@ export function makeCreateEntryDraft(deps: ApplicationDeps): CreateEntryDraft {
       ]),
     });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<EntryDraftResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -86,7 +90,7 @@ export function makeCreateEntryDraft(deps: ApplicationDeps): CreateEntryDraft {
 
       return result;
     });
-  };
+  }
 }
 
 function lineOf(line: EntryLineInput): JournalEntryLine {

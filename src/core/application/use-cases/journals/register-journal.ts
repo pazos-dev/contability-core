@@ -6,18 +6,22 @@ import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'registerJournal';
 
-export type RegisterJournal = (input: RegisterJournalInput) => Promise<RegisterJournalResult>;
-
 /**
  * Registers a journal inside its ledger. Code uniqueness is scoped by ledger (J03): the same code in
  * another ledger is a different journal.
  */
-export function makeRegisterJournal(deps: ApplicationDeps): RegisterJournal {
-  return async (input) => {
+export class RegisterJournal {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: RegisterJournalInput): Promise<RegisterJournalResult> {
     const { ledgerId, journalId, code, name, idempotencyKey } = input;
     const fingerprint = fingerprintOf({ ledgerId, journalId, code, name });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<RegisterJournalResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -40,5 +44,5 @@ export function makeRegisterJournal(deps: ApplicationDeps): RegisterJournal {
 
       return result;
     });
-  };
+  }
 }

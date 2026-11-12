@@ -1,4 +1,5 @@
 // Public surface of the application layer. Import from here, never from the internal files.
+export { Accounting } from './accounting.js';
 export { ApplicationError } from './errors.js';
 export type { ApplicationErrorCode } from './errors.js';
 export type {
@@ -38,20 +39,10 @@ export type {
   SetJournalStatusInput,
   SetJournalStatusResult,
 } from './contracts/index.js';
-export { makeRegisterAccount, makeSetAccountStatus } from './use-cases/accounts/index.js';
-export type { RegisterAccount, SetAccountStatus } from './use-cases/accounts/index.js';
-export { makeRegisterJournal, makeSetJournalStatus } from './use-cases/journals/index.js';
-export type { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js';
-export { makeClosePeriod, makeRegisterPeriod } from './use-cases/periods/index.js';
-export type { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
+export { RegisterAccount, SetAccountStatus } from './use-cases/accounts/index.js';
+export { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js';
+export { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
 export {
-  makeAddEntryLine,
-  makeCreateEntryDraft,
-  makePostEntry,
-  makeRemoveEntryLine,
-  makeReversePostedEntry,
-} from './use-cases/entries/index.js';
-export type {
   AddEntryLine,
   CreateEntryDraft,
   PostEntry,
