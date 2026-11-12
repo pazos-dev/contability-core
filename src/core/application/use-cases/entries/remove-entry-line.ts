@@ -6,20 +6,24 @@ import { draftResultOf } from './entry-result.js';
 
 const OPERATION = 'removeEntryLine';
 
-export type RemoveEntryLine = (input: RemoveEntryLineInput) => Promise<EntryDraftResult>;
-
 /**
  * Removes one line from an existing draft by id.
  *
  * It does not query accounts: the line that is leaving has nothing to validate. The aggregate owns the
  * state rules: a posted entry rejects removals, and an unknown line id is `ENTRY_LINE_NOT_FOUND`.
  */
-export function makeRemoveEntryLine(deps: ApplicationDeps): RemoveEntryLine {
-  return async (input) => {
+export class RemoveEntryLine {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: RemoveEntryLineInput): Promise<EntryDraftResult> {
     const { ledgerId, entryId, lineId, idempotencyKey } = input;
     const fingerprint = fingerprintOf({ ledgerId, entryId, lineId });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<EntryDraftResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -36,5 +40,5 @@ export function makeRemoveEntryLine(deps: ApplicationDeps): RemoveEntryLine {
 
       return result;
     });
-  };
+  }
 }

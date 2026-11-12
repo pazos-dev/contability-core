@@ -20,8 +20,6 @@ import { resultOf } from '../entries/post-entry.js';
 
 const OPERATION = 'reversePostedEntry';
 
-export type ReversePostedEntry = (input: ReversePostedEntryInput) => Promise<ReversePostedEntryResult>;
-
 /**
  * Reverses a posted entry with a second, mirrored entry.
  *
@@ -32,8 +30,14 @@ export type ReversePostedEntry = (input: ReversePostedEntryInput) => Promise<Rev
  * The destination period must be open even when the original period is already closed, and the accounts
  * of the original must still admit postings: reversing is not a way around a deactivated account.
  */
-export function makeReversePostedEntry(deps: ApplicationDeps): ReversePostedEntry {
-  return async (input) => {
+export class ReversePostedEntry {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: ReversePostedEntryInput): Promise<ReversePostedEntryResult> {
     const { ledgerId, originalEntryId, reversalEntryId, periodId, accountingDate, description, idempotencyKey } = input;
     const fingerprint = fingerprintOf({
       ledgerId,
@@ -44,7 +48,7 @@ export function makeReversePostedEntry(deps: ApplicationDeps): ReversePostedEntr
       description,
     });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<ReversePostedEntryResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -100,5 +104,5 @@ export function makeReversePostedEntry(deps: ApplicationDeps): ReversePostedEntr
 
       return result;
     });
-  };
+  }
 }

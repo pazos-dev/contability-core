@@ -4,20 +4,20 @@ import assert from 'node:assert/strict';
 import {
   AccountingDate,
   ApplicationError,
+  ClosePeriod,
   Currency,
   EntryError,
   JournalEntry,
   JournalEntryLine,
   Money,
+  PostEntry,
+  RegisterAccount,
+  RegisterJournal,
+  RegisterPeriod,
+  ReversePostedEntry,
+  SetAccountStatus,
+  SetJournalStatus,
   createInMemoryAccounting,
-  makeClosePeriod,
-  makePostEntry,
-  makeRegisterAccount,
-  makeRegisterJournal,
-  makeRegisterPeriod,
-  makeReversePostedEntry,
-  makeSetAccountStatus,
-  makeSetJournalStatus,
 } from '../dist/index.js';
 
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
@@ -66,20 +66,20 @@ function draftOf(
 async function harness() {
   const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS });
   const deps = { unitOfWork: memory.unitOfWork };
-  const registerAccount = makeRegisterAccount(deps);
-  const registerJournal = makeRegisterJournal(deps);
-  const registerPeriod = makeRegisterPeriod(deps);
-  const postEntry = makePostEntry(deps);
-  const closePeriod = makeClosePeriod(deps);
-  const reversePostedEntry = makeReversePostedEntry(deps);
-  const setAccountStatus = makeSetAccountStatus(deps);
-  const setJournalStatus = makeSetJournalStatus(deps);
+  const registerAccount = new RegisterAccount(deps);
+  const registerJournal = new RegisterJournal(deps);
+  const registerPeriod = new RegisterPeriod(deps);
+  const postEntry = new PostEntry(deps);
+  const closePeriod = new ClosePeriod(deps);
+  const reversePostedEntry = new ReversePostedEntry(deps);
+  const setAccountStatus = new SetAccountStatus(deps);
+  const setJournalStatus = new SetJournalStatus(deps);
 
   for (const ledgerId of ['ledger-1', 'ledger-2']) {
-    await registerAccount({ ledgerId, accountId: `acc-cash-${ledgerId}`, code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
-    await registerAccount({ ledgerId, accountId: `acc-rev-${ledgerId}`, code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
-    await registerJournal({ ledgerId, journalId: `jrn-${ledgerId}`, code: 'VENTAS', name: 'Ventas' });
-    await registerPeriod({ ledgerId, periodId: `per-${ledgerId}`, name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
+    await registerAccount.execute({ ledgerId, accountId: `acc-cash-${ledgerId}`, code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
+    await registerAccount.execute({ ledgerId, accountId: `acc-rev-${ledgerId}`, code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
+    await registerJournal.execute({ ledgerId, journalId: `jrn-${ledgerId}`, code: 'VENTAS', name: 'Ventas' });
+    await registerPeriod.execute({ ledgerId, periodId: `per-${ledgerId}`, name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
   }
 
   // A posted original with two balanced pairs, so mirroring cannot depend on line position.
@@ -91,7 +91,7 @@ async function harness() {
       { id: 'line-4', accountId: 'acc-rev-ledger-1', side: 'CREDIT', amount: money('250.00') },
     ]),
   );
-  await postEntry({ ledgerId: 'ledger-1', entryId: 'original', idempotencyKey: 'post-original' });
+  await postEntry.execute({ ledgerId: 'ledger-1', entryId: 'original', idempotencyKey: 'post-original' });
 
   return {
     memory,
@@ -124,7 +124,7 @@ function storedEntry(memory, entryId) {
 test('V01/V02: reversing posts a mirrored entry and leaves the original untouched', async () => {
   const { memory, reversePostedEntry } = await harness();
 
-  const result = await reversePostedEntry(reversalInput());
+  const result = await reversePostedEntry.execute(reversalInput());
 
   assert.equal(result.status, 'POSTED');
   assert.equal(result.reversalOfEntryId, 'original');
@@ -156,10 +156,10 @@ test('V01/V02: reversing posts a mirrored entry and leaves the original untouche
 
 test('V03: a second full reversal of the same original is rejected', async () => {
   const { memory, reversePostedEntry } = await harness();
-  await reversePostedEntry(reversalInput());
+  await reversePostedEntry.execute(reversalInput());
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ reversalEntryId: 'reversal-2', idempotencyKey: 'reverse-2' })),
+    reversePostedEntry.execute(reversalInput({ reversalEntryId: 'reversal-2', idempotencyKey: 'reverse-2' })),
     assertCode('ENTRY_ALREADY_REVERSED'),
   );
 
@@ -172,7 +172,7 @@ test('V04: a draft cannot be reversed', async () => {
   await memory.entries.save(draftOf('borrador'));
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ originalEntryId: 'borrador' })),
+    reversePostedEntry.execute(reversalInput({ originalEntryId: 'borrador' })),
     assertEntryCode('ENTRY_STATE'),
   );
 
@@ -181,21 +181,21 @@ test('V04: a draft cannot be reversed', async () => {
 
 test('V05: a closed destination period rejects the reversal', async () => {
   const { reversePostedEntry, registerPeriod, closePeriod } = await harness();
-  await registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-2027', name: 'Ejercicio 2027', startDate: '2027-01-01', endDate: '2027-12-31' });
-  await closePeriod({ ledgerId: 'ledger-1', periodId: 'per-2027', idempotencyKey: 'close-2027' });
+  await registerPeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2027', name: 'Ejercicio 2027', startDate: '2027-01-01', endDate: '2027-12-31' });
+  await closePeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2027', idempotencyKey: 'close-2027' });
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ periodId: 'per-2027', accountingDate: '2027-01-10' })),
+    reversePostedEntry.execute(reversalInput({ periodId: 'per-2027', accountingDate: '2027-01-10' })),
     assertCode('PERIOD_CLOSED'),
   );
 });
 
 test('V06: an original in a closed period can still be reversed into an open one', async () => {
   const { memory, reversePostedEntry, registerPeriod, closePeriod } = await harness();
-  await registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-2027', name: 'Ejercicio 2027', startDate: '2027-01-01', endDate: '2027-12-31' });
-  await closePeriod({ ledgerId: 'ledger-1', periodId: 'per-ledger-1', idempotencyKey: 'close-2026' });
+  await registerPeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2027', name: 'Ejercicio 2027', startDate: '2027-01-01', endDate: '2027-12-31' });
+  await closePeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-ledger-1', idempotencyKey: 'close-2026' });
 
-  const result = await reversePostedEntry(reversalInput({ periodId: 'per-2027', accountingDate: '2027-01-10' }));
+  const result = await reversePostedEntry.execute(reversalInput({ periodId: 'per-2027', accountingDate: '2027-01-10' }));
 
   assert.equal(result.periodId, 'per-2027');
   assert.equal(storedEntry(memory, 'original').status, 'POSTED');
@@ -204,27 +204,27 @@ test('V06: an original in a closed period can still be reversed into an open one
 
 test('V07: a date outside the destination period rejects the reversal', async () => {
   const { reversePostedEntry, registerPeriod } = await harness();
-  await registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-2027', name: 'Ejercicio 2027', startDate: '2027-01-01', endDate: '2027-12-31' });
+  await registerPeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2027', name: 'Ejercicio 2027', startDate: '2027-01-01', endDate: '2027-12-31' });
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ periodId: 'per-2027', accountingDate: '2026-12-31' })),
+    reversePostedEntry.execute(reversalInput({ periodId: 'per-2027', accountingDate: '2026-12-31' })),
     assertCode('PERIOD_DATE_OUTSIDE'),
   );
 });
 
 test('V08: an account of the original that no longer admits postings blocks the reversal', async () => {
   const { memory, reversePostedEntry, setAccountStatus } = await harness();
-  await setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-rev-ledger-1', status: 'INACTIVE' });
+  await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-rev-ledger-1', status: 'INACTIVE' });
 
-  await assert.rejects(reversePostedEntry(reversalInput()), assertCode('ACCOUNT_INACTIVE'));
+  await assert.rejects(reversePostedEntry.execute(reversalInput()), assertCode('ACCOUNT_INACTIVE'));
   assert.equal(storedEntry(memory, 'reversal'), undefined);
 });
 
 test('V09: an inactive journal blocks the reversal', async () => {
   const { memory, reversePostedEntry, setJournalStatus } = await harness();
-  await setJournalStatus({ ledgerId: 'ledger-1', journalId: 'jrn-ledger-1', status: 'INACTIVE' });
+  await setJournalStatus.execute({ ledgerId: 'ledger-1', journalId: 'jrn-ledger-1', status: 'INACTIVE' });
 
-  await assert.rejects(reversePostedEntry(reversalInput()), assertCode('JOURNAL_INACTIVE'));
+  await assert.rejects(reversePostedEntry.execute(reversalInput()), assertCode('JOURNAL_INACTIVE'));
   assert.equal(storedEntry(memory, 'reversal'), undefined);
 });
 
@@ -232,7 +232,7 @@ test('V10: an original of another ledger is not reachable', async () => {
   const { memory, reversePostedEntry } = await harness();
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ ledgerId: 'ledger-2' })),
+    reversePostedEntry.execute(reversalInput({ ledgerId: 'ledger-2' })),
     assertCode('ENTRY_NOT_FOUND'),
   );
 
@@ -243,13 +243,13 @@ test('V10: an original of another ledger is not reachable', async () => {
 test('V11/V12: idempotency replays the same request and conflicts with another', async () => {
   const { memory, reversePostedEntry } = await harness();
 
-  const first = await reversePostedEntry(reversalInput());
-  const second = await reversePostedEntry(reversalInput());
+  const first = await reversePostedEntry.execute(reversalInput());
+  const second = await reversePostedEntry.execute(reversalInput());
   assert.deepEqual(second, first);
   assert.equal(memory.snapshot().entries.length, 2);
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ reversalEntryId: 'other-reversal' })),
+    reversePostedEntry.execute(reversalInput({ reversalEntryId: 'other-reversal' })),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 });
@@ -268,20 +268,20 @@ test('V13: a failing save leaves no reversal behind', async () => {
     }),
   });
   const deps = { unitOfWork: memory.unitOfWork };
-  const registerAccount = makeRegisterAccount(deps);
-  const registerJournal = makeRegisterJournal(deps);
-  const registerPeriod = makeRegisterPeriod(deps);
-  const postEntry = makePostEntry(deps);
-  const reversePostedEntry = makeReversePostedEntry(deps);
+  const registerAccount = new RegisterAccount(deps);
+  const registerJournal = new RegisterJournal(deps);
+  const registerPeriod = new RegisterPeriod(deps);
+  const postEntry = new PostEntry(deps);
+  const reversePostedEntry = new ReversePostedEntry(deps);
 
-  await registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash-ledger-1', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
-  await registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev-ledger-1', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
-  await registerJournal({ ledgerId: 'ledger-1', journalId: 'jrn-ledger-1', code: 'VENTAS', name: 'Ventas' });
-  await registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-ledger-1', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
+  await registerAccount.execute({ ledgerId: 'ledger-1', accountId: 'acc-cash-ledger-1', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
+  await registerAccount.execute({ ledgerId: 'ledger-1', accountId: 'acc-rev-ledger-1', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
+  await registerJournal.execute({ ledgerId: 'ledger-1', journalId: 'jrn-ledger-1', code: 'VENTAS', name: 'Ventas' });
+  await registerPeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-ledger-1', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
   await memory.entries.save(draftOf('original'));
-  await postEntry({ ledgerId: 'ledger-1', entryId: 'original', idempotencyKey: 'post-original' });
+  await postEntry.execute({ ledgerId: 'ledger-1', entryId: 'original', idempotencyKey: 'post-original' });
 
-  await assert.rejects(reversePostedEntry(reversalInput()), /storage unavailable/);
+  await assert.rejects(reversePostedEntry.execute(reversalInput()), /storage unavailable/);
 
   assert.equal(memory.snapshot().entries.length, 1);
   assert.equal(storedEntry(memory, 'original').status, 'POSTED');
@@ -294,7 +294,7 @@ test('V14: a reversal id that is already used is rejected instead of overwriting
 
   // "neighbour" is already stored in this ledger: reusing its id would silently replace that entry.
   await assert.rejects(
-    reversePostedEntry(reversalInput({ reversalEntryId: 'neighbour' })),
+    reversePostedEntry.execute(reversalInput({ reversalEntryId: 'neighbour' })),
     assertCode('ENTRY_ALREADY_EXISTS'),
   );
 
@@ -311,7 +311,7 @@ test('V15: a draft reversal id blocks the reversal before any account or period 
   await memory.entries.save(draftOf('occupied'));
 
   await assert.rejects(
-    reversePostedEntry(reversalInput({ reversalEntryId: 'occupied' })),
+    reversePostedEntry.execute(reversalInput({ reversalEntryId: 'occupied' })),
     assertCode('ENTRY_ALREADY_EXISTS'),
   );
 
@@ -334,7 +334,7 @@ test('V16: a stored reversal draft blocks a new reversal even before it is poste
     }),
   );
 
-  await assert.rejects(reversePostedEntry(reversalInput()), assertCode('ENTRY_ALREADY_REVERSED'));
+  await assert.rejects(reversePostedEntry.execute(reversalInput()), assertCode('ENTRY_ALREADY_REVERSED'));
 
   assert.equal(storedEntry(memory, 'reversal'), undefined);
   assert.equal(storedEntry(memory, 'draft-reversal').status, 'DRAFT');

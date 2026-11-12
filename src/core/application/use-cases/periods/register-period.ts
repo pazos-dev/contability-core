@@ -6,8 +6,6 @@ import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'registerPeriod';
 
-export type RegisterPeriod = (input: RegisterPeriodInput) => Promise<RegisterPeriodResult>;
-
 /**
  * Registers a period inside its ledger.
  *
@@ -15,12 +13,18 @@ export type RegisterPeriod = (input: RegisterPeriodInput) => Promise<RegisterPer
  * this use case owns the cross-entity rule: no two periods of one ledger may share a day (P07). The
  * overlap query and the write share the unit of work so persistence can back it with a constraint.
  */
-export function makeRegisterPeriod(deps: ApplicationDeps): RegisterPeriod {
-  return async (input) => {
+export class RegisterPeriod {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: RegisterPeriodInput): Promise<RegisterPeriodResult> {
     const { ledgerId, periodId, name, startDate, endDate, idempotencyKey } = input;
     const fingerprint = fingerprintOf({ ledgerId, periodId, name, startDate, endDate });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<RegisterPeriodResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -57,5 +61,5 @@ export function makeRegisterPeriod(deps: ApplicationDeps): RegisterPeriod {
 
       return result;
     });
-  };
+  }
 }

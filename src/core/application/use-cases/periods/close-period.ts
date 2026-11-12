@@ -5,8 +5,6 @@ import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 
 const OPERATION = 'closePeriod';
 
-export type ClosePeriod = (input: ClosePeriodInput) => Promise<ClosePeriodResult>;
-
 /**
  * Closes an open period.
  *
@@ -14,12 +12,18 @@ export type ClosePeriod = (input: ClosePeriodInput) => Promise<ClosePeriodResult
  * generate result entries. Closing twice with different keys is a state error from the aggregate, not a
  * silent success; a retry is only a replay when it carries the same key and the same request.
  */
-export function makeClosePeriod(deps: ApplicationDeps): ClosePeriod {
-  return async (input) => {
+export class ClosePeriod {
+  readonly #deps: ApplicationDeps;
+
+  constructor(deps: ApplicationDeps) {
+    this.#deps = deps;
+  }
+
+  async execute(input: ClosePeriodInput): Promise<ClosePeriodResult> {
     const { ledgerId, periodId, idempotencyKey } = input;
     const fingerprint = fingerprintOf({ ledgerId, periodId });
 
-    return deps.unitOfWork.run(async (scope) => {
+    return this.#deps.unitOfWork.run(async (scope) => {
       const stored = await replay<ClosePeriodResult>(scope, OPERATION, ledgerId, idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
@@ -37,5 +41,5 @@ export function makeClosePeriod(deps: ApplicationDeps): ClosePeriod {
 
       return result;
     });
-  };
+  }
 }
