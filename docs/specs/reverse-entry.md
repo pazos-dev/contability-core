@@ -80,9 +80,12 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
    `ENTRY_ALREADY_EXISTS`. El guardado es un *upsert* por `(ledgerId, entryId)`, así que reutilizar un id
    sobrescribiría el asiento guardado; en el adaptador del anfitrión la clave primaria lo impide. El dominio ya rechaza el caso
    `reversalEntryId === originalEntryId` con `INVALID_ENTRY`.
-9. **Reversión existente.** `entries.findByReversalOf(ledgerId, originalEntryId)` no vacío es
-   `ENTRY_ALREADY_REVERSED`. La comprobación va inmediatamente antes de escribir, dentro de la unidad de
-   trabajo, para que un adaptador durable pueda sustituirla por una restricción única sin moverla.
+9. **Reversión existente.** `entries.findReversalsOf(ledgerId, originalEntryId)` no vacío es
+   `ENTRY_ALREADY_REVERSED`. Cuenta cualquier estado: esta operación crea un asiento **nuevo**, así que no
+   hay ninguna reversión que pueda convivir con otra ya existente. Si un borrador de reversión puede o no
+   contabilizarse después lo decide `postEntry`, que contabiliza ese mismo borrador y no otro asiento. La
+   comprobación va inmediatamente antes de escribir, dentro de la unidad de trabajo, para que un adaptador
+   durable pueda sustituirla por una restricción única sin moverla.
 10. **Contabilizar.** `reversalDraft.post()`: sus errores burbujean (en la práctica no debería fallar,
    porque las líneas espejadas conservan equilibrio y moneda del original).
 11. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
@@ -125,12 +128,14 @@ Burbujea `ENTRY_STATE` del dominio cuando el original no está POSTED.
 | V13 | — | Un repositorio que falla al guardar | `reversePostedEntry` | El error sube; no queda reversión ni registro y el original sigue `POSTED` |
 | V14 | — | Un `reversalEntryId` que ya pertenece a otro asiento del libro | `reversePostedEntry` | `ENTRY_ALREADY_EXISTS`; el asiento existente y el original quedan intactos |
 | V15 | — | Un `reversalEntryId` que ya pertenece a un borrador del libro | `reversePostedEntry` | `ENTRY_ALREADY_EXISTS`; el borrador queda `DRAFT` y sin enlace de reversión |
+| V16 | — | Un borrador de reversión guardado del mismo original, todavía sin contabilizar | `reversePostedEntry` con otro id | `ENTRY_ALREADY_REVERSED`; nada escrito y el borrador sigue `DRAFT` |
 
 ## Decisiones pendientes
 
 | ID | Tema | Impacto |
 | --- | --- | --- |
 | — | Reversión parcial y cancelación de una reversión | Necesitan especificación propia; hoy sólo existe la reversión completa simple. |
+| — | Borrador de reversión abandonado | La regla 9 cuenta cualquier estado y no existe operación para borrar un borrador, así que un borrador olvidado bloquea `reversePostedEntry` hasta que se contabilice. Desbloquearlo exige decidir borrado o caducidad de borradores. |
 | — | Dos reversiones simultáneas del mismo original | Del anfitrión: la comprobación previa es de aplicación, sin unicidad durable. |
 | Q11 | Numeración del asiento de reversión | Sin numeración en esta fase; ids explícitos. |
 
@@ -145,7 +150,7 @@ Burbujea `ENTRY_STATE` del dominio cuando el original no está POSTED.
 ## Verificación
 
 - Pruebas: `tests/reverse-entry.test.mjs`.
-- Una prueba por criterio V01-V13, más el caso de un asiento de tres líneas con dos cuentas y lado mixto
+- Una prueba por criterio V01-V16, más el caso de un asiento de tres líneas con dos cuentas y lado mixto
   para confirmar que el espejado no depende de la posición.
 - V13 se prueba con el adaptador en memoria real, inyectando el fallo en `record` y comparando el estado
   del repositorio de asientos antes y después.

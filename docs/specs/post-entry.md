@@ -95,9 +95,16 @@ regla de menor número. Todas las lecturas y la escritura viven en una sola llam
    - `status` distinto de `ACTIVE` es `ACCOUNT_INACTIVE` (A06).
    - `postingAllowed` en `false` es `ACCOUNT_NOT_POSTABLE` (A06).
 7. **Reversión previa.** Si el borrador trae `reversalOfEntryId` —lo creó `createReversalDraft` o el
-   anfitrión lo armó con el dominio—, se consulta `findByReversalOf` y, si ya hay **otra** reversión
-   contabilizada de ese original, es `ENTRY_ALREADY_REVERSED`. Contabilizar por acá no puede producir una
-   segunda reversión completa que `reversePostedEntry` habría rechazado.
+   anfitrión lo armó con el dominio—, se consulta `findReversalsOf` y, si entre **todas** las reversiones
+   de ese original hay otra `POSTED` distinta de este asiento, es `ENTRY_ALREADY_REVERSED`.
+   - La consulta devuelve todas, no la primera: un borrador de reversión guardado antes que una reversión
+     contabilizada no puede taparla. Un puerto que responde un solo asiento deja la decisión en manos del
+     orden en que la persistencia recorre sus filas.
+   - Sólo cuenta `POSTED`. Un borrador de reversión es justamente lo que este paso puede contabilizar, así
+     que ni el propio asiento ni otro borrador bloquean: el bloqueo aparece cuando ya hay una reversión
+     contabilizada.
+   Contabilizar por acá no puede producir una segunda reversión completa que `reversePostedEntry` habría
+   rechazado.
 8. **Invariantes del agregado.** `entry.post()`: sus errores burbujean tal cual
    (`ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED`, `ENTRY_CURRENCY_MISMATCH`). Un asiento ya
    `POSTED` sin coincidencia de idempotencia llega acá y recibe `ENTRY_STATE` (E11).
@@ -151,6 +158,7 @@ Burban los de dominio sin envolver, con su código original.
 | U16 | — | Un borrador desequilibrado con todo lo demás válido | `postEntry` | `ENTRY_UNBALANCED` del dominio; sigue `DRAFT` con sus líneas |
 | U17 | — | Varias condiciones inválidas a la vez | `postEntry` | Se reporta el error de la regla de menor número del flujo |
 | U18 | — | Un borrador de reversión guardado por el anfitrión y un original que ya tiene una reversión contabilizada | `postEntry` | `ENTRY_ALREADY_REVERSED`; el borrador sigue `DRAFT` |
+| U18b | — | Dos borradores de reversión del mismo original guardados por el anfitrión, con el segundo ya contabilizado | `postEntry` del primero | `ENTRY_ALREADY_REVERSED`; el primero sigue `DRAFT` y el original queda con una sola reversión `POSTED` |
 
 ## Decisiones pendientes
 
@@ -177,6 +185,8 @@ Burban los de dominio sin envolver, con su código original.
   período (P01 aplicado desde el caso de uso).
 - U03a se prueba con el adaptador en memoria real, inyectando el fallo en `record` y comparando el estado
   del repositorio antes y después.
+- U18 y U18b cubren la reversión previa: el borrador que no debe tapar la reversión ya contabilizada y el
+  original que termina con una sola reversión `POSTED`.
 - U06, U07 y U03b no se escriben como pruebas verdes: figuran como diferidos en este documento y en
   `docs/STATUS.md` hasta que exista persistencia real.
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.

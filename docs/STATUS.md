@@ -122,6 +122,10 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
   plan, código, nombre, padre y `postingAllowed`.
 - Idempotencia opcional por libro y por operación: misma clave con la misma petición devuelve el
   resultado guardado sin segunda escritura; con otra petición devuelve `IDEMPOTENCY_CONFLICT`.
+- Corrección de la revisión R4: el registro de idempotencia copia el resultado al guardarlo y al
+  entregarlo. Antes guardaba la misma referencia que recibía el consumidor, así que mutar el resultado de
+  una respuesta reescribía lo que respondía el siguiente reintento; `readonly` sólo lo impedía en
+  compilación. Regla 7 de `docs/specs/registration.md`, prueba `U04b` en `tests/post-entry.test.mjs`.
 - `postedMovements` se consulta a través de un puerto y en 006a responde siempre `false`, porque todavía
   no existe una operación que contabilice. Su adaptador real llega con 006b.
 
@@ -156,6 +160,12 @@ Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificad
   aplica la regla de una sola reversión también a un borrador de reversión guardado por el anfitrión
   (`ENTRY_ALREADY_REVERSED`). Sin esas dos guardas, un id repetido sobrescribía un asiento y una segunda
   reversión se colaba por `postEntry`.
+- Corrección de la revisión R4: `EntryRepository.findByReversalOf` pasa a `findReversalsOf` y devuelve
+  **todas** las reversiones de un original. Con una sola respuesta, un borrador de reversión guardado antes
+  que una reversión contabilizada la tapaba y `postEntry` aceptaba una segunda reversión: dos asientos
+  `POSTED` revirtiendo el mismo original, sin concurrencia. Ahora `postEntry` sólo cuenta reversiones
+  `POSTED` distintas de sí mismo (`U18b`) y `reversePostedEntry` sigue contando cualquier estado (`V16`).
+  La unicidad durable sigue siendo del anfitrión, con una restricción sobre `reversalOfEntryId`.
 
 ### 006c-application — `docs/specs/entry-draft.md`, D01-D13
 
@@ -221,7 +231,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 211 pruebas, 211 correctas, 0 fallos. |
+| `pnpm test` | 214 pruebas, 214 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -233,8 +243,9 @@ conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validac
 `tests/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
 inexistente y la reversión rechazada; R01-R17 en `tests/registration.test.mjs`, incluidos el fallo de
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
-agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U17 en `tests/post-entry.test.mjs`;
-C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V15 en `tests/reverse-entry.test.mjs`; D01-D13 en
+agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U18b en
+`tests/post-entry.test.mjs`, más la copia del resultado de idempotencia (U04b);
+C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V16 en `tests/reverse-entry.test.mjs`; D01-D13 en
 `tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
 `tests/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
 que faltaba.

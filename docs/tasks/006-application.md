@@ -63,7 +63,7 @@ Reglas verificadas acá: A04, A05, A07, A09 (lado aplicación), J03, P07 y la re
 
 Casos de uso: `postEntry`, `closePeriod`, `reversePostedEntry`.
 
-Piezas nuevas: `EntryRepository` (`findById` por libro, `save`, `findByReversalOf`), su adaptador en
+Piezas nuevas: `EntryRepository` (`findById` por libro, `save`, `findReversalsOf`), su adaptador en
 memoria, el adaptador real de `PostedMovementsQuery` y una prueba por criterio de las tres specs.
 
 Reglas verificadas acá: A06, J05, P05, la contención de fecha en el período, la prohibición de una segunda
