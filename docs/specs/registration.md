@@ -52,9 +52,10 @@ await app.postEntry(input);
 ```
 
 La fachada delega en la clase del mismo nombre y no agrega nada: no valida, no guarda estado y no traduce
-errores. Un anfitrión que usa una sola operación instancia esa clase (`new PostEntry(deps)`) y se ahorra las
-otras diez; los dos caminos comparten el mismo `unitOfWork`. Las funciones puras de apoyo
-(`fingerprintOf`, `replay`, `remember`, `serializeLine`, `sumSide`) siguen siendo funciones.
+errores. Es la **única** superficie pública de la capa de aplicación: las once clases son implementación
+interna de `use-cases/` y el barrel no las exporta, así que el anfitrión no tiene que elegir entre once
+símbolos ni puede armar media aplicación por su cuenta. Las funciones puras de apoyo (`fingerprintOf`,
+`replay`, `remember`, `serializeLine`, `sumSide`) siguen siendo funciones, también internas.
 
 Reglas de contrato:
 

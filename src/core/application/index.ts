@@ -39,13 +39,6 @@ export type {
   SetJournalStatusInput,
   SetJournalStatusResult,
 } from './contracts/index.js';
-export { RegisterAccount, SetAccountStatus } from './use-cases/accounts/index.js';
-export { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js';
-export { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
-export {
-  AddEntryLine,
-  CreateEntryDraft,
-  PostEntry,
-  RemoveEntryLine,
-  ReversePostedEntry,
-} from './use-cases/entries/index.js';
+// The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees
+// eleven symbols nor a per-operation surface. `accounting.ts` composes them, and the area barrels under
+// `use-cases/` are internal wiring for the facade, not part of the package surface.

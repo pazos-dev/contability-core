@@ -5,7 +5,6 @@ import {
   Accounting,
   ApplicationError,
   Currency,
-  PostEntry,
   createInMemoryAccounting,
 } from '../dist/index.js';
 
@@ -176,9 +175,9 @@ test('the facade propagates the use case errors unchanged and leaves no partial 
   assert.deepEqual(memory.snapshot().entries, []);
 });
 
-test('the facade and a single use case class share the same unit of work and the same stores', async () => {
+test('two facades over the same deps share the stores, because the facade holds no state', async () => {
   const { memory, deps, app } = harness();
-  const postEntry = new PostEntry(deps);
+  const sameApp = new Accounting(deps);
   await chart(app);
 
   const draft = await app.createEntryDraft({
@@ -192,8 +191,8 @@ test('the facade and a single use case class share the same unit of work and the
   });
   assert.equal(draft.status, 'DRAFT');
 
-  // The draft was written through the facade; the class posts it without any extra wiring.
-  const posted = await postEntry.execute({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
+  // The draft was written through one facade; the other one posts it without any extra wiring.
+  const posted = await sameApp.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
   assert.equal(posted.status, 'POSTED');
   assert.equal(memory.snapshot().entries.length, 1);
 });

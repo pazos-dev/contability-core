@@ -24,6 +24,19 @@ await app.postEntry(input);
 // 11 clases con `execute` + 1 fachada con nombres de caso de uso
 ```
 
+S2b. Corrección del 2026-11-12, textual: «pero 3n el.index sigues exportando todas las funciones por
+separado». La forma anterior valía para la implementación, no para el barrel: el anfitrión compone **sólo**
+`Accounting`, y las once clases con `execute` quedan como implementación interna que el paquete no exporta.
+
+```ts
+// lo único que ve el anfitrión
+const app = new Accounting({ unitOfWork });
+await app.registerAccount(input);
+await app.postEntry(input);
+
+// las once clases existen con `execute(input)`, pero no se exportan
+```
+
 S3. Compatibilidad, textual: «Corte limpio: se eliminan; paquete `private` 0.0.0 sin consumidores
 registrados», con este antes/después:
 
@@ -86,3 +99,12 @@ una en `src/core/application/use-cases/README.md`.
 L6. Resultado verificado: `pnpm check` en verde en la rama, 217 pruebas (214 previas + 3 de la fachada), 0
 fallos, con `typecheck` y `build` limpios. La suite migrada no cambió ni una expectativa: sólo la forma de
 invocar (`makeX(deps)(input)` → `new X(deps).execute(input)`).
+
+L7. «pero 3n el.index sigues exportando todas las funciones por separado». Tenía razón: el barrel exportaba
+`Accounting` **más** las once clases, así que la superficie seguía siendo un símbolo por operación. Se
+corrigió con S2b: `src/core/application/index.ts` exporta sólo `Accounting`, `ApplicationError` y los tipos;
+las clases quedan internas en `use-cases/`; los siete archivos de test y `public-api` se migran a la fachada
+(`app.postEntry(input)` en lugar de `new PostEntry(deps).execute(input)`), y el test de la fachada cambia la
+interoperación con una clase suelta por dos fachadas sobre las mismas dependencias. Ganancia lateral: la
+suite entera pasa por la superficie pública, así que un export de más lo detecta `public-api` y un método
+faltante lo detecta el resto de la suite.

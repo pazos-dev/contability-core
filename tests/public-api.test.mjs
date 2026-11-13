@@ -16,21 +16,7 @@ const barrels = {
   'core/domain/journal': ['Journal', 'JournalError'],
   'core/domain/period': ['AccountingDate', 'AccountingPeriod', 'PeriodError'],
   'core/domain/entries': ['EntryError', 'JournalEntry', 'JournalEntryLine'],
-  'core/application': [
-    'Accounting',
-    'AddEntryLine',
-    'ApplicationError',
-    'ClosePeriod',
-    'CreateEntryDraft',
-    'PostEntry',
-    'RegisterAccount',
-    'RegisterJournal',
-    'RegisterPeriod',
-    'RemoveEntryLine',
-    'ReversePostedEntry',
-    'SetAccountStatus',
-    'SetJournalStatus',
-  ],
+  'core/application': ['Accounting', 'ApplicationError'],
   'adapters/memory': ['createInMemoryAccounting'],
 };
 

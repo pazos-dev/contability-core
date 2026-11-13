@@ -201,23 +201,25 @@ fachada `Accounting` en la capa de aplicación, sobre 006d-application (edición
 - El core no persiste nada: calcula sobre valores inmutables y entrega el resultado al puerto que le da el
   anfitrión. Sin conexiones, sin almacenamiento, sin sistema de archivos.
 
-### Contrato de la capa de aplicación — clases y fachada
+### Contrato de la capa de aplicación — fachada `Accounting`
 
-- Los once casos de uso son clases con `execute(input)` (`new PostEntry(deps)`), no fábricas `makeX(deps)`.
-  La clase es la unidad de inyección de dependencias: recibe `ApplicationDeps` (sólo `unitOfWork`) y no
-  guarda nada más.
-- `Accounting` (`src/core/application/accounting.ts`) compone las once y expone un método por caso de uso
-  (`app.postEntry(input)`). Sólo delega: no agrega validación, estado ni traducción de errores, y usa el
-  mismo `unitOfWork`, así que la fachada y una clase suelta comparten los mismos almacenes.
+- `Accounting` (`src/core/application/accounting.ts`) es la **única** superficie pública de la capa: un
+  objeto con un método por caso de uso (`app.postEntry(input)`). El barrel exporta `Accounting` y
+  `ApplicationError`, nada más; las once clases no salen del paquete.
+- Por dentro, cada caso de uso es una clase con `execute(input)` que recibe `ApplicationDeps` (sólo
+  `unitOfWork`) y no guarda nada más. La fachada las compone en el constructor y sólo delega: no agrega
+  validación, estado ni traducción de errores. Esa separación es lo que deja el objeto como contrato y
+  las clases como implementación reemplazable.
 - No se convirtieron en clases los ayudantes puros (`fingerprintOf`, `replay`, `remember`, `serializeLine`,
   `sumSide`, `draftResultOf`): una clase alrededor de un cálculo no aporta.
 - Sin cambios de comportamiento: `ApplicationDeps`, contratos, códigos de error, unidad de trabajo, dominio
   y adaptadores quedaron igual.
 - Corte limpio, sin alias: el paquete es `private` en 0.0.0 y no hay consumidores registrados. Un anfitrión
-  migra `makePostEntry(deps)(input)` → `new PostEntry(deps).execute(input)`, o `makePostEntry(deps)` →
-  `new Accounting(deps).postEntry` si usa varios casos de uso.
-- `tests/application-facade.test.mjs` recorre los once métodos de la fachada, la propagación de errores sin
-  escritura parcial y la interoperación entre la fachada y una clase suelta.
+  migra `makePostEntry(deps)(input)` → `new Accounting(deps).postEntry(input)`.
+- `tests/application-facade.test.mjs` recorre los once métodos, la propagación de errores sin escritura
+  parcial y que dos fachadas sobre las mismas dependencias compartan los almacenes. Los siete archivos de
+  test que antes componían casos de uso ahora hablan sólo con la fachada: la suite completa pasa por la
+  superficie pública, así que un export de más rompe `public-api` y un método faltante rompe el resto.
 
 ### API pública
 
@@ -230,10 +232,10 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
-- `core/application/index.ts`: `Accounting`, las once clases de caso de uso (`RegisterAccount`,
-  `SetAccountStatus`, `RegisterJournal`, `SetJournalStatus`, `RegisterPeriod`, `ClosePeriod`,
-  `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`, `ReversePostedEntry`),
-  `ApplicationError` y sus tipos de contrato y de puerto.
+- `core/application/index.ts`: `Accounting`, `ApplicationError` y los tipos de contrato y de puerto. Las
+  once clases de caso de uso (`RegisterAccount`, `SetAccountStatus`, `RegisterJournal`, `SetJournalStatus`,
+  `RegisterPeriod`, `ClosePeriod`, `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`,
+  `ReversePostedEntry`) viven en `use-cases/` como implementación interna y no se exportan.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos para que el anfitrión persista borradores: crear borradores por caso de uso no está especificado
   todavía, así que hoy es responsabilidad del anfitrión (ver Decisiones pendientes).
