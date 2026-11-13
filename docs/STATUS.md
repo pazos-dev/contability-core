@@ -237,8 +237,11 @@ carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos bar
   `RegisterPeriod`, `ClosePeriod`, `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`,
   `ReversePostedEntry`) viven en `use-cases/` como implementación interna y no se exportan.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
-  asientos para que el anfitrión persista borradores: crear borradores por caso de uso no está especificado
-  todavía, así que hoy es responsabilidad del anfitrión (ver Decisiones pendientes).
+  asientos (`entries`) como costura de composición: es el único adaptador que existe en esta fase y un
+  anfitrión que arme asientos con el dominio necesita poder guardarlos. Crear y editar borradores por caso
+  de uso ya está especificado e implementado (`createEntryDraft`, `addEntryLine`, `removeEntryLine`), así
+  que ese es el camino normal; la costura queda para lo que el core todavía no ofrece, como borrar un
+  borrador.
 
 `describeValue` sigue siendo un helper interno del dominio, no forma parte de la API pública.
 `pnpm check:project` exige el `index.ts` de los cinco dominios y los dos barrels nuevos;
@@ -270,7 +273,7 @@ C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V16 en `tests/reverse-e
 `tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
 `tests/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
 que faltaba; `tests/application-facade.test.mjs` para los once métodos de `Accounting`, la propagación de
-errores y la interoperación con una clase suelta.
+errores y dos fachadas sobre las mismas dependencias compartiendo los almacenes.
 
 ## Validaciones que esperan la capa de aplicación
 
