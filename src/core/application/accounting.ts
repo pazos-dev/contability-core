@@ -39,12 +39,12 @@ import { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js
 import { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
 
 /**
- * Every use case of the module behind one object, for a host that uses all of them.
+ * Every use case of the module behind one object: the only public entry point of this layer.
  *
  * It is a composition, not a new layer on top: each method delegates to the class of the same name and
- * adds nothing — no validation, no state, no error translation. A host that needs a single operation
- * instantiates that class directly (`new PostEntry(deps)`), which is also the cheaper thing to test; the
- * facade exists so the common case does not need eleven constructors at the call site.
+ * adds nothing — no validation, no state, no error translation. The eleven classes are internal to
+ * `use-cases/`, so the host never has to choose between eleven symbols; keeping them separate is what lets
+ * this object stay thin and each rule live with the class that owns it.
  *
  * The deps are shared, so every method still runs inside the one `unitOfWork` the host provided.
  */
