@@ -2,12 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  Accounting,
   ApplicationError,
-  RegisterAccount,
-  RegisterJournal,
-  RegisterPeriod,
-  SetAccountStatus,
-  SetJournalStatus,
   createInMemoryAccounting,
 } from '../dist/index.js';
 
@@ -23,14 +19,7 @@ function assertCode(code) {
 
 function harness(options = {}) {
   const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS, ...options });
-  return {
-    memory,
-    registerAccount: new RegisterAccount({ unitOfWork: memory.unitOfWork }),
-    setAccountStatus: new SetAccountStatus({ unitOfWork: memory.unitOfWork }),
-    registerJournal: new RegisterJournal({ unitOfWork: memory.unitOfWork }),
-    setJournalStatus: new SetJournalStatus({ unitOfWork: memory.unitOfWork }),
-    registerPeriod: new RegisterPeriod({ unitOfWork: memory.unitOfWork }),
-  };
+  return { memory, app: new Accounting({ unitOfWork: memory.unitOfWork }) };
 }
 
 function accountInput(overrides = {}) {
@@ -50,9 +39,9 @@ function storedAccounts(memory) {
 }
 
 test('R01: a valid account is registered inside the plan the ledger resolves', async () => {
-  const { memory, registerAccount } = harness();
+  const { memory, app } = harness();
 
-  const result = await registerAccount.execute(accountInput());
+  const result = await app.registerAccount(accountInput());
 
   assert.deepEqual(result, {
     ledgerId: 'ledger-1',
@@ -70,20 +59,20 @@ test('R01: a valid account is registered inside the plan the ledger resolves', a
 });
 
 test('R02: an unknown ledger is rejected and nothing is stored', async () => {
-  const { memory, registerAccount } = harness();
+  const { memory, app } = harness();
 
-  await assert.rejects(registerAccount.execute(accountInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
+  await assert.rejects(app.registerAccount(accountInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
 
   assert.equal(storedAccounts(memory).length, 0);
   assert.equal(memory.snapshot().idempotency.length, 0);
 });
 
 test('R03: a repeated code inside the same plan is rejected and nothing is stored', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute(accountInput());
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
 
   await assert.rejects(
-    registerAccount.execute(accountInput({ accountId: 'acc-2', name: 'Caja chica' })),
+    app.registerAccount(accountInput({ accountId: 'acc-2', name: 'Caja chica' })),
     assertCode('ACCOUNT_CODE_DUPLICATE'),
   );
 
@@ -92,21 +81,21 @@ test('R03: a repeated code inside the same plan is rejected and nothing is store
 });
 
 test('R04: the same code in another plan is accepted', async () => {
-  const { memory, registerAccount } = harness();
+  const { memory, app } = harness();
 
-  await registerAccount.execute(accountInput());
-  const second = await registerAccount.execute(accountInput({ ledgerId: 'ledger-2', accountId: 'acc-9' }));
+  await app.registerAccount(accountInput());
+  const second = await app.registerAccount(accountInput({ ledgerId: 'ledger-2', accountId: 'acc-9' }));
 
   assert.equal(second.chartOfAccountsId, 'chart-2');
   assert.equal(storedAccounts(memory).length, 2);
 });
 
 test('R05: a parent in another plan is rejected and nothing is stored', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute(accountInput({ accountId: 'acc-other', ledgerId: 'ledger-2', postingAllowed: false }));
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput({ accountId: 'acc-other', ledgerId: 'ledger-2', postingAllowed: false }));
 
   await assert.rejects(
-    registerAccount.execute(accountInput({ accountId: 'acc-1', parentId: 'acc-other' })),
+    app.registerAccount(accountInput({ accountId: 'acc-1', parentId: 'acc-other' })),
     assertCode('ACCOUNT_NOT_FOUND'),
   );
 
@@ -115,16 +104,16 @@ test('R05: a parent in another plan is rejected and nothing is stored', async ()
 });
 
 test('R07: a child is only registered under a grouping parent', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute(accountInput({ accountId: 'acc-1', postingAllowed: true }));
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput({ accountId: 'acc-1', postingAllowed: true }));
 
   await assert.rejects(
-    registerAccount.execute(accountInput({ accountId: 'acc-2', code: '1.1.01.01', parentId: 'acc-1', postingAllowed: true })),
+    app.registerAccount(accountInput({ accountId: 'acc-2', code: '1.1.01.01', parentId: 'acc-1', postingAllowed: true })),
     assertCode('ACCOUNT_PARENT_NOT_GROUPING'),
   );
 
-  await registerAccount.execute(accountInput({ accountId: 'acc-1b', code: '1.1', postingAllowed: false }));
-  const child = await registerAccount.execute(
+  await app.registerAccount(accountInput({ accountId: 'acc-1b', code: '1.1', postingAllowed: false }));
+  const child = await app.registerAccount(
     accountInput({ accountId: 'acc-3', code: '1.1.02', parentId: 'acc-1b', postingAllowed: true }),
   );
 
@@ -133,11 +122,11 @@ test('R07: a child is only registered under a grouping parent', async () => {
 });
 
 test('R08: a repeated account id is rejected without overwriting the stored account', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute(accountInput());
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
 
   await assert.rejects(
-    registerAccount.execute(accountInput({ code: '9.9.99', name: 'Otra' })),
+    app.registerAccount(accountInput({ code: '9.9.99', name: 'Otra' })),
     assertCode('ACCOUNT_ALREADY_EXISTS'),
   );
 
@@ -147,13 +136,13 @@ test('R08: a repeated account id is rejected without overwriting the stored acco
 });
 
 test('R09: a parent with posted movements does not accept new children', async () => {
-  const { memory, registerAccount } = harness({
+  const { memory, app } = harness({
     overrides: (scope) => ({ postedMovements: { hasPostedLines: async () => true } }),
   });
-  await registerAccount.execute(accountInput({ accountId: 'acc-1', postingAllowed: false }));
+  await app.registerAccount(accountInput({ accountId: 'acc-1', postingAllowed: false }));
 
   await assert.rejects(
-    registerAccount.execute(accountInput({ accountId: 'acc-2', code: '1.1.02', parentId: 'acc-1' })),
+    app.registerAccount(accountInput({ accountId: 'acc-2', code: '1.1.02', parentId: 'acc-1' })),
     assertCode('ACCOUNT_HAS_MOVEMENTS'),
   );
 
@@ -161,14 +150,14 @@ test('R09: a parent with posted movements does not accept new children', async (
 });
 
 test('A04: a cycle cannot be closed because re-registering an ancestor is rejected', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute(accountInput({ accountId: 'acc-root', code: '1', postingAllowed: false }));
-  await registerAccount.execute(
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput({ accountId: 'acc-root', code: '1', postingAllowed: false }));
+  await app.registerAccount(
     accountInput({ accountId: 'acc-child', code: '1.1', parentId: 'acc-root', postingAllowed: false }),
   );
 
   await assert.rejects(
-    registerAccount.execute(
+    app.registerAccount(
       accountInput({ accountId: 'acc-root', code: '1', parentId: 'acc-child', postingAllowed: false }),
     ),
     assertCode('ACCOUNT_ALREADY_EXISTS'),
@@ -180,7 +169,7 @@ test('A04: a cycle cannot be closed because re-registering an ancestor is reject
 });
 
 test('R14: a repository failure leaves no write behind', async () => {
-  const { memory, registerAccount } = harness({
+  const { memory, app } = harness({
     overrides: (scope) => ({
       accounts: {
         ...scope.accounts,
@@ -191,17 +180,17 @@ test('R14: a repository failure leaves no write behind', async () => {
     }),
   });
 
-  await assert.rejects(registerAccount.execute(accountInput()), /storage unavailable/);
+  await assert.rejects(app.registerAccount(accountInput()), /storage unavailable/);
 
   assert.equal(storedAccounts(memory).length, 0);
   assert.equal(memory.snapshot().idempotency.length, 0);
 });
 
 test('R15: repeating the same request with the same key has no second effect', async () => {
-  const { memory, registerAccount } = harness();
+  const { memory, app } = harness();
 
-  const first = await registerAccount.execute({ ...accountInput(), idempotencyKey: 'key-1' });
-  const second = await registerAccount.execute({ ...accountInput(), idempotencyKey: 'key-1' });
+  const first = await app.registerAccount({ ...accountInput(), idempotencyKey: 'key-1' });
+  const second = await app.registerAccount({ ...accountInput(), idempotencyKey: 'key-1' });
 
   assert.deepEqual(second, first);
   assert.equal(storedAccounts(memory).length, 1);
@@ -209,11 +198,11 @@ test('R15: repeating the same request with the same key has no second effect', a
 });
 
 test('R16: the same key with a different request is a conflict', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute({ ...accountInput(), idempotencyKey: 'key-1' });
+  const { memory, app } = harness();
+  await app.registerAccount({ ...accountInput(), idempotencyKey: 'key-1' });
 
   await assert.rejects(
-    registerAccount.execute({ ...accountInput({ accountId: 'acc-2' }), idempotencyKey: 'key-1' }),
+    app.registerAccount({ ...accountInput({ accountId: 'acc-2' }), idempotencyKey: 'key-1' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 
@@ -221,21 +210,21 @@ test('R16: the same key with a different request is a conflict', async () => {
 });
 
 test('idempotency is optional: a request without a key writes once', async () => {
-  const { memory, registerAccount } = harness();
+  const { memory, app } = harness();
 
-  await registerAccount.execute(accountInput());
-  await assert.rejects(registerAccount.execute(accountInput()), assertCode('ACCOUNT_ALREADY_EXISTS'));
+  await app.registerAccount(accountInput());
+  await assert.rejects(app.registerAccount(accountInput()), assertCode('ACCOUNT_ALREADY_EXISTS'));
 
   assert.equal(storedAccounts(memory).length, 1);
   assert.equal(memory.snapshot().idempotency.length, 0);
 });
 
 test('R10: a used account is deactivated, never deleted', async () => {
-  const { memory, registerAccount, setAccountStatus } = harness();
-  await registerAccount.execute(accountInput());
-  await registerAccount.execute(accountInput({ accountId: 'acc-2', code: '1.1.02', name: 'Banco' }));
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
+  await app.registerAccount(accountInput({ accountId: 'acc-2', code: '1.1.02', name: 'Banco' }));
 
-  const result = await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
+  const result = await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
 
   assert.deepEqual(result, { ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
   const stored = storedAccounts(memory);
@@ -248,11 +237,11 @@ test('R10: a used account is deactivated, never deleted', async () => {
 });
 
 test('R11: reactivating an inactive account returns it to ACTIVE keeping identity', async () => {
-  const { memory, registerAccount, setAccountStatus } = harness();
-  await registerAccount.execute(accountInput());
-  await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
+  await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
 
-  const result = await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'ACTIVE' });
+  const result = await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'ACTIVE' });
 
   assert.equal(result.status, 'ACTIVE');
   const [account] = storedAccounts(memory);
@@ -262,11 +251,11 @@ test('R11: reactivating an inactive account returns it to ACTIVE keeping identit
 });
 
 test('an account resolved through another ledger is not reachable', async () => {
-  const { memory, registerAccount, setAccountStatus } = harness();
-  await registerAccount.execute(accountInput());
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
 
   await assert.rejects(
-    setAccountStatus.execute({ ledgerId: 'ledger-2', accountId: 'acc-1', status: 'INACTIVE' }),
+    app.setAccountStatus({ ledgerId: 'ledger-2', accountId: 'acc-1', status: 'INACTIVE' }),
     assertCode('ACCOUNT_NOT_FOUND'),
   );
 
@@ -274,23 +263,23 @@ test('an account resolved through another ledger is not reachable', async () => 
 });
 
 test('setting the same status twice is not an error', async () => {
-  const { memory, registerAccount, setAccountStatus } = harness();
-  await registerAccount.execute(accountInput());
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
 
-  await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
-  const again = await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
+  await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
+  const again = await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
 
   assert.equal(again.status, 'INACTIVE');
   assert.equal(storedAccounts(memory).length, 1);
 });
 
 test('an unknown status value is rejected instead of silently activating', async () => {
-  const { memory, registerAccount, setAccountStatus } = harness();
-  await registerAccount.execute(accountInput());
-  await setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
+  await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' });
 
   await assert.rejects(
-    setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'ACTIVO' }),
+    app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'ACTIVO' }),
     assertCode('INVALID_APPLICATION_INPUT'),
   );
 
@@ -312,12 +301,11 @@ test('a failure while saving the new status leaves the previous state', async ()
       },
     }),
   });
-  const registerAccount = new RegisterAccount({ unitOfWork: memory.unitOfWork });
-  const setAccountStatus = new SetAccountStatus({ unitOfWork: memory.unitOfWork });
-  await registerAccount.execute(accountInput());
+  const app = new Accounting({ unitOfWork: memory.unitOfWork });
+  await app.registerAccount(accountInput());
 
   await assert.rejects(
-    setAccountStatus.execute({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' }),
+    app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-1', status: 'INACTIVE' }),
     /storage unavailable/,
   );
 
@@ -339,9 +327,9 @@ function storedJournals(memory) {
 }
 
 test('R12: a valid journal is registered active inside its ledger', async () => {
-  const { memory, registerJournal } = harness();
+  const { memory, app } = harness();
 
-  const result = await registerJournal.execute(journalInput());
+  const result = await app.registerJournal(journalInput());
 
   assert.deepEqual(result, { ledgerId: 'ledger-1', journalId: 'jrn-1', code: 'VENTAS', status: 'ACTIVE' });
   const [stored] = storedJournals(memory);
@@ -351,11 +339,11 @@ test('R12: a valid journal is registered active inside its ledger', async () => 
 });
 
 test('R12: a repeated code inside the ledger is rejected and nothing is stored', async () => {
-  const { memory, registerJournal } = harness();
-  await registerJournal.execute(journalInput());
+  const { memory, app } = harness();
+  await app.registerJournal(journalInput());
 
   await assert.rejects(
-    registerJournal.execute(journalInput({ journalId: 'jrn-2', name: 'Ventas 2' })),
+    app.registerJournal(journalInput({ journalId: 'jrn-2', name: 'Ventas 2' })),
     assertCode('JOURNAL_CODE_DUPLICATE'),
   );
 
@@ -363,20 +351,20 @@ test('R12: a repeated code inside the ledger is rejected and nothing is stored',
 });
 
 test('the same journal code is allowed in another ledger', async () => {
-  const { memory, registerJournal } = harness();
+  const { memory, app } = harness();
 
-  await registerJournal.execute(journalInput());
-  await registerJournal.execute(journalInput({ ledgerId: 'ledger-2' }));
+  await app.registerJournal(journalInput());
+  await app.registerJournal(journalInput({ ledgerId: 'ledger-2' }));
 
   assert.equal(storedJournals(memory).length, 2);
 });
 
 test('a repeated journal id is rejected without overwriting', async () => {
-  const { memory, registerJournal } = harness();
-  await registerJournal.execute(journalInput());
+  const { memory, app } = harness();
+  await app.registerJournal(journalInput());
 
   await assert.rejects(
-    registerJournal.execute(journalInput({ code: 'COMPRAS', name: 'Compras' })),
+    app.registerJournal(journalInput({ code: 'COMPRAS', name: 'Compras' })),
     assertCode('JOURNAL_ALREADY_EXISTS'),
   );
 
@@ -384,18 +372,18 @@ test('a repeated journal id is rejected without overwriting', async () => {
 });
 
 test('a journal of an unknown ledger is rejected', async () => {
-  const { memory, registerJournal } = harness();
+  const { memory, app } = harness();
 
-  await assert.rejects(registerJournal.execute(journalInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
+  await assert.rejects(app.registerJournal(journalInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
 
   assert.equal(storedJournals(memory).length, 0);
 });
 
 test('J04: deactivating a journal keeps it and its data', async () => {
-  const { memory, registerJournal, setJournalStatus } = harness();
-  await registerJournal.execute(journalInput());
+  const { memory, app } = harness();
+  await app.registerJournal(journalInput());
 
-  const result = await setJournalStatus.execute({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
+  const result = await app.setJournalStatus({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
 
   assert.equal(result.status, 'INACTIVE');
   const [stored] = storedJournals(memory);
@@ -405,22 +393,22 @@ test('J04: deactivating a journal keeps it and its data', async () => {
 });
 
 test('J06: reactivating a journal returns it to ACTIVE keeping identity', async () => {
-  const { memory, registerJournal, setJournalStatus } = harness();
-  await registerJournal.execute(journalInput());
-  await setJournalStatus.execute({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
+  const { memory, app } = harness();
+  await app.registerJournal(journalInput());
+  await app.setJournalStatus({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
 
-  const result = await setJournalStatus.execute({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'ACTIVE' });
+  const result = await app.setJournalStatus({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'ACTIVE' });
 
   assert.equal(result.status, 'ACTIVE');
   assert.equal(storedJournals(memory)[0].id, 'jrn-1');
 });
 
 test('a journal resolved through another ledger is not reachable', async () => {
-  const { memory, registerJournal, setJournalStatus } = harness();
-  await registerJournal.execute(journalInput());
+  const { memory, app } = harness();
+  await app.registerJournal(journalInput());
 
   await assert.rejects(
-    setJournalStatus.execute({ ledgerId: 'ledger-2', journalId: 'jrn-1', status: 'INACTIVE' }),
+    app.setJournalStatus({ ledgerId: 'ledger-2', journalId: 'jrn-1', status: 'INACTIVE' }),
     assertCode('JOURNAL_NOT_FOUND'),
   );
 
@@ -428,15 +416,15 @@ test('a journal resolved through another ledger is not reachable', async () => {
 });
 
 test('journal idempotency replays and conflicts like the account one', async () => {
-  const { memory, registerJournal } = harness();
+  const { memory, app } = harness();
 
-  const first = await registerJournal.execute({ ...journalInput(), idempotencyKey: 'key-j1' });
-  const second = await registerJournal.execute({ ...journalInput(), idempotencyKey: 'key-j1' });
+  const first = await app.registerJournal({ ...journalInput(), idempotencyKey: 'key-j1' });
+  const second = await app.registerJournal({ ...journalInput(), idempotencyKey: 'key-j1' });
   assert.deepEqual(second, first);
   assert.equal(storedJournals(memory).length, 1);
 
   await assert.rejects(
-    registerJournal.execute({ ...journalInput({ journalId: 'jrn-2' }), idempotencyKey: 'key-j1' }),
+    app.registerJournal({ ...journalInput({ journalId: 'jrn-2' }), idempotencyKey: 'key-j1' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 });
@@ -457,9 +445,9 @@ function storedPeriods(memory) {
 }
 
 test('R13: a valid period is registered open inside its ledger', async () => {
-  const { memory, registerPeriod } = harness();
+  const { memory, app } = harness();
 
-  const result = await registerPeriod.execute(periodInput());
+  const result = await app.registerPeriod(periodInput());
 
   assert.deepEqual(result, {
     ledgerId: 'ledger-1',
@@ -474,11 +462,11 @@ test('R13: a valid period is registered open inside its ledger', async () => {
 });
 
 test('P07: an overlapping period in the same ledger is rejected and nothing is stored', async () => {
-  const { memory, registerPeriod } = harness();
-  await registerPeriod.execute(periodInput());
+  const { memory, app } = harness();
+  await app.registerPeriod(periodInput());
 
   await assert.rejects(
-    registerPeriod.execute(periodInput({ periodId: 'per-h1', name: 'Primer semestre', startDate: '2026-06-01', endDate: '2026-06-30' })),
+    app.registerPeriod(periodInput({ periodId: 'per-h1', name: 'Primer semestre', startDate: '2026-06-01', endDate: '2026-06-30' })),
     assertCode('PERIOD_OVERLAP'),
   );
 
@@ -486,42 +474,42 @@ test('P07: an overlapping period in the same ledger is rejected and nothing is s
 });
 
 test('P07: touching the boundary with one day counts as an overlap', async () => {
-  const { registerPeriod } = harness();
-  await registerPeriod.execute(periodInput({ periodId: 'per-a', startDate: '2026-01-01', endDate: '2026-06-30' }));
+  const { app } = harness();
+  await app.registerPeriod(periodInput({ periodId: 'per-a', startDate: '2026-01-01', endDate: '2026-06-30' }));
 
   await assert.rejects(
-    registerPeriod.execute(periodInput({ periodId: 'per-b', startDate: '2026-06-30', endDate: '2026-12-31' })),
+    app.registerPeriod(periodInput({ periodId: 'per-b', startDate: '2026-06-30', endDate: '2026-12-31' })),
     assertCode('PERIOD_OVERLAP'),
   );
 });
 
 test('P07: adjacent periods that do not share a day are accepted', async () => {
-  const { memory, registerPeriod } = harness();
-  await registerPeriod.execute(periodInput({ periodId: 'per-a', startDate: '2026-01-01', endDate: '2026-06-30' }));
+  const { memory, app } = harness();
+  await app.registerPeriod(periodInput({ periodId: 'per-a', startDate: '2026-01-01', endDate: '2026-06-30' }));
 
-  await registerPeriod.execute(periodInput({ periodId: 'per-b', startDate: '2026-07-01', endDate: '2026-12-31' }));
+  await app.registerPeriod(periodInput({ periodId: 'per-b', startDate: '2026-07-01', endDate: '2026-12-31' }));
 
   assert.equal(storedPeriods(memory).length, 2);
 });
 
 test('P07: the same range in another ledger is not an overlap', async () => {
-  const { memory, registerPeriod } = harness();
+  const { memory, app } = harness();
 
-  await registerPeriod.execute(periodInput());
-  await registerPeriod.execute(periodInput({ ledgerId: 'ledger-2' }));
+  await app.registerPeriod(periodInput());
+  await app.registerPeriod(periodInput({ ledgerId: 'ledger-2' }));
 
   assert.equal(storedPeriods(memory).length, 2);
 });
 
 test('P04: impossible dates are rejected by the domain and nothing is stored', async () => {
-  const { memory, registerPeriod } = harness();
+  const { memory, app } = harness();
 
   await assert.rejects(
-    registerPeriod.execute(periodInput({ startDate: '2026-02-29', endDate: '2026-12-31' })),
+    app.registerPeriod(periodInput({ startDate: '2026-02-29', endDate: '2026-12-31' })),
     (error) => error.code === 'INVALID_DATE',
   );
   await assert.rejects(
-    registerPeriod.execute(periodInput({ startDate: '2026-12-31', endDate: '2026-01-01' })),
+    app.registerPeriod(periodInput({ startDate: '2026-12-31', endDate: '2026-01-01' })),
     (error) => error.code === 'INVALID_PERIOD',
   );
 
@@ -529,20 +517,20 @@ test('P04: impossible dates are rejected by the domain and nothing is stored', a
 });
 
 test('a single-day period is valid', async () => {
-  const { memory, registerPeriod } = harness();
+  const { memory, app } = harness();
 
-  const result = await registerPeriod.execute(periodInput({ startDate: '2026-05-05', endDate: '2026-05-05' }));
+  const result = await app.registerPeriod(periodInput({ startDate: '2026-05-05', endDate: '2026-05-05' }));
 
   assert.equal(result.startDate, '2026-05-05');
   assert.equal(storedPeriods(memory).length, 1);
 });
 
 test('a repeated period id is rejected without overwriting', async () => {
-  const { memory, registerPeriod } = harness();
-  await registerPeriod.execute(periodInput({ startDate: '2026-01-01', endDate: '2026-06-30' }));
+  const { memory, app } = harness();
+  await app.registerPeriod(periodInput({ startDate: '2026-01-01', endDate: '2026-06-30' }));
 
   await assert.rejects(
-    registerPeriod.execute(periodInput({ startDate: '2026-07-01', endDate: '2026-12-31' })),
+    app.registerPeriod(periodInput({ startDate: '2026-07-01', endDate: '2026-12-31' })),
     assertCode('PERIOD_ALREADY_EXISTS'),
   );
 
@@ -550,38 +538,38 @@ test('a repeated period id is rejected without overwriting', async () => {
 });
 
 test('a period of an unknown ledger is rejected', async () => {
-  const { memory, registerPeriod } = harness();
+  const { memory, app } = harness();
 
-  await assert.rejects(registerPeriod.execute(periodInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
+  await assert.rejects(app.registerPeriod(periodInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
 
   assert.equal(storedPeriods(memory).length, 0);
 });
 
 test('period idempotency replays and conflicts like the others', async () => {
-  const { memory, registerPeriod } = harness();
+  const { memory, app } = harness();
 
-  const first = await registerPeriod.execute({ ...periodInput(), idempotencyKey: 'key-p1' });
-  const second = await registerPeriod.execute({ ...periodInput(), idempotencyKey: 'key-p1' });
+  const first = await app.registerPeriod({ ...periodInput(), idempotencyKey: 'key-p1' });
+  const second = await app.registerPeriod({ ...periodInput(), idempotencyKey: 'key-p1' });
   assert.deepEqual(second, first);
   assert.equal(storedPeriods(memory).length, 1);
 
   await assert.rejects(
-    registerPeriod.execute({ ...periodInput({ periodId: 'per-other' }), idempotencyKey: 'key-p1' }),
+    app.registerPeriod({ ...periodInput({ periodId: 'per-other' }), idempotencyKey: 'key-p1' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 });
 
 test('both status use cases reject a ledger the directory does not know', async () => {
-  const { memory, registerAccount, registerJournal, setAccountStatus, setJournalStatus } = harness();
-  await registerAccount.execute(accountInput());
-  await registerJournal.execute(journalInput());
+  const { memory, app } = harness();
+  await app.registerAccount(accountInput());
+  await app.registerJournal(journalInput());
 
   await assert.rejects(
-    setAccountStatus.execute({ ledgerId: 'ledger-x', accountId: 'acc-1', status: 'INACTIVE' }),
+    app.setAccountStatus({ ledgerId: 'ledger-x', accountId: 'acc-1', status: 'INACTIVE' }),
     assertCode('LEDGER_NOT_FOUND'),
   );
   await assert.rejects(
-    setJournalStatus.execute({ ledgerId: 'ledger-x', journalId: 'jrn-1', status: 'INACTIVE' }),
+    app.setJournalStatus({ ledgerId: 'ledger-x', journalId: 'jrn-1', status: 'INACTIVE' }),
     assertCode('LEDGER_NOT_FOUND'),
   );
 
@@ -593,8 +581,8 @@ test('both status use cases reject a ledger the directory does not know', async 
 // a fingerprint over the entity identity alone turns a changed payload into a silent replay.
 
 test('the same key with the same id and a changed account payload is a conflict', async () => {
-  const { memory, registerAccount } = harness();
-  await registerAccount.execute({ ...accountInput(), idempotencyKey: 'key-a1' });
+  const { memory, app } = harness();
+  await app.registerAccount({ ...accountInput(), idempotencyKey: 'key-a1' });
 
   for (const changed of [
     { code: '1.1.02' },
@@ -603,7 +591,7 @@ test('the same key with the same id and a changed account payload is a conflict'
     { postingAllowed: false },
   ]) {
     await assert.rejects(
-      registerAccount.execute({ ...accountInput(changed), idempotencyKey: 'key-a1' }),
+      app.registerAccount({ ...accountInput(changed), idempotencyKey: 'key-a1' }),
       assertCode('IDEMPOTENCY_CONFLICT'),
       JSON.stringify(changed),
     );
@@ -617,15 +605,15 @@ test('the same key with the same id and a changed account payload is a conflict'
 });
 
 test('the same key with the same id and a changed journal payload is a conflict', async () => {
-  const { memory, registerJournal } = harness();
-  await registerJournal.execute({ ...journalInput(), idempotencyKey: 'key-j9' });
+  const { memory, app } = harness();
+  await app.registerJournal({ ...journalInput(), idempotencyKey: 'key-j9' });
 
   await assert.rejects(
-    registerJournal.execute({ ...journalInput({ code: 'COMPRAS' }), idempotencyKey: 'key-j9' }),
+    app.registerJournal({ ...journalInput({ code: 'COMPRAS' }), idempotencyKey: 'key-j9' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
   await assert.rejects(
-    registerJournal.execute({ ...journalInput({ name: 'Otro nombre' }), idempotencyKey: 'key-j9' }),
+    app.registerJournal({ ...journalInput({ name: 'Otro nombre' }), idempotencyKey: 'key-j9' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 
@@ -633,15 +621,15 @@ test('the same key with the same id and a changed journal payload is a conflict'
 });
 
 test('the same key with the same id and changed period dates is a conflict', async () => {
-  const { memory, registerPeriod } = harness();
-  await registerPeriod.execute({ ...periodInput(), idempotencyKey: 'key-p9' });
+  const { memory, app } = harness();
+  await app.registerPeriod({ ...periodInput(), idempotencyKey: 'key-p9' });
 
   await assert.rejects(
-    registerPeriod.execute({ ...periodInput({ startDate: '2026-02-01' }), idempotencyKey: 'key-p9' }),
+    app.registerPeriod({ ...periodInput({ startDate: '2026-02-01' }), idempotencyKey: 'key-p9' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
   await assert.rejects(
-    registerPeriod.execute({ ...periodInput({ endDate: '2026-11-30' }), idempotencyKey: 'key-p9' }),
+    app.registerPeriod({ ...periodInput({ endDate: '2026-11-30' }), idempotencyKey: 'key-p9' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 
@@ -649,12 +637,12 @@ test('the same key with the same id and changed period dates is a conflict', asy
 });
 
 test('a parent added to a replayed account request is a conflict, not an ignored field', async () => {
-  const { registerAccount } = harness();
-  await registerAccount.execute(accountInput({ accountId: 'acc-root', code: '1', postingAllowed: false }));
-  await registerAccount.execute({ ...accountInput({ accountId: 'acc-x', code: '1.5' }), idempotencyKey: 'key-a2' });
+  const { app } = harness();
+  await app.registerAccount(accountInput({ accountId: 'acc-root', code: '1', postingAllowed: false }));
+  await app.registerAccount({ ...accountInput({ accountId: 'acc-x', code: '1.5' }), idempotencyKey: 'key-a2' });
 
   await assert.rejects(
-    registerAccount.execute({ ...accountInput({ accountId: 'acc-x', code: '1.5', parentId: 'acc-root' }), idempotencyKey: 'key-a2' }),
+    app.registerAccount({ ...accountInput({ accountId: 'acc-x', code: '1.5', parentId: 'acc-root' }), idempotencyKey: 'key-a2' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 });
@@ -666,12 +654,12 @@ test('entries of two ledgers whose names straddle the separator do not collide',
   // key = first + separator + second, so ("a", "b\0c") and ("a\0b", "c") must not share a key.
   const ledgerA = 'a';
   const ledgerB = 'a\u0000b';
-  const { memory, registerJournal } = harness({
+  const { memory, app } = harness({
     chartOfAccountsByLedger: { [ledgerA]: 'chart-1', [ledgerB]: 'chart-2' },
   });
 
-  await registerJournal.execute({ ledgerId: ledgerA, journalId: 'b\u0000c', code: 'PRIMERO', name: 'Primero' });
-  await registerJournal.execute({ ledgerId: ledgerB, journalId: 'c', code: 'SEGUNDO', name: 'Segundo' });
+  await app.registerJournal({ ledgerId: ledgerA, journalId: 'b\u0000c', code: 'PRIMERO', name: 'Primero' });
+  await app.registerJournal({ ledgerId: ledgerB, journalId: 'c', code: 'SEGUNDO', name: 'Segundo' });
 
   const journals = storedJournals(memory);
   assert.equal(journals.length, 2);
@@ -680,11 +668,11 @@ test('entries of two ledgers whose names straddle the separator do not collide',
 });
 
 test('an inherited property name is not a known ledger', async () => {
-  const { memory, registerJournal } = harness({ chartOfAccountsByLedger: {} });
+  const { memory, app } = harness({ chartOfAccountsByLedger: {} });
 
   for (const ledgerId of ['constructor', 'toString', '__proto__']) {
     await assert.rejects(
-      registerJournal.execute({ ledgerId, journalId: `jrn-${ledgerId}`, code: 'X', name: 'X' }),
+      app.registerJournal({ ledgerId, journalId: `jrn-${ledgerId}`, code: 'X', name: 'X' }),
       assertCode('LEDGER_NOT_FOUND'),
       ledgerId,
     );

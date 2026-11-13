@@ -18,11 +18,12 @@ plano: un caso de uso nuevo entra en el grupo que le corresponde.
 
 Cada carpeta expone su superficie en su `index.ts`; `../../index.ts` solo agrega esos barrels.
 
-Cada caso de uso es una clase con un único método asíncrono: `new PostEntry(deps).execute(input)`. Toda
-la ejecución —lecturas incluidas— ocurre dentro de una sola llamada a `unitOfWork.run`.
+Cada caso de uso es una clase con un único método asíncrono: `execute(input)`. Toda la ejecución
+—lecturas incluidas— ocurre dentro de una sola llamada a `unitOfWork.run`.
 
-La fachada `Accounting` vive una carpeta arriba (`src/core/application/accounting.ts`), no acá: compone las
-once clases y expone un método por caso de uso, para el anfitrión que los usa a todos.
+Estas clases son **internas**: no se exportan del paquete. La superficie pública es la fachada `Accounting`
+(`src/core/application/accounting.ts`, una carpeta arriba), que las compone y expone un método por caso de
+uso. Los barrels de cada área existen para cablear la fachada, no como API.
 
 Especificaciones: `docs/specs/registration.md`, `docs/specs/post-entry.md`,
 `docs/specs/close-period.md` y `docs/specs/reverse-entry.md`.

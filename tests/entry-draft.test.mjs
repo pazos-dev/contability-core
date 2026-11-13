@@ -2,20 +2,13 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  Accounting,
   AccountingDate,
   ApplicationError,
-  ClosePeriod,
-  CreateEntryDraft,
   EntryError,
   JournalEntry,
   JournalEntryLine,
   Money,
-  PostEntry,
-  RegisterAccount,
-  RegisterJournal,
-  RegisterPeriod,
-  SetAccountStatus,
-  SetJournalStatus,
   createInMemoryAccounting,
 } from '../dist/index.js';
 
@@ -44,26 +37,14 @@ function amount(minorUnits, code = 'UYU', scale = 2) {
 async function harness() {
   const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS });
   const deps = { unitOfWork: memory.unitOfWork };
-  const registerAccount = new RegisterAccount(deps);
-  const registerJournal = new RegisterJournal(deps);
-  const registerPeriod = new RegisterPeriod(deps);
+  const app = new Accounting(deps);
 
-  await registerAccount.execute({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
-  await registerAccount.execute({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
-  await registerJournal.execute({ ledgerId: 'ledger-1', journalId: 'jrn-1', code: 'VENTAS', name: 'Ventas' });
-  await registerPeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2026', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
+  await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
+  await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
+  await app.registerJournal({ ledgerId: 'ledger-1', journalId: 'jrn-1', code: 'VENTAS', name: 'Ventas' });
+  await app.registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-2026', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
 
-  return {
-    memory,
-    deps,
-    registerJournal,
-    registerPeriod,
-    createEntryDraft: new CreateEntryDraft(deps),
-    postEntry: new PostEntry(deps),
-    closePeriod: new ClosePeriod(deps),
-    setAccountStatus: new SetAccountStatus(deps),
-    setJournalStatus: new SetJournalStatus(deps),
-  };
+  return { memory, deps, app };
 }
 
 function draftInput(overrides = {}) {
@@ -87,9 +68,9 @@ function stored(memory) {
 }
 
 test('D01: a valid draft is stored as DRAFT with its identity and lines', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
-  const result = await createEntryDraft.execute(draftInput());
+  const result = await app.createEntryDraft(draftInput());
 
   assert.equal(result.status, 'DRAFT');
   assert.equal(result.entryId, 'entry-1');
@@ -109,20 +90,20 @@ test('D01: a valid draft is stored as DRAFT with its identity and lines', async 
 });
 
 test('D02: an unknown ledger is rejected and nothing is stored', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
-  await assert.rejects(createEntryDraft.execute(draftInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
+  await assert.rejects(app.createEntryDraft(draftInput({ ledgerId: 'ledger-x' })), assertCode('LEDGER_NOT_FOUND'));
 
   assert.equal(stored(memory).length, 0);
 });
 
 test('D03: a used entry id is rejected instead of overwriting the stored entry', async () => {
-  const { memory, createEntryDraft, postEntry } = await harness();
-  await createEntryDraft.execute(draftInput());
-  await postEntry.execute({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
+  const { memory, app } = await harness();
+  await app.createEntryDraft(draftInput());
+  await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
 
   await assert.rejects(
-    createEntryDraft.execute(draftInput({ description: 'Otro' })),
+    app.createEntryDraft(draftInput({ description: 'Otro' })),
     assertCode('ENTRY_ALREADY_EXISTS'),
   );
 
@@ -132,27 +113,27 @@ test('D03: a used entry id is rejected instead of overwriting the stored entry',
 });
 
 test('D04: a journal of another ledger or an unknown one is rejected', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
-  await assert.rejects(createEntryDraft.execute(draftInput({ journalId: 'jrn-nowhere' })), assertCode('JOURNAL_NOT_FOUND'));
-  await assert.rejects(createEntryDraft.execute(draftInput({ journalId: 'jrn-2' })), assertCode('JOURNAL_NOT_FOUND'));
+  await assert.rejects(app.createEntryDraft(draftInput({ journalId: 'jrn-nowhere' })), assertCode('JOURNAL_NOT_FOUND'));
+  await assert.rejects(app.createEntryDraft(draftInput({ journalId: 'jrn-2' })), assertCode('JOURNAL_NOT_FOUND'));
 
   assert.equal(stored(memory).length, 0);
 });
 
 test('D05: a period of another ledger or an unknown one is rejected', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
-  await assert.rejects(createEntryDraft.execute(draftInput({ periodId: 'per-nowhere' })), assertCode('PERIOD_NOT_FOUND'));
+  await assert.rejects(app.createEntryDraft(draftInput({ periodId: 'per-nowhere' })), assertCode('PERIOD_NOT_FOUND'));
 
   assert.equal(stored(memory).length, 0);
 });
 
 test('D06: an unknown account or one of another plan is rejected', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
   await assert.rejects(
-    createEntryDraft.execute(
+    app.createEntryDraft(
       draftInput({
         lines: [
           { lineId: 'line-1', accountId: 'acc-nowhere', side: 'DEBIT', amount: amount('100000') },
@@ -167,11 +148,11 @@ test('D06: an unknown account or one of another plan is rejected', async () => {
 });
 
 test('D07: a zero or negative line amount is rejected by the domain', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
   for (const minorUnits of ['0', '-100000']) {
     await assert.rejects(
-      createEntryDraft.execute(
+      app.createEntryDraft(
         draftInput({
           lines: [
             { lineId: 'line-1', accountId: 'acc-cash', side: 'DEBIT', amount: amount(minorUnits) },
@@ -188,10 +169,10 @@ test('D07: a zero or negative line amount is rejected by the domain', async () =
 });
 
 test('D08: two lines with the same id are rejected by the domain', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
   await assert.rejects(
-    createEntryDraft.execute(
+    app.createEntryDraft(
       draftInput({
         lines: [
           { lineId: 'line-1', accountId: 'acc-cash', side: 'DEBIT', amount: amount('100000') },
@@ -206,9 +187,9 @@ test('D08: two lines with the same id are rejected by the domain', async () => {
 });
 
 test('D09: an unbalanced draft is accepted and stays a draft', async () => {
-  const { memory, createEntryDraft, postEntry } = await harness();
+  const { memory, app } = await harness();
 
-  const result = await createEntryDraft.execute(
+  const result = await app.createEntryDraft(
     draftInput({
       lines: [
         { lineId: 'line-1', accountId: 'acc-cash', side: 'DEBIT', amount: amount('100000') },
@@ -220,35 +201,35 @@ test('D09: an unbalanced draft is accepted and stays a draft', async () => {
   assert.equal(result.status, 'DRAFT');
   assert.equal(stored(memory)[0].status, 'DRAFT');
   await assert.rejects(
-    postEntry.execute({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' }),
+    app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' }),
     assertEntryCode('ENTRY_UNBALANCED'),
   );
 });
 
 test('D10: an inactive journal and a closed period still accept a draft; postEntry rejects it later', async () => {
-  const { createEntryDraft, postEntry, closePeriod, setJournalStatus } = await harness();
-  await closePeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2026', idempotencyKey: 'close-1' });
-  await setJournalStatus.execute({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
+  const { app } = await harness();
+  await app.closePeriod({ ledgerId: 'ledger-1', periodId: 'per-2026', idempotencyKey: 'close-1' });
+  await app.setJournalStatus({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
 
-  const result = await createEntryDraft.execute(draftInput());
+  const result = await app.createEntryDraft(draftInput());
 
   assert.equal(result.status, 'DRAFT');
   await assert.rejects(
-    postEntry.execute({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' }),
+    app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' }),
     assertCode('JOURNAL_INACTIVE'),
   );
 });
 
 test('D11/D12: idempotency replays the same request and conflicts with another', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
-  const first = await createEntryDraft.execute({ ...draftInput(), idempotencyKey: 'key-1' });
-  const second = await createEntryDraft.execute({ ...draftInput(), idempotencyKey: 'key-1' });
+  const first = await app.createEntryDraft({ ...draftInput(), idempotencyKey: 'key-1' });
+  const second = await app.createEntryDraft({ ...draftInput(), idempotencyKey: 'key-1' });
   assert.deepEqual(second, first);
   assert.equal(stored(memory).length, 1);
 
   await assert.rejects(
-    createEntryDraft.execute({
+    app.createEntryDraft({
       ...draftInput(),
       description: 'Otro',
       idempotencyKey: 'key-1',
@@ -258,11 +239,11 @@ test('D11/D12: idempotency replays the same request and conflicts with another',
 });
 
 test('D12: a changed line under the same key is a conflict, not an ignored field', async () => {
-  const { memory, createEntryDraft } = await harness();
-  await createEntryDraft.execute({ ...draftInput(), idempotencyKey: 'key-1' });
+  const { memory, app } = await harness();
+  await app.createEntryDraft({ ...draftInput(), idempotencyKey: 'key-1' });
 
   await assert.rejects(
-    createEntryDraft.execute({
+    app.createEntryDraft({
       ...draftInput(),
       lines: [
         { lineId: 'line-1', accountId: 'acc-cash', side: 'DEBIT', amount: amount('200000') },
@@ -289,26 +270,23 @@ test('D13: a failing save leaves no draft and no idempotency record', async () =
     }),
   });
   const deps = { unitOfWork: memory.unitOfWork };
-  const registerAccount = new RegisterAccount(deps);
-  const registerJournal = new RegisterJournal(deps);
-  const registerPeriod = new RegisterPeriod(deps);
-  const createEntryDraft = new CreateEntryDraft(deps);
+  const app = new Accounting(deps);
 
-  await registerAccount.execute({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
-  await registerAccount.execute({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
-  await registerJournal.execute({ ledgerId: 'ledger-1', journalId: 'jrn-1', code: 'VENTAS', name: 'Ventas' });
-  await registerPeriod.execute({ ledgerId: 'ledger-1', periodId: 'per-2026', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
+  await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
+  await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
+  await app.registerJournal({ ledgerId: 'ledger-1', journalId: 'jrn-1', code: 'VENTAS', name: 'Ventas' });
+  await app.registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-2026', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
 
-  await assert.rejects(createEntryDraft.execute({ ...draftInput(), idempotencyKey: 'key-1' }), /storage unavailable/);
+  await assert.rejects(app.createEntryDraft({ ...draftInput(), idempotencyKey: 'key-1' }), /storage unavailable/);
 
   assert.equal(memory.snapshot().entries.length, 0);
   assert.equal(memory.snapshot().idempotency.length, 0);
 });
 
 test('D01: an empty draft is a valid draft', async () => {
-  const { memory, createEntryDraft } = await harness();
+  const { memory, app } = await harness();
 
-  const result = await createEntryDraft.execute(draftInput({ lines: [] }));
+  const result = await app.createEntryDraft(draftInput({ lines: [] }));
 
   assert.equal(result.status, 'DRAFT');
   assert.deepEqual(result.lines, []);
@@ -316,10 +294,10 @@ test('D01: an empty draft is a valid draft', async () => {
 });
 
 test('the draft is postable afterwards, closing the circuit', async () => {
-  const { memory, createEntryDraft, postEntry } = await harness();
-  await createEntryDraft.execute(draftInput());
+  const { memory, app } = await harness();
+  await app.createEntryDraft(draftInput());
 
-  const posted = await postEntry.execute({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
+  const posted = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
 
   assert.equal(posted.status, 'POSTED');
   assert.equal(stored(memory)[0].status, 'POSTED');
