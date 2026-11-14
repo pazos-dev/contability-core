@@ -328,15 +328,21 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 
 ## Pendiente de implementar
 
-Consultas e informes (008) y extensiones (009), más el contrato escrito del adaptador del anfitrión (007).
-Sin ORM, HTTP ni interfaz visual en este repositorio.
+**006e: libro contable como agregado** — especificado en `docs/specs/ledger.md`, **sin código**: hoy el libro
+es configuración del adaptador (`chartOfAccountsByLedger`) y el core no tiene `Ledger`, `LedgerRepository`,
+`registerLedger` ni `setLedgerStatus`. Después, consultas e informes (008) y extensiones (009), más el
+contrato escrito del adaptador del anfitrión (007). Sin ORM, HTTP ni interfaz visual en este repositorio.
 
 ## Siguiente tarea
 
 El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir) y
-consulta de referencias. Lo que falta para que un sistema anfitrión pueda mostrar algo es **008: consultas e
-informes** — saldos por cuenta, mayor y balance de comprobación como cálculo del core, con sus puertos de
-consulta. Alternativa inmediata: escribir el **contrato del adaptador del anfitrión** (007).
+consulta de referencias, pero **no puede dar de alta un libro**: su único ámbito de aislamiento llega por
+configuración del adaptador, así que un anfitrión que cree libros en runtime no puede usarlo sin un atajo.
+El siguiente incremento es **006e**, ya especificado en `docs/specs/ledger.md`: implementar `Ledger`,
+`LedgerRepository`, `registerLedger`, `setLedgerStatus` y `LEDGER_INACTIVE` en los once casos de uso.
+Con eso el motor queda autocontenido y recién ahí tiene sentido **008: consultas e informes** — saldos por
+cuenta, mayor y balance de comprobación, donde el libro es el sujeto natural. Alternativa posterior: el
+contrato escrito del adaptador del anfitrión (007).
 
 ## Relevo de sesión
 

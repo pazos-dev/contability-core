@@ -11,7 +11,7 @@
 | JournalEntry | Registro de un hecho económico mediante líneas. | Datos de un proveedor, productos o lógica de inventario. |
 | JournalEntryLine | Cuenta, lado DEBIT/CREDIT e importe positivo. | Escritura independiente que rompa el agregado. |
 | AccountingPeriod | Intervalo de fechas y estado OPEN/CLOSED. | Registros contables dentro de sí mismo. |
-| Libro | Ámbito de aislamiento contable propuesto para los casos de uso. | Identidad de usuario o autenticación. |
+| Ledger (libro) | Ámbito de aislamiento contable: identidad, nombre, un plan de cuentas y estado ACTIVE/INACTIVE. | Empresa, usuario, autorización, moneda funcional, cuentas ni saldos. |
 
 Las carpetas agrupan conceptos. `money/` no es una entidad: contiene Money y Currency.
 
@@ -36,6 +36,8 @@ adicional cuando se incorporen. La presentación del saldo depende del informe y
 - Asientos con al menos dos líneas positivas, Debe = Haber y una moneda por asiento en la primera versión.
 - Borradores editables. Asientos contabilizados inmutables; corrección mediante otro asiento de reversión.
 - Fechas de calendario y períodos OPEN/CLOSED. Un período cerrado rechaza nuevas contabilizaciones en sus fechas.
+- El libro da ámbito a todo lo demás: nace ACTIVE, no se borra, su plan de cuentas no cambia y un libro
+  inactivo rechaza escrituras. Especificado en `specs/ledger.md`; todavía sin implementar.
 
 Consultar las especificaciones para distinguir invariantes locales de validaciones que requieren repositorios.
 
