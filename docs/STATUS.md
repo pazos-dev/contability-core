@@ -229,6 +229,9 @@ espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contr
 
 ### Refactor de dominio — DTO y organización de pruebas
 
+- Cada dominio agrupa por naturaleza y deja en su raíz sólo el agregado: `value-objects/`, `dto/`,
+  `errors/` y `types/`. La frontera entre `types/` y `dto/` es de intención, no de forma: `types/` dice de
+  qué está hecho el modelo y no tiene campos; `dto/` son formas de datos que cruzan un límite.
 - Cada dominio tiene `dto/` con las formas de datos del dominio y una por archivo de objeto de valor: las
   entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`) y el estado ya validado
   que recibe el constructor privado (`*Fields`, `*Changes`). Ninguna tiene comportamiento, y los archivos de
@@ -240,7 +243,9 @@ espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contr
   `AccountStatus` y `JournalStatus` viven ahora en `account-status.ts` y `journal-status.ts`, como
   `period-status.ts` y `entry-status.ts`.
 - `currency-catalog.ts` queda fuera de la regla: lo genera `pnpm sync:iso4217` y conserva `IsoCurrencyEntry`
-  donde lo escribe el generador, porque editarlo a mano lo perdería en la próxima regeneración.
+  en la raíz de `money/`, porque editarlo a mano lo perdería en la próxima regeneración. `entry-text.ts`
+  queda en la raíz de `entries/` como el ayudante interno que es, y `describe-value.ts` se comparte desde
+  la raíz de `domain/`.
 - Las pruebas espejan `src/`: `tests/domain/<dominio>/`, `tests/application/` y `tests/public-api.test.mjs`.
   `scripts/run-tests.mjs` ya descubría `*.test.mjs` de forma recursiva, así que no cambió.
 - Sin cambio de comportamiento: 217 pruebas y `pnpm check` en verde, sin una expectativa editada. Las specs y

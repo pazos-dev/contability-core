@@ -8,13 +8,16 @@ Estado: reglas locales implementadas y probadas (J01-J02, desactivación y react
 Archivos:
 
 - `index.ts` — barrel público del dominio; el resto de archivos es interno.
-- `journal.ts` — `Journal` inmutable que identifica un diario dentro de su libro: `id`, `ledgerId`,
+- `journal.ts` — agregado `Journal` inmutable que identifica un diario dentro de su libro: `id`, `ledgerId`,
   `code`, `name` y estado `ACTIVE`/`INACTIVE`; `deactivate` y `activate` devuelven copias que conservan
   los datos.
-- `journal-errors.ts` — `JournalError` con código estable `INVALID_JOURNAL`.
-- `journal-status.ts` — conjunto cerrado `ACTIVE`, `INACTIVE`.
+- `types/journal-status.ts` — conjunto cerrado `ACTIVE`, `INACTIVE`.
+- `errors/journal-errors.ts` — `JournalError` con código estable `INVALID_JOURNAL`.
 - `dto/journal-dto.ts` — `JournalInput` (entrada de construcción) y `JournalFields` (estado validado que
   recibe el constructor privado). Datos sin comportamiento; `JournalFields` no sale por el barrel.
+
+El agregado queda en la raíz del dominio porque es su puerta de entrada; el resto se agrupa por naturaleza
+en `types/`, `errors/` y `dto/`. No hay `value-objects/`: el diario no tiene valores propios fuera del agregado.
 
 Identificadores, código y nombre se rechazan si vienen vacíos o con espacios exteriores; no se recortan.
 

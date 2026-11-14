@@ -1,8 +1,9 @@
 # DTO del dominio y organización de pruebas
 
 Separar en cada dominio las formas de datos (entradas de construcción, representaciones serializadas y la
-forma interna que consume el constructor privado) de los archivos de los objetos de valor, y reagrupar los
-archivos de prueba en espejo de `src/`. Rama `refactor/domain-dtos`; `main` queda en `e00a128` hasta el merge.
+forma interna que consume el constructor privado) de los archivos de los objetos de valor, agrupar por
+naturaleza `errors/`, `types/` y `value-objects/`, y reagrupar los archivos de prueba en espejo de `src/`.
+Rama `refactor/domain-dtos`; `main` queda en `e00a128` hasta el merge.
 
 ## Specs
 
@@ -36,6 +37,14 @@ archivos no toca la capa de aplicación ni los adaptadores.
 S8. Los archivos de prueba siguen consumiendo `dist/index.js`, la superficie pública del paquete: sólo cambia
 la profundidad relativa del import relativo.
 
+S9. Requerimiento posterior, textual: «los errors typos y value object tambien agrupalos por separado». Cada
+dominio agrupa `errors/`, `types/` y `value-objects/` con el mismo criterio que ya usaba `dto/`: una clase o
+una forma de datos por archivo, sin comportamiento mezclado.
+
+S10. El agregado de cada dominio queda en la raíz de su dominio, porque es su puerta de entrada. Quedan
+también en la raíz los ayudantes internos (`entry-text.ts` en `entries/`, `describe-value.ts` compartido en
+`domain/`) y los archivos generados, que conservan la ubicación donde los escribe su generador.
+
 ## Tasks
 
 | ID | Spec | Tarea | Commit |
@@ -43,6 +52,8 @@ la profundidad relativa del import relativo.
 | T1 | S2, S4, S5, S7 | Extraer las 14 formas de datos y los 2 tipos de estado a `dto/` en los cinco dominios; barrels con las rutas nuevas | `refactor(domain): move every data shape into per-domain dto folders` |
 | T2 | S3, S8 | Reagrupar los 14 archivos de prueba en espejo de `src/` y ajustar los imports a `dist/` | `test: mirror the source tree in the tests folder` |
 | T3 | S2, S3, S6 | Documentar: `ARCHITECTURE.md`, los cinco README de dominio, `tests/README.md` y `STATUS.md` | `docs(domain): document the dto folders and the test layout` |
+| T4 | S9, S10 | Mover `errors/`, `types/` y `value-objects/` en los cinco dominios; imports y barrels | `refactor(domain): group errors, types and value objects into their own folders` |
+| T5 | S9, S10 | Documentar la agrupación por naturaleza en `ARCHITECTURE.md`, los cinco README y `STATUS.md` | `docs(domain): document the folder taxonomy` |
 
 ## Log
 
@@ -75,3 +86,19 @@ L7. Al mover las pruebas aparecieron rutas viejas en más documentos que los pre
 casos de uso, `docs/specs/currency-catalog.md`, `docs/specs/ledger.md` y `docs/STATUS.md`. Se corrigieron
 porque son documentos vigentes. Los `docs/tasks/*.md` de tareas ya cerradas conservan sus rutas: son
 registro de lo que era cierto al cerrar, no guía actual.
+
+L8. «los errors typos y value object tambien agrupalos por separado».
+
+Continuación del mismo criterio: `dto/` fue el primer grupo y quedaban otros tres tipos de archivo en la
+raíz de cada dominio. Se movieron dieciséis archivos con `git mv`, así que el historial los sigue. El
+compilador fue la red: `pnpm typecheck` limpio al primer intento después de reapuntar imports, y
+`pnpm check` en 217/217.
+
+L9. Decisiones internas (rutinarias, no consultadas):
+- El agregado queda en la raíz del dominio y no dentro de un `entities/`. La simetría total pedía un cuarto
+grupo que no se pidió, y el agregado en la raíz comunica que es la puerta de entrada del dominio.
+- La frontera `types/` / `dto/` se resolvió por intención y quedó escrita: `types/` es de qué está hecho el
+modelo y no tiene campos; `dto/` son formas de datos que cruzan un límite.
+- `money/` no tiene `types/`: sus uniones cerradas son códigos de error y viven junto a su error, en
+  `errors/money-errors.ts`.
+- `currency-catalog.ts`, `entry-text.ts` y `describe-value.ts` no se movieron, por las razones de S10.
