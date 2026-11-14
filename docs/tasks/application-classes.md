@@ -59,9 +59,11 @@ S5. Invariante de la migración: no cambia nada del comportamiento. `Application
 trabajo, el dominio y los adaptadores quedan igual. Los criterios de aceptación de las seis specs se siguen
 verificando con las mismas 214 pruebas.
 
-S6. Lo que **no** se convierte en clase: los ayudantes internos (`fingerprintOf`, `replay`, `remember` en
-`use-cases/shared/`, `serializeLine`, `draftResultOf`, `sumSide` en `entries/entry-result.ts`) siguen siendo
-funciones. Una clase alrededor de un cálculo puro no aporta y el proyecto no agrega patrones sin necesidad.
+S6. Lo que **no** se convierte en clase: los ayudantes puros (`fingerprintOf`, `serializeLine`, `draftResultOf`,
+`sumSide` en `entries/entry-result.ts`) siguen siendo funciones. Una clase alrededor de un cálculo puro no
+aporta y el proyecto no agrega patrones sin necesidad. `replay` y `remember` quedaron fuera de esta regla más
+tarde: no son cálculos puros sino la colaboración de una operación con el registro de idempotencia, y hoy son
+`Idempotency` (L8).
 
 ## Tasks
 
@@ -108,3 +110,17 @@ las clases quedan internas en `use-cases/`; los siete archivos de test y `public
 interoperación con una clase suelta por dos fachadas sobre las mismas dependencias. Ganancia lateral: la
 suite entera pasa por la superficie pública, así que un export de más lo detecta `public-api` y un método
 faltante lo detecta el resto de la suite.
+
+L8. «otra correccion de codigo tienes funcio es que reciben muchos parametros. una de dos o ñas desestrcturas
+en funciones mas pequeñas y una principal que las llamas o que reciban un objeto como parametro y se
+desesteuctra eso es mejor rpactica. que cree?» → «pes son esos exactamente los que vi que necesiban un
+arreglompero sin son solo esos los dejamos asi» → «pme convenciate vamos a solucionarlo primero».
+
+Diagnóstico: sólo tres firmas pasaban de tres parámetros y las tres eran el mismo problema — `replay` (5),
+`remember` (6) e `IdempotencyRegistry.record` (4) — con `operation` y `key` como dos `string` adyacentes que
+el compilador no distingue. Se descartó el objeto como parámetro: envolver los mismos cinco datos en un bag no
+elimina la repetición en las ocho llamadas, sólo la esconde. Se implementó `Idempotency` como objeto con
+comportamiento: `Idempotency.of(scope, operation, ledgerId)` lleva la identidad de la operación y expone
+`replay(key, fingerprint)` y `remember(key, fingerprint, result)`. `record` en el puerto queda como está: un
+solo implementador y una sola llamada, ahora dentro de `Idempotency.remember`. Sin cambio de comportamiento:
+`pnpm check` en verde, 217/217, y ningún símbolo nuevo en la superficie pública.

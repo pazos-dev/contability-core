@@ -24,7 +24,7 @@ import {
   requireOpenPeriodContaining,
   requirePostableAccount,
 } from './guards.js';
-import { fingerprintOf, remember, replay } from './shared/index.js';
+import { fingerprintOf, Idempotency } from './shared/index.js';
 
 const CREATE_OPERATION = 'createEntryDraft';
 const ADD_OPERATION = 'addEntryLine';
@@ -60,7 +60,8 @@ export class CreateEntryDraft {
     });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<EntryDraftResult>(scope, CREATE_OPERATION, ledgerId, idempotencyKey, fingerprint);
+      const idempotency = Idempotency.of(scope, CREATE_OPERATION, ledgerId);
+      const stored = await idempotency.replay<EntryDraftResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
@@ -84,7 +85,7 @@ export class CreateEntryDraft {
       const result = draftResultOf(draft);
 
       await scope.entries.save(draft);
-      await remember(scope, CREATE_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });
@@ -110,7 +111,8 @@ export class AddEntryLine {
     const fingerprint = fingerprintOf({ ledgerId, entryId, line: normalizedLine(line) });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<EntryDraftResult>(scope, ADD_OPERATION, ledgerId, idempotencyKey, fingerprint);
+      const idempotency = Idempotency.of(scope, ADD_OPERATION, ledgerId);
+      const stored = await idempotency.replay<EntryDraftResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
@@ -122,7 +124,7 @@ export class AddEntryLine {
 
       const result = draftResultOf(updated);
       await scope.entries.save(updated);
-      await remember(scope, ADD_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });
@@ -147,7 +149,8 @@ export class RemoveEntryLine {
     const fingerprint = fingerprintOf({ ledgerId, entryId, lineId });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<EntryDraftResult>(scope, REMOVE_OPERATION, ledgerId, idempotencyKey, fingerprint);
+      const idempotency = Idempotency.of(scope, REMOVE_OPERATION, ledgerId);
+      const stored = await idempotency.replay<EntryDraftResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       await requireChartOfAccountsId(scope, ledgerId);
@@ -157,7 +160,7 @@ export class RemoveEntryLine {
 
       const result = draftResultOf(updated);
       await scope.entries.save(updated);
-      await remember(scope, REMOVE_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });
@@ -187,7 +190,8 @@ export class PostEntry {
     const fingerprint = fingerprintOf({ ledgerId, entryId });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<PostEntryResult>(scope, POST_OPERATION, ledgerId, idempotencyKey, fingerprint);
+      const idempotency = Idempotency.of(scope, POST_OPERATION, ledgerId);
+      const stored = await idempotency.replay<PostEntryResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
@@ -201,7 +205,7 @@ export class PostEntry {
       const result = postedResultOf(posted);
 
       await scope.entries.save(posted);
-      await remember(scope, POST_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });
@@ -237,13 +241,8 @@ export class ReversePostedEntry {
     });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<ReversePostedEntryResult>(
-        scope,
-        REVERSE_OPERATION,
-        ledgerId,
-        idempotencyKey,
-        fingerprint,
-      );
+      const idempotency = Idempotency.of(scope, REVERSE_OPERATION, ledgerId);
+      const stored = await idempotency.replay<ReversePostedEntryResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
@@ -267,7 +266,7 @@ export class ReversePostedEntry {
       const result: ReversePostedEntryResult = { ...postedResultOf(posted), reversalOfEntryId: originalEntryId };
 
       await scope.entries.save(posted);
-      await remember(scope, REVERSE_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });

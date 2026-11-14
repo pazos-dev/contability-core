@@ -1,8 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-09. Entrega: preparación 2.0. Último incremento verificado: contrato de clases y
-fachada `Accounting` en la capa de aplicación, sobre 006d-application (edición de las líneas de un borrador),
-006c, 006b y 006a-application, 006-entries y 005-currency-catalog revisado al modelo mixto de monedas.
+Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: refactor de la idempotencia
+de la capa de aplicación (`Idempotency`), sobre el contrato de clases y la fachada `Accounting`, 006d-application
+(edición de las líneas de un borrador), 006c, 006b y 006a-application, 006-entries y 005-currency-catalog
+revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -210,8 +211,13 @@ fachada `Accounting` en la capa de aplicación, sobre 006d-application (edición
   `unitOfWork`) y no guarda nada más. La fachada las compone en el constructor y sólo delega: no agrega
   validación, estado ni traducción de errores. Esa separación es lo que deja el objeto como contrato y
   las clases como implementación reemplazable.
-- No se convirtieron en clases los ayudantes puros (`fingerprintOf`, `replay`, `remember`, `serializeLine`,
-  `sumSide`, `draftResultOf`): una clase alrededor de un cálculo no aporta.
+- No se convirtieron en clases los ayudantes puros (`fingerprintOf`, `serializeLine`, `sumSide`,
+  `draftResultOf`): una clase alrededor de un cálculo no aporta.
+- La idempotencia sí es un objeto con comportamiento. `Idempotency.of(scope, operation, ledgerId)`
+  (`use-cases/shared/idempotency.ts`) lleva la identidad de la operación y expone `replay(key, fingerprint)`
+  y `remember(key, fingerprint, result)`. Antes eran dos funciones de cinco y seis parámetros, con `scope`,
+  `operation` y `ledgerId` repetidos en las ocho llamadas: dos `string` adyacentes e intercambiables sin que
+  el compilador dijera nada. Sigue siendo interno y el comportamiento es idéntico.
 - Sin cambios de comportamiento: `ApplicationDeps`, contratos, códigos de error, unidad de trabajo, dominio
   y adaptadores quedaron igual.
 - Corte limpio, sin alias: el paquete es `private` en 0.0.0 y no hay consumidores registrados. Un anfitrión

@@ -3,7 +3,7 @@ import * as errors from '../errors.js';
 import type { ApplicationDeps } from '../ports/index.js';
 import type { ClosePeriodInput, ClosePeriodResult, RegisterPeriodInput, RegisterPeriodResult } from './contracts.js';
 import { requireChartOfAccountsId } from './guards.js';
-import { fingerprintOf, remember, replay } from './shared/index.js';
+import { fingerprintOf, Idempotency } from './shared/index.js';
 
 const REGISTER_OPERATION = 'registerPeriod';
 const CLOSE_OPERATION = 'closePeriod';
@@ -27,13 +27,8 @@ export class RegisterPeriod {
     const fingerprint = fingerprintOf({ ledgerId, periodId, name, startDate, endDate });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<RegisterPeriodResult>(
-        scope,
-        REGISTER_OPERATION,
-        ledgerId,
-        idempotencyKey,
-        fingerprint,
-      );
+      const idempotency = Idempotency.of(scope, REGISTER_OPERATION, ledgerId);
+      const stored = await idempotency.replay<RegisterPeriodResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       await requireChartOfAccountsId(scope, ledgerId);
@@ -67,7 +62,7 @@ export class RegisterPeriod {
       };
 
       await scope.periods.save(period);
-      await remember(scope, REGISTER_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });
@@ -93,13 +88,8 @@ export class ClosePeriod {
     const fingerprint = fingerprintOf({ ledgerId, periodId });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<ClosePeriodResult>(
-        scope,
-        CLOSE_OPERATION,
-        ledgerId,
-        idempotencyKey,
-        fingerprint,
-      );
+      const idempotency = Idempotency.of(scope, CLOSE_OPERATION, ledgerId);
+      const stored = await idempotency.replay<ClosePeriodResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       await requireChartOfAccountsId(scope, ledgerId);
@@ -112,7 +102,7 @@ export class ClosePeriod {
       const result: ClosePeriodResult = { ledgerId, periodId: closed.id, status: 'CLOSED' };
 
       await scope.periods.save(closed);
-      await remember(scope, CLOSE_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });

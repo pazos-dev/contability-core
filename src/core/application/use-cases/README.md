@@ -16,7 +16,7 @@ archivo de **guardas** con las precondiciones que comparten los casos de uso.
 | `entries.ts` | `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`, `ReversePostedEntry` y la serialización |
 | `contracts.ts` | Las 22 entradas/salidas serializables de la capa. Sin lógica: es el contrato con el anfitrión |
 | `guards.ts` | Precondiciones compartidas por dos o más casos de uso: libro, asiento, id libre, diario activo, período abierto que contiene la fecha, cuenta del plan y cuenta contabilizable |
-| `shared/` | Idempotencia (`fingerprintOf`, `replay`, `remember`). No es API pública |
+| `shared/` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
 
 Por qué las guardas: un caso de uso se lee como su especificación. Cada `requireX` devuelve el valor que
 necesita la regla siguiente o lanza el error de esa regla, y el orden en que se invocan es el orden numerado

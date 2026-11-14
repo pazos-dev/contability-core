@@ -55,7 +55,8 @@ La fachada delega en la clase del mismo nombre y no agrega nada: no valida, no g
 errores. Es la **única** superficie pública de la capa de aplicación: las once clases son implementación
 interna de `use-cases/` y el barrel no las exporta, así que el anfitrión no tiene que elegir entre once
 símbolos ni puede armar media aplicación por su cuenta. Las funciones puras de apoyo (`fingerprintOf`,
-`replay`, `remember`, `serializeLine`, `sumSide`) siguen siendo funciones, también internas.
+`serializeLine`, `sumSide`) siguen siendo funciones, también internas; la idempotencia de una operación es
+`Idempotency`, también interna (`use-cases/shared/idempotency.ts`).
 
 Reglas de contrato:
 

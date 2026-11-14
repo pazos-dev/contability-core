@@ -3,7 +3,7 @@ import * as errors from '../errors.js';
 import type { ApplicationDeps } from '../ports/index.js';
 import type { RegisterJournalInput, RegisterJournalResult, SetJournalStatusInput, SetJournalStatusResult } from './contracts.js';
 import { requireChartOfAccountsId } from './guards.js';
-import { fingerprintOf, remember, replay } from './shared/index.js';
+import { fingerprintOf, Idempotency } from './shared/index.js';
 
 const REGISTER_OPERATION = 'registerJournal';
 
@@ -23,13 +23,8 @@ export class RegisterJournal {
     const fingerprint = fingerprintOf({ ledgerId, journalId, code, name });
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      const stored = await replay<RegisterJournalResult>(
-        scope,
-        REGISTER_OPERATION,
-        ledgerId,
-        idempotencyKey,
-        fingerprint,
-      );
+      const idempotency = Idempotency.of(scope, REGISTER_OPERATION, ledgerId);
+      const stored = await idempotency.replay<RegisterJournalResult>(idempotencyKey, fingerprint);
       if (stored !== undefined) return stored;
 
       await requireChartOfAccountsId(scope, ledgerId);
@@ -51,7 +46,7 @@ export class RegisterJournal {
       };
 
       await scope.journals.save(journal);
-      await remember(scope, REGISTER_OPERATION, ledgerId, idempotencyKey, fingerprint, result);
+      await idempotency.remember(idempotencyKey, fingerprint, result);
 
       return result;
     });
