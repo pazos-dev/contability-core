@@ -1,23 +1,7 @@
 import { describeValue } from '../describe-value.js';
+import type { JournalFields, JournalInput } from './dto/journal-dto.js';
 import { invalidJournal } from './journal-errors.js';
-
-export type JournalStatus = 'ACTIVE' | 'INACTIVE';
-
-/** Input data of a new journal; ids are opaque values received from the caller. */
-export interface JournalInput {
-  readonly id: string;
-  readonly ledgerId: string;
-  readonly code: string;
-  readonly name: string;
-}
-
-interface JournalFields {
-  readonly id: string;
-  readonly ledgerId: string;
-  readonly code: string;
-  readonly name: string;
-  readonly status: JournalStatus;
-}
+import type { JournalStatus } from './journal-status.js';
 
 /**
  * Immutable journal that identifies a journal inside its ledger.

@@ -1,12 +1,7 @@
 import { describeValue } from '../describe-value.js';
 import { isoHasNoMinorUnit, isoScaleOf } from './currency-catalog.js';
+import type { CurrencyJSON } from './dto/currency-dto.js';
 import { invalidCurrency } from './money-errors.js';
-
-/** Serialized representation of a Currency. */
-export interface CurrencyJSON {
-  readonly code: string;
-  readonly scale: number;
-}
 
 const CODE_PATTERN = /^[A-Z]{3}$/;
 const MIN_SCALE = 0;

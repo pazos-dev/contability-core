@@ -1,31 +1,9 @@
 import { describeValue } from '../describe-value.js';
 import { AccountCode } from './account-code.js';
 import { accountSelfParent, invalidAccount } from './account-errors.js';
+import type { AccountStatus } from './account-status.js';
 import { ACCOUNT_TYPES, isAccountType, type AccountType } from './account-type.js';
-
-export type AccountStatus = 'ACTIVE' | 'INACTIVE';
-
-/** Input data of a new account; ids are opaque values received from the caller. */
-export interface AccountInput {
-  readonly id: string;
-  readonly chartOfAccountsId: string;
-  readonly code: string;
-  readonly name: string;
-  readonly type: AccountType;
-  readonly parentId?: string;
-  readonly postingAllowed: boolean;
-}
-
-interface AccountFields {
-  readonly id: string;
-  readonly chartOfAccountsId: string;
-  readonly code: AccountCode;
-  readonly name: string;
-  readonly type: AccountType;
-  readonly parentId: string | undefined;
-  readonly postingAllowed: boolean;
-  readonly status: AccountStatus;
-}
+import type { AccountFields, AccountInput } from './dto/account-dto.js';
 
 /**
  * Immutable accounting account. It only enforces local invariants: hierarchy

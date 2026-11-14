@@ -1,25 +1,9 @@
 import { describeValue } from '../describe-value.js';
 import { Money } from '../money/index.js';
+import type { JournalEntryLineFields, JournalEntryLineInput } from './dto/journal-entry-line-dto.js';
 import { invalidEntryLine } from './entry-errors.js';
 import { requireOptionalText, requireText } from './entry-text.js';
 import type { PostingSide } from './posting-side.js';
-
-/** Input data of a new entry line; ids are opaque values received from the caller. */
-export interface JournalEntryLineInput {
-  readonly id: string;
-  readonly accountId: string;
-  readonly side: PostingSide;
-  readonly amount: Money;
-  readonly description?: string;
-}
-
-interface JournalEntryLineFields {
-  readonly id: string;
-  readonly accountId: string;
-  readonly side: PostingSide;
-  readonly amount: Money;
-  readonly description: string | undefined;
-}
 
 /**
  * Module-private proof that construction went through the validating factory.

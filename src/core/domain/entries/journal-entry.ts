@@ -1,6 +1,12 @@
 import { describeValue } from '../describe-value.js';
 import type { Currency } from '../money/index.js';
 import { AccountingDate } from '../period/index.js';
+import type {
+  JournalEntryChanges,
+  JournalEntryFields,
+  JournalEntryInput,
+  JournalEntryReversalInput,
+} from './dto/journal-entry-dto.js';
 import {
   duplicateLineId,
   entryCurrencyMismatch,
@@ -14,44 +20,6 @@ import {
 import type { EntryStatus } from './entry-status.js';
 import { JournalEntryLine } from './journal-entry-line.js';
 import { requireText } from './entry-text.js';
-
-/** Input data of a new draft; ids, date and period are opaque values received from the caller. */
-export interface JournalEntryInput {
-  readonly id: string;
-  readonly ledgerId: string;
-  readonly journalId: string;
-  readonly periodId: string;
-  readonly accountingDate: AccountingDate;
-  readonly description: string;
-}
-
-/**
- * Explicit inputs of a reversal draft. The original keeps its identity; the reversal receives a new
- * id plus the date and period where it lands, so a closed original period is not a problem.
- */
-export interface JournalEntryReversalInput {
-  readonly id: string;
-  readonly periodId: string;
-  readonly accountingDate: AccountingDate;
-  readonly description?: string;
-}
-
-interface JournalEntryFields {
-  readonly id: string;
-  readonly ledgerId: string;
-  readonly journalId: string;
-  readonly periodId: string;
-  readonly accountingDate: AccountingDate;
-  readonly description: string;
-  readonly status: EntryStatus;
-  readonly lines: readonly JournalEntryLine[];
-  readonly reversalOfEntryId: string | undefined;
-}
-
-interface JournalEntryChanges {
-  readonly status?: EntryStatus;
-  readonly lines?: readonly JournalEntryLine[];
-}
 
 /**
  * Module-private proof that construction went through the validating factory.

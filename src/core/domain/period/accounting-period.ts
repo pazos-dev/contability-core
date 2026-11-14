@@ -1,25 +1,8 @@
 import { describeValue } from '../describe-value.js';
 import { AccountingDate } from './accounting-date.js';
+import type { AccountingPeriodFields, AccountingPeriodInput } from './dto/accounting-period-dto.js';
 import { invalidPeriod, periodAlreadyClosed } from './period-errors.js';
 import type { PeriodStatus } from './period-status.js';
-
-/** Input data of a new accounting period; ids are opaque values received from the caller. */
-export interface AccountingPeriodInput {
-  readonly id: string;
-  readonly ledgerId: string;
-  readonly name: string;
-  readonly startDate: AccountingDate;
-  readonly endDate: AccountingDate;
-}
-
-interface AccountingPeriodFields {
-  readonly id: string;
-  readonly ledgerId: string;
-  readonly name: string;
-  readonly startDate: AccountingDate;
-  readonly endDate: AccountingDate;
-  readonly status: PeriodStatus;
-}
 
 /**
  * Immutable accounting period over inclusive calendar boundaries.
