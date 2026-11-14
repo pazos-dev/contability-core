@@ -169,8 +169,8 @@ fachada `Accounting` en la capa de aplicación, sobre 006d-application (edición
 
 ### 006c-application — `docs/specs/entry-draft.md`, D01-D13
 
-- `createEntryDraft` en `src/core/application/use-cases/entries/create-entry-draft.ts`: alta de un
-  borrador con cabecera y líneas en una sola unidad de trabajo.
+- `createEntryDraft` en `src/core/application/use-cases/entries.ts`: alta de un borrador con cabecera y
+  líneas en una sola unidad de trabajo.
 - Cierra el circuito. Hasta 006b, `postEntry` exigía un borrador persistido y **ninguna operación del core
   lo producía**; el hueco quedó registrado como decisión pendiente y ahora está resuelto.
 - Valida sólo lo que hace coherente al borrador: libro conocido, id libre (`ENTRY_ALREADY_EXISTS`), diario,
@@ -178,14 +178,14 @@ fachada `Accounting` en la capa de aplicación, sobre 006d-application (edición
   eso es asunto de `postEntry`, que vuelve a comprobarlo todo al contabilizar.
 - No devuelve totales: un borrador puede estar vacío o desbalanceado, así que un total es una noción de la
   contabilización. El anfitrión los calcula de las líneas si los necesita.
-- `serializeLine` y `sumSide` viven en `entries/entry-result.ts`, compartidos con `postEntry`, para que haya
-  una sola definición de "cómo se serializa una línea".
+- `serializeLine` y `sumSide` tienen una sola definición, junto a los casos de uso del área, para que no haya
+  dos formas de serializar una línea.
 - Sigue sin existir **edición** de borradores (`addEntryLine`, `removeEntryLine`, cambiar cabecera). El
   dominio sabe hacerlo sobre copias; exponerlo necesita su propia spec.
 
 ### 006d-application — `docs/specs/entry-draft-edit.md`, L01-L13
 
-- `addEntryLine` y `removeEntryLine` en `src/core/application/use-cases/entries/`: corrigen un borrador
+- `addEntryLine` y `removeEntryLine` en `src/core/application/use-cases/entries.ts`: corrigen un borrador
   entregado al puerto sin borrarlo y sin que el anfitrión toque el repositorio de asientos.
 - Son cálculo puro sobre el agregado: `addLine` y `removeLine` ya existían y son los que deciden. Una
   edición no agrega ningún puerto ni toca el adaptador.

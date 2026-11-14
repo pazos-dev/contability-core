@@ -47,8 +47,9 @@ Piezas nuevas:
 
 - `src/core/application/ports/`: `UnitOfWork` (con su alcance), `LedgerDirectory`, `AccountRepository`,
   `JournalRepository`, `PeriodRepository`, `IdempotencyRegistry`, `PostedMovementsQuery`.
-- `src/core/application/contracts/`: entradas y salidas serializables de los cinco casos.
-- `src/core/application/use-cases/`: los cinco casos, cada uno como fábrica de función asíncrona.
+- `src/core/application/use-cases/`: los cinco casos como fábrica de función asíncrona, cada archivo con sus
+  contratos de entrada y salida serializables al lado (hoy son clases agrupadas por área; ver
+  `application-classes.md` y `import-topology.md`).
 - `src/core/application/errors.ts`: `ApplicationError` y sus códigos.
 - `src/core/application/index.ts` y `src/adapters/memory/index.ts`: barrels públicos.
 - `src/adapters/memory/`: repositorios, registro de idempotencia y unidad de trabajo con restauración del

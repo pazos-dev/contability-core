@@ -1,42 +1,43 @@
-import type {
-  RegisterAccountInput,
-  RegisterAccountResult,
-  SetAccountStatusInput,
-  SetAccountStatusResult,
-} from './contracts/index.js';
-import type {
-  RegisterJournalInput,
-  RegisterJournalResult,
-  SetJournalStatusInput,
-  SetJournalStatusResult,
-} from './contracts/index.js';
-import type {
-  ClosePeriodInput,
-  ClosePeriodResult,
-  RegisterPeriodInput,
-  RegisterPeriodResult,
-} from './contracts/index.js';
-import type {
-  AddEntryLineInput,
-  CreateEntryDraftInput,
-  EntryDraftResult,
-  PostEntryInput,
-  PostEntryResult,
-  RemoveEntryLineInput,
-  ReversePostedEntryInput,
-  ReversePostedEntryResult,
-} from './contracts/index.js';
 import type { ApplicationDeps } from './ports/index.js';
-import { RegisterAccount, SetAccountStatus } from './use-cases/accounts/index.js';
+import {
+  RegisterAccount,
+  SetAccountStatus,
+  type RegisterAccountInput,
+  type RegisterAccountResult,
+  type SetAccountStatusInput,
+  type SetAccountStatusResult,
+} from './use-cases/accounts.js';
 import {
   AddEntryLine,
   CreateEntryDraft,
   PostEntry,
   RemoveEntryLine,
   ReversePostedEntry,
-} from './use-cases/entries/index.js';
-import { RegisterJournal, SetJournalStatus } from './use-cases/journals/index.js';
-import { ClosePeriod, RegisterPeriod } from './use-cases/periods/index.js';
+  type AddEntryLineInput,
+  type CreateEntryDraftInput,
+  type EntryDraftResult,
+  type PostEntryInput,
+  type PostEntryResult,
+  type RemoveEntryLineInput,
+  type ReversePostedEntryInput,
+  type ReversePostedEntryResult,
+} from './use-cases/entries.js';
+import {
+  RegisterJournal,
+  SetJournalStatus,
+  type RegisterJournalInput,
+  type RegisterJournalResult,
+  type SetJournalStatusInput,
+  type SetJournalStatusResult,
+} from './use-cases/journals.js';
+import {
+  ClosePeriod,
+  RegisterPeriod,
+  type ClosePeriodInput,
+  type ClosePeriodResult,
+  type RegisterPeriodInput,
+  type RegisterPeriodResult,
+} from './use-cases/periods.js';
 
 /**
  * Every use case of the module behind one object: the only public entry point of this layer.

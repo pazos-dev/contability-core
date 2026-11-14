@@ -16,29 +16,35 @@ export type {
   UnitOfWorkScope,
 } from './ports/index.js';
 export type {
-  ClosePeriodInput,
+  RegisterAccountInput,
+  RegisterAccountResult,
+  SetAccountStatusInput,
+  SetAccountStatusResult,
+} from './use-cases/accounts.js';
+export type {
   AddEntryLineInput,
   CreateEntryDraftInput,
   EntryDraftResult,
   EntryLineInput,
-  ClosePeriodResult,
   PostEntryInput,
   PostEntryResult,
   PostedLineResult,
-  RegisterAccountInput,
   RemoveEntryLineInput,
-  RegisterAccountResult,
-  RegisterJournalInput,
-  RegisterJournalResult,
-  RegisterPeriodInput,
-  RegisterPeriodResult,
   ReversePostedEntryInput,
   ReversePostedEntryResult,
-  SetAccountStatusInput,
-  SetAccountStatusResult,
+} from './use-cases/entries.js';
+export type {
+  RegisterJournalInput,
+  RegisterJournalResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
-} from './contracts/index.js';
+} from './use-cases/journals.js';
+export type {
+  ClosePeriodInput,
+  ClosePeriodResult,
+  RegisterPeriodInput,
+  RegisterPeriodResult,
+} from './use-cases/periods.js';
 // The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees
-// eleven symbols nor a per-operation surface. `accounting.ts` composes them, and the area barrels under
+// eleven symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
 // `use-cases/` are internal wiring for the facade, not part of the package surface.
