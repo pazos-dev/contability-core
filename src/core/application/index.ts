@@ -16,35 +16,29 @@ export type {
   UnitOfWorkScope,
 } from './ports/index.js';
 export type {
-  RegisterAccountInput,
-  RegisterAccountResult,
-  SetAccountStatusInput,
-  SetAccountStatusResult,
-} from './use-cases/accounts.js';
-export type {
   AddEntryLineInput,
+  ClosePeriodInput,
+  ClosePeriodResult,
   CreateEntryDraftInput,
   EntryDraftResult,
   EntryLineInput,
   PostEntryInput,
   PostEntryResult,
   PostedLineResult,
+  RegisterAccountInput,
+  RegisterAccountResult,
+  RegisterJournalInput,
+  RegisterJournalResult,
+  RegisterPeriodInput,
+  RegisterPeriodResult,
   RemoveEntryLineInput,
   ReversePostedEntryInput,
   ReversePostedEntryResult,
-} from './use-cases/entries.js';
-export type {
-  RegisterJournalInput,
-  RegisterJournalResult,
+  SetAccountStatusInput,
+  SetAccountStatusResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
-} from './use-cases/journals.js';
-export type {
-  ClosePeriodInput,
-  ClosePeriodResult,
-  RegisterPeriodInput,
-  RegisterPeriodResult,
-} from './use-cases/periods.js';
+} from './use-cases/contracts.js';
 // The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees
 // eleven symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
 // `use-cases/` are internal wiring for the facade, not part of the package surface.

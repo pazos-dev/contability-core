@@ -1,37 +1,9 @@
-import { AccountingDate, AccountingPeriod, type PeriodStatus } from '../../domain/period/index.js';
+import { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
 import * as errors from '../errors.js';
 import type { ApplicationDeps } from '../ports/index.js';
+import type { ClosePeriodInput, ClosePeriodResult, RegisterPeriodInput, RegisterPeriodResult } from './contracts.js';
+import { requireChartOfAccountsId } from './guards.js';
 import { fingerprintOf, remember, replay } from './shared/index.js';
-
-/** Serializable input of `registerPeriod`; dates travel as YYYY-MM-DD text. */
-export interface RegisterPeriodInput {
-  readonly ledgerId: string;
-  readonly periodId: string;
-  readonly name: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly idempotencyKey?: string;
-}
-
-export interface RegisterPeriodResult {
-  readonly ledgerId: string;
-  readonly periodId: string;
-  readonly startDate: string;
-  readonly endDate: string;
-  readonly status: PeriodStatus;
-}
-
-export interface ClosePeriodInput {
-  readonly ledgerId: string;
-  readonly periodId: string;
-  readonly idempotencyKey: string;
-}
-
-export interface ClosePeriodResult {
-  readonly ledgerId: string;
-  readonly periodId: string;
-  readonly status: 'CLOSED';
-}
 
 const REGISTER_OPERATION = 'registerPeriod';
 const CLOSE_OPERATION = 'closePeriod';
@@ -64,7 +36,7 @@ export class RegisterPeriod {
       );
       if (stored !== undefined) return stored;
 
-      if ((await scope.ledgers.chartOfAccountsIdOf(ledgerId)) === undefined) throw errors.ledgerNotFound(ledgerId);
+      await requireChartOfAccountsId(scope, ledgerId);
 
       if ((await scope.periods.findById(ledgerId, periodId)) !== undefined) {
         throw errors.periodAlreadyExists(periodId);
@@ -130,7 +102,7 @@ export class ClosePeriod {
       );
       if (stored !== undefined) return stored;
 
-      if ((await scope.ledgers.chartOfAccountsIdOf(ledgerId)) === undefined) throw errors.ledgerNotFound(ledgerId);
+      await requireChartOfAccountsId(scope, ledgerId);
 
       const period = await scope.periods.findById(ledgerId, periodId);
       if (period === undefined) throw errors.periodNotFound(periodId);
