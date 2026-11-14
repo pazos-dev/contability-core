@@ -1,8 +1,8 @@
 import { describeValue } from '../describe-value.js';
-import { AccountingDate } from './accounting-date.js';
+import { AccountingDate } from './value-objects/accounting-date.js';
 import type { AccountingPeriodFields, AccountingPeriodInput } from './dto/accounting-period-dto.js';
-import { invalidPeriod, periodAlreadyClosed } from './period-errors.js';
-import type { PeriodStatus } from './period-status.js';
+import { invalidPeriod, periodAlreadyClosed } from './errors/period-errors.js';
+import type { PeriodStatus } from './types/period-status.js';
 
 /**
  * Immutable accounting period over inclusive calendar boundaries.

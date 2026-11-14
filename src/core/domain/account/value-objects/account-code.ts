@@ -1,5 +1,5 @@
-import { describeValue } from '../describe-value.js';
-import { invalidAccountCode } from './account-errors.js';
+import { describeValue } from '../../describe-value.js';
+import { invalidAccountCode } from '../errors/account-errors.js';
 
 /**
  * Immutable account code as text: leading zeros and separators are part of the

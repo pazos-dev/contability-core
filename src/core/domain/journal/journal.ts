@@ -1,7 +1,7 @@
 import { describeValue } from '../describe-value.js';
 import type { JournalFields, JournalInput } from './dto/journal-dto.js';
-import { invalidJournal } from './journal-errors.js';
-import type { JournalStatus } from './journal-status.js';
+import { invalidJournal } from './errors/journal-errors.js';
+import type { JournalStatus } from './types/journal-status.js';
 
 /**
  * Immutable journal that identifies a journal inside its ledger.

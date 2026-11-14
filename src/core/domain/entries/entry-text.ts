@@ -1,5 +1,5 @@
 import { describeValue } from '../describe-value.js';
-import type { EntryError } from './entry-errors.js';
+import type { EntryError } from './errors/entry-errors.js';
 
 type Failure = (reason: string) => EntryError;
 

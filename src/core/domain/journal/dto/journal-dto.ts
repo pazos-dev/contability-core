@@ -1,4 +1,4 @@
-import type { JournalStatus } from '../journal-status.js';
+import type { JournalStatus } from '../types/journal-status.js';
 
 /** Input data of a new journal; ids are opaque values received from the caller. */
 export interface JournalInput {

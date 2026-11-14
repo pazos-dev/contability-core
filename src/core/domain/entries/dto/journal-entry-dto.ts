@@ -1,6 +1,6 @@
 import type { AccountingDate } from '../../period/index.js';
-import type { EntryStatus } from '../entry-status.js';
-import type { JournalEntryLine } from '../journal-entry-line.js';
+import type { EntryStatus } from '../types/entry-status.js';
+import type { JournalEntryLine } from '../value-objects/journal-entry-line.js';
 
 /** Input data of a new draft; ids, date and period are opaque values received from the caller. */
 export interface JournalEntryInput {

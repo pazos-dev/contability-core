@@ -1,9 +1,9 @@
-import { describeValue } from '../describe-value.js';
-import { Money } from '../money/index.js';
-import type { JournalEntryLineFields, JournalEntryLineInput } from './dto/journal-entry-line-dto.js';
-import { invalidEntryLine } from './entry-errors.js';
-import { requireOptionalText, requireText } from './entry-text.js';
-import type { PostingSide } from './posting-side.js';
+import { describeValue } from '../../describe-value.js';
+import { Money } from '../../money/index.js';
+import type { JournalEntryLineFields, JournalEntryLineInput } from '../dto/journal-entry-line-dto.js';
+import { invalidEntryLine } from '../errors/entry-errors.js';
+import { requireOptionalText, requireText } from '../entry-text.js';
+import type { PostingSide } from '../types/posting-side.js';
 
 /**
  * Module-private proof that construction went through the validating factory.

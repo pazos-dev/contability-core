@@ -1,5 +1,5 @@
-import type { AccountingDate } from '../accounting-date.js';
-import type { PeriodStatus } from '../period-status.js';
+import type { AccountingDate } from '../value-objects/accounting-date.js';
+import type { PeriodStatus } from '../types/period-status.js';
 
 /** Input data of a new accounting period; ids are opaque values received from the caller. */
 export interface AccountingPeriodInput {

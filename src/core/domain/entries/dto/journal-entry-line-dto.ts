@@ -1,5 +1,5 @@
 import type { Money } from '../../money/index.js';
-import type { PostingSide } from '../posting-side.js';
+import type { PostingSide } from '../types/posting-side.js';
 
 /** Input data of a new entry line; ids are opaque values received from the caller. */
 export interface JournalEntryLineInput {

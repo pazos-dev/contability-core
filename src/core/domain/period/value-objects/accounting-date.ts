@@ -1,5 +1,5 @@
-import { describeValue } from '../describe-value.js';
-import { invalidDate } from './period-errors.js';
+import { describeValue } from '../../describe-value.js';
+import { invalidDate } from '../errors/period-errors.js';
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;
 const FIRST_YEAR = 1;

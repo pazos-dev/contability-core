@@ -1,7 +1,7 @@
-import { describeValue } from '../describe-value.js';
+import { describeValue } from '../../describe-value.js';
 import { Currency } from './currency.js';
-import type { MoneyJSON } from './dto/money-dto.js';
-import { currencyMismatch, invalidMoney } from './money-errors.js';
+import type { MoneyJSON } from '../dto/money-dto.js';
+import { currencyMismatch, invalidMoney } from '../errors/money-errors.js';
 
 const DECIMAL_PATTERN = /^-?(0|[1-9][0-9]*)(\.[0-9]+)?$/;
 const CANONICAL_MINOR_UNITS_PATTERN = /^(0|[1-9][0-9]*|-?[1-9][0-9]*)$/;

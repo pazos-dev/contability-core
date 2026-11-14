@@ -1,6 +1,6 @@
-import type { AccountCode } from '../account-code.js';
-import type { AccountStatus } from '../account-status.js';
-import type { AccountType } from '../account-type.js';
+import type { AccountCode } from '../value-objects/account-code.js';
+import type { AccountStatus } from '../types/account-status.js';
+import type { AccountType } from '../types/account-type.js';
 
 /** Input data of a new account; ids are opaque values received from the caller. */
 export interface AccountInput {

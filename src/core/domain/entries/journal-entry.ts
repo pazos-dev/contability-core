@@ -16,9 +16,9 @@ import {
   entryUnbalanced,
   invalidEntry,
   invalidEntryLine,
-} from './entry-errors.js';
-import type { EntryStatus } from './entry-status.js';
-import { JournalEntryLine } from './journal-entry-line.js';
+} from './errors/entry-errors.js';
+import type { EntryStatus } from './types/entry-status.js';
+import { JournalEntryLine } from './value-objects/journal-entry-line.js';
 import { requireText } from './entry-text.js';
 
 /**

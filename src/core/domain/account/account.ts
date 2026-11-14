@@ -1,8 +1,8 @@
 import { describeValue } from '../describe-value.js';
-import { AccountCode } from './account-code.js';
-import { accountSelfParent, invalidAccount } from './account-errors.js';
-import type { AccountStatus } from './account-status.js';
-import { ACCOUNT_TYPES, isAccountType, type AccountType } from './account-type.js';
+import { AccountCode } from './value-objects/account-code.js';
+import { accountSelfParent, invalidAccount } from './errors/account-errors.js';
+import type { AccountStatus } from './types/account-status.js';
+import { ACCOUNT_TYPES, isAccountType, type AccountType } from './types/account-type.js';
 import type { AccountFields, AccountInput } from './dto/account-dto.js';
 
 /**
