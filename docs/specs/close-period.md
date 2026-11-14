@@ -103,7 +103,7 @@ Burbujea `PERIOD_ALREADY_CLOSED` del dominio.
 
 ## Verificación
 
-- Pruebas: `tests/close-period.test.mjs`.
+- Pruebas: `tests/application/close-period.test.mjs`.
 - Una prueba por criterio C01-C04, C06 y C07.
 - C05 se registra como diferido en este documento y en `docs/STATUS.md`; no se escribe como prueba verde.
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.

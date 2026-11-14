@@ -2,7 +2,7 @@
 
 Responsabilidad: cuenta contable y su código.
 Especificación desde la raíz: `docs/specs/account.md`.
-Estado: reglas locales implementadas y probadas (A01-A03, A08 y A09) en `tests/account.test.mjs`.
+Estado: reglas locales implementadas y probadas (A01-A03, A08 y A09) en `tests/domain/account/account.test.mjs`.
 
 Archivos:
 
@@ -12,6 +12,9 @@ Archivos:
 - `account-code.ts` — `AccountCode` como texto inmutable; conserva ceros iniciales y formato del plan.
 - `account-type.ts` — conjunto cerrado `ASSET`, `LIABILITY`, `EQUITY`, `REVENUE`, `EXPENSE`.
 - `account-errors.ts` — `AccountError` con códigos estables.
+- `account-status.ts` — conjunto cerrado `ACTIVE`, `INACTIVE`.
+- `dto/account-dto.ts` — `AccountInput` (entrada de construcción) y `AccountFields` (estado validado que
+  recibe el constructor privado). Datos sin comportamiento; `AccountFields` no sale por el barrel.
 
 Identificadores, código y nombre se rechazan si vienen vacíos o con espacios exteriores; no se recortan.
 

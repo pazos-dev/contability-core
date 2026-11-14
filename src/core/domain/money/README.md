@@ -2,8 +2,8 @@
 
 Responsabilidad: Currency y Money exactos.
 Especificación desde la raíz: `docs/specs/money.md`.
-Estado: implementado y probado (criterios M01-M15 e IC01-IC14) por `tests/money.test.mjs` y
-`tests/currency-catalog.test.mjs`.
+Estado: implementado y probado (criterios M01-M15 e IC01-IC14) por `tests/domain/money/money.test.mjs` y
+`tests/domain/money/currency-catalog.test.mjs`.
 
 Archivos:
 
@@ -14,6 +14,8 @@ Archivos:
 - `currency-catalog.ts` — tabla ISO 4217 incorporada generada por `pnpm sync:iso4217`; no editar a mano.
 - `money.ts` — importe en unidades mínimas `bigint` junto a su moneda.
 - `money-errors.ts` — `MoneyError` con código estable y fábricas de error.
+- `dto/currency-dto.ts` y `dto/money-dto.ts` — `CurrencyJSON` y `MoneyJSON`, las representaciones
+  serializadas que cruzan el límite. Datos sin comportamiento; cada clase contiene sólo su clase.
 
 Sin dependencias de Node, HTTP, base de datos, framework o aplicación.
 No usa coma flotante ni convierte importes por `number`; JSON intercambia `minorUnits` como cadena entera.

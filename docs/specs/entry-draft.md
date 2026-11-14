@@ -124,5 +124,5 @@ Burban los de dominio: `INVALID_ENTRY`, `INVALID_ENTRY_LINE`, `DUPLICATE_LINE_ID
 
 ## Verificación
 
-- Pruebas: `tests/entry-draft.test.mjs`, una por criterio de D01 a D13, consumiendo `dist/`.
+- Pruebas: `tests/application/entry-draft.test.mjs`, una por criterio de D01 a D13, consumiendo `dist/`.
 - `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.

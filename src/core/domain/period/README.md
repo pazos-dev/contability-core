@@ -2,7 +2,7 @@
 
 Responsabilidad: fechas de calendario y período abierto/cerrado.
 Especificación desde la raíz: `docs/specs/period.md`.
-Estado: reglas locales implementadas y probadas (P01-P04 y P06) en `tests/period.test.mjs`.
+Estado: reglas locales implementadas y probadas (P01-P04 y P06) en `tests/domain/period/period.test.mjs`.
 
 Archivos:
 
@@ -13,6 +13,9 @@ Archivos:
   cerrar un período ya cerrado es un error de estado.
 - `period-status.ts` — conjunto cerrado `OPEN`, `CLOSED`.
 - `period-errors.ts` — `PeriodError` con códigos `INVALID_DATE`, `INVALID_PERIOD`, `PERIOD_ALREADY_CLOSED`.
+- `dto/accounting-period-dto.ts` — `AccountingPeriodInput` (entrada de construcción) y
+  `AccountingPeriodFields` (estado validado que recibe el constructor privado). Datos sin comportamiento;
+  `AccountingPeriodFields` no sale por el barrel.
 
 Validaciones que **no** viven aquí y esperan aplicación/persistencia: contabilizar en período cerrado
 (P05), solapamiento de períodos del mismo libro (P07) y cierre concurrente con contabilización (P08).

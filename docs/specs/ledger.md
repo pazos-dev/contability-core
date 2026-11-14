@@ -194,10 +194,10 @@ Pendientes, con lo que bloquean:
 
 ## Verificación
 
-- Pruebas previstas: `tests/ledger.test.mjs` (L01-L10, L12-L16), los ocho archivos de casos de uso para L11
+- Pruebas previstas: `tests/application/ledger.test.mjs` (L01-L10, L12-L16), los ocho archivos de casos de uso para L11
   —una prueba por área, no once—, y `tests/public-api.test.mjs` para la superficie de trece métodos, que
   también falla si `Ledger` o `LedgerRepository` se filtran al paquete fuera del barrel.
-- L13 se cubre reutilizando la prueba de unicidad por plan que ya existe en `tests/registration.test.mjs`,
+- L13 se cubre reutilizando la prueba de unicidad por plan que ya existe en `tests/application/registration.test.mjs`,
   alimentada ahora por dos libros registrados en lugar de por configuración.
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
 - Estado hoy: **nada de esto está implementado**. No hay `Ledger`, ni `LedgerRepository`, ni

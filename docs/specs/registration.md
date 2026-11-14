@@ -267,7 +267,7 @@ El cierre no está acá: ver `close-period.md`.
 | R16 | — | Un `idempotencyKey` ya usado con otra petición | Repetir con otro `accountId` o `journalId` | `IDEMPOTENCY_CONFLICT`; nada guardado |
 | R17 | — | Un `status` distinto de `ACTIVE` o `INACTIVE` | `setAccountStatus` o `setJournalStatus` | `INVALID_APPLICATION_INPUT`; el estado anterior no cambia |
 | R18 | — | Un `idempotencyKey` ya usado con el mismo id y otro `code`, `name`, `type`, `parentId`, `postingAllowed` o fechas | Repetir el caso de uso | `IDEMPOTENCY_CONFLICT`; el registro guardado queda intacto |
-| R19 | — | Un resultado ya devuelto por un caso de uso idempotente, mutado por el llamador en ejecución | Repetir la petición con la misma clave | Devuelve el resultado original, no el mutado; cada entrega es un objeto distinto del guardado (probado como U04b en `tests/post-entry.test.mjs`) |
+| R19 | — | Un resultado ya devuelto por un caso de uso idempotente, mutado por el llamador en ejecución | Repetir la petición con la misma clave | Devuelve el resultado original, no el mutado; cada entrega es un objeto distinto del guardado (probado como U04b en `tests/application/post-entry.test.mjs`) |
 
 ## Decisiones pendientes
 
@@ -290,10 +290,10 @@ El cierre no está acá: ver `close-period.md`.
 
 ## Verificación
 
-- Pruebas nuevas: `tests/registration.test.mjs`, consumiendo `dist/` como el resto de la suite.
+- Pruebas nuevas: `tests/application/registration.test.mjs`, consumiendo `dist/` como el resto de la suite.
 - Una prueba por criterio de R01 a R16, más el caso límite de cada regla: período de un solo día válido,
   padre del mismo plan aceptado, código repetido en otro plan aceptado.
-- R19 se verifica en `tests/post-entry.test.mjs` (`U04b`), sobre un resultado con líneas y totales anidados:
+- R19 se verifica en `tests/application/post-entry.test.mjs` (`U04b`), sobre un resultado con líneas y totales anidados:
   mutar la respuesta devuelta no cambia lo que responde el reintento. La prueba se apoya en el contrato del
   puerto, así que vale para los nueve casos de uso idempotentes.
 - R14 se verifica con una unidad de trabajo real del adaptador en memoria y un repositorio que falla en

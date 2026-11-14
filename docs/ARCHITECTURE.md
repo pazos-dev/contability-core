@@ -14,11 +14,11 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 
 | Ruta | Archivos previstos; crear al implementar su especificación |
 | --- | --- |
-| `src/core/domain/money/` | `currency.ts`, `currency-catalog.ts`, `money.ts`, `money-errors.ts`; `rounding-mode.ts` solo al necesitar redondeo. |
-| `src/core/domain/account/` | `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`. |
-| `src/core/domain/journal/` | `journal.ts`, `journal-errors.ts`. |
-| `src/core/domain/entries/` | `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`, `posting-side.ts`, `entry-errors.ts`, `entry-text.ts`. |
-| `src/core/domain/period/` | `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`, `period-errors.ts`. |
+| `src/core/domain/money/` | `currency.ts`, `currency-catalog.ts`, `money.ts`, `money-errors.ts`; `dto/currency-dto.ts` y `dto/money-dto.ts`; `rounding-mode.ts` solo al necesitar redondeo. |
+| `src/core/domain/account/` | `account.ts`, `account-code.ts`, `account-type.ts`, `account-status.ts`, `account-errors.ts`; `dto/account-dto.ts`. |
+| `src/core/domain/journal/` | `journal.ts`, `journal-status.ts`, `journal-errors.ts`; `dto/journal-dto.ts`. |
+| `src/core/domain/entries/` | `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`, `posting-side.ts`, `entry-errors.ts`, `entry-text.ts`; `dto/journal-entry-dto.ts` y `dto/journal-entry-line-dto.ts`. |
+| `src/core/domain/period/` | `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`, `period-errors.ts`; `dto/accounting-period-dto.ts`. |
 | `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. |
 | `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso y, al lado, sus contratos de entrada y salida serializables. Entidades y modelos ORM no son DTOs públicos. Internos: la superficie es `Accounting`. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
@@ -27,6 +27,14 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 
 Se incluyen README de responsabilidad en las carpetas preparadas. No hay clases vacías que aparenten implementación.
 La organización en singular es una normalización del kit: evitar duplicados con variantes en plural.
+
+`dto/` en cada dominio reúne toda forma de datos del dominio y ninguna de esas formas tiene comportamiento:
+las entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`) y el estado ya validado
+que un objeto de valor entrega a su propio constructor privado (`*Fields`, `*Changes`). Cada archivo de objeto
+de valor contiene sólo su clase. Los `*Fields` y `*Changes` se exportan desde su módulo para que la clase los
+importe, pero nunca desde el barrel: siguen siendo internos. Los archivos generados quedan fuera de la regla,
+porque la próxima regeneración los sobrescribe: `currency-catalog.ts` lo escribe `pnpm sync:iso4217` y
+conserva ahí su `IsoCurrencyEntry`.
 
 ## API pública por dominio
 

@@ -180,7 +180,7 @@ Burban los de dominio sin envolver, con su código original.
 
 ## Verificación
 
-- Pruebas: `tests/post-entry.test.mjs`.
+- Pruebas: `tests/application/post-entry.test.mjs`.
 - Una prueba por criterio U01-U05 y U08-U17, más el caso límite de la fecha igual al inicio y al fin del
   período (P01 aplicado desde el caso de uso).
 - U03a se prueba con el adaptador en memoria real, inyectando el fallo en `record` y comparando el estado

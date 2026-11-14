@@ -3,7 +3,7 @@
 Responsabilidad: diario contable. `JournalEntry` vive en `entries`, no aquí.
 Especificación desde la raíz: `docs/specs/journal.md`.
 Estado: reglas locales implementadas y probadas (J01-J02, desactivación y reactivación) en
-`tests/journal.test.mjs`.
+`tests/domain/journal/journal.test.mjs`.
 
 Archivos:
 
@@ -12,6 +12,9 @@ Archivos:
   `code`, `name` y estado `ACTIVE`/`INACTIVE`; `deactivate` y `activate` devuelven copias que conservan
   los datos.
 - `journal-errors.ts` — `JournalError` con código estable `INVALID_JOURNAL`.
+- `journal-status.ts` — conjunto cerrado `ACTIVE`, `INACTIVE`.
+- `dto/journal-dto.ts` — `JournalInput` (entrada de construcción) y `JournalFields` (estado validado que
+  recibe el constructor privado). Datos sin comportamiento; `JournalFields` no sale por el barrel.
 
 Identificadores, código y nombre se rechazan si vienen vacíos o con espacios exteriores; no se recortan.
 

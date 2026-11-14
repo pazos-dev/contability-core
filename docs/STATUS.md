@@ -1,9 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: refactor de la idempotencia
-de la capa de aplicación (`Idempotency`), sobre el contrato de clases y la fachada `Accounting`, 006d-application
-(edición de las líneas de un borrador), 006c, 006b y 006a-application, 006-entries y 005-currency-catalog
-revisado al modelo mixto de monedas.
+Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: DTO por dominio y pruebas en
+espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contrato de clases y la fachada
+`Accounting`, 006d-application (edición de las líneas de un borrador), 006c, 006b y 006a-application,
+006-entries y 005-currency-catalog revisado al modelo mixto de monedas.
 
 ## Implementado y verificado
 
@@ -126,7 +126,7 @@ revisado al modelo mixto de monedas.
 - Corrección de la revisión R4: el registro de idempotencia copia el resultado al guardarlo y al
   entregarlo. Antes guardaba la misma referencia que recibía el consumidor, así que mutar el resultado de
   una respuesta reescribía lo que respondía el siguiente reintento; `readonly` sólo lo impedía en
-  compilación. Regla 7 de `docs/specs/registration.md`, prueba `U04b` en `tests/post-entry.test.mjs`.
+  compilación. Regla 7 de `docs/specs/registration.md`, prueba `U04b` en `tests/application/post-entry.test.mjs`.
 - `postedMovements` se consulta a través de un puerto y en 006a responde siempre `false`, porque todavía
   no existe una operación que contabilice. Su adaptador real llega con 006b.
 
@@ -147,7 +147,7 @@ revisado al modelo mixto de monedas.
   movimientos. La comprobación de reversión previa vive justo antes de entregar al puerto, para que un adaptador durable la sustituya
   por una restricción única.
 - `PostedMovementsQuery` deja de ser un doble: `hasPostedLines` lee del repositorio de asientos y devuelve
-  `true` en las cuentas con líneas contabilizadas (probado con datos reales en `tests/post-entry.test.mjs`).
+  `true` en las cuentas con líneas contabilizadas (probado con datos reales en `tests/application/post-entry.test.mjs`).
   Pero `ACCOUNT_HAS_MOVEMENTS` es una guarda de defensa y no una regla alcanzable: sólo una cuenta
   contabilizable puede recibir movimientos, y esa misma cuenta se rechaza antes como padre con
   `ACCOUNT_PARENT_NOT_GROUPING`. El orden de comprobación es deliberado y la prueba fija cuál de los dos
@@ -222,10 +222,29 @@ revisado al modelo mixto de monedas.
   y adaptadores quedaron igual.
 - Corte limpio, sin alias: el paquete es `private` en 0.0.0 y no hay consumidores registrados. Un anfitrión
   migra `makePostEntry(deps)(input)` → `new Accounting(deps).postEntry(input)`.
-- `tests/application-facade.test.mjs` recorre los once métodos, la propagación de errores sin escritura
+- `tests/application/application-facade.test.mjs` recorre los once métodos, la propagación de errores sin escritura
   parcial y que dos fachadas sobre las mismas dependencias compartan los almacenes. Los siete archivos de
   test que antes componían casos de uso ahora hablan sólo con la fachada: la suite completa pasa por la
   superficie pública, así que un export de más rompe `public-api` y un método faltante rompe el resto.
+
+### Refactor de dominio — DTO y organización de pruebas
+
+- Cada dominio tiene `dto/` con las formas de datos del dominio y una por archivo de objeto de valor: las
+  entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`) y el estado ya validado
+  que recibe el constructor privado (`*Fields`, `*Changes`). Ninguna tiene comportamiento, y los archivos de
+  objeto de valor contienen sólo su clase.
+- Los `*Fields` y `*Changes` se exportan desde su módulo para que la clase los importe, pero nunca desde el
+  barrel: siguen siendo internos.
+- La superficie pública no perdió ni renombró un símbolo: los seis `*Input` se siguen exportando con el mismo
+  nombre desde el barrel de su dominio, y `tests/public-api.test.mjs` no necesitó una sola edición.
+  `AccountStatus` y `JournalStatus` viven ahora en `account-status.ts` y `journal-status.ts`, como
+  `period-status.ts` y `entry-status.ts`.
+- `currency-catalog.ts` queda fuera de la regla: lo genera `pnpm sync:iso4217` y conserva `IsoCurrencyEntry`
+  donde lo escribe el generador, porque editarlo a mano lo perdería en la próxima regeneración.
+- Las pruebas espejan `src/`: `tests/domain/<dominio>/`, `tests/application/` y `tests/public-api.test.mjs`.
+  `scripts/run-tests.mjs` ya descubría `*.test.mjs` de forma recursiva, así que no cambió.
+- Sin cambio de comportamiento: 217 pruebas y `pnpm check` en verde, sin una expectativa editada. Las specs y
+  los README apuntan a las rutas nuevas.
 
 ### API pública
 
@@ -265,20 +284,20 @@ exporta algo fuera de ellos.
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
-Cobertura por criterio: M01-M12 en `tests/money.test.mjs`; A01, A02, A03, A08 y A09 en
-`tests/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
+Cobertura por criterio: M01-M12 en `tests/domain/money/money.test.mjs`; A01, A02, A03, A08 y A09 en
+`tests/domain/account/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
-conservados en `tests/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
-`tests/period.test.mjs`; IC01-IC14 en `tests/currency-catalog.test.mjs`; E01-E11 en
-`tests/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
-inexistente y la reversión rechazada; R01-R17 en `tests/registration.test.mjs`, incluidos el fallo de
+conservados en `tests/domain/journal/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
+`tests/domain/period/period.test.mjs`; IC01-IC14 en `tests/domain/money/currency-catalog.test.mjs`; E01-E11 en
+`tests/domain/entries/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
+inexistente y la reversión rechazada; R01-R17 en `tests/application/registration.test.mjs`, incluidos el fallo de
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
 agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U18b en
-`tests/post-entry.test.mjs`, más la copia del resultado de idempotencia (U04b);
-C01-C04, C06 y C07 en `tests/close-period.test.mjs`; V01-V16 en `tests/reverse-entry.test.mjs`; D01-D13 en
-`tests/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
-`tests/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
-que faltaba; `tests/application-facade.test.mjs` para los once métodos de `Accounting`, la propagación de
+`tests/application/post-entry.test.mjs`, más la copia del resultado de idempotencia (U04b);
+C01-C04, C06 y C07 en `tests/application/close-period.test.mjs`; V01-V16 en `tests/application/reverse-entry.test.mjs`; D01-D13 en
+`tests/application/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
+`tests/application/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
+que faltaba; `tests/application/application-facade.test.mjs` para los once métodos de `Accounting`, la propagación de
 errores y dos fachadas sobre las mismas dependencias compartiendo los almacenes.
 
 ## Validaciones que esperan la capa de aplicación
@@ -287,7 +306,7 @@ Registradas explícitamente para no prometerlas desde el dominio:
 
 | Regla | estado |
 | --- | --- |
-| A04 — padre de otro plan | Verificada en `tests/registration.test.mjs` (R05). |
+| A04 — padre de otro plan | Verificada en `tests/application/registration.test.mjs` (R05). |
 | A04 — ciclo | Cumplida por construcción: no existe operación que cambie `parentId` y re-registrar un id se rechaza (A04 en la suite). Sin comprobación propia porque no podría fallar. |
 | A05 — código único dentro del plan, permitido en otro plan | Verificada (R03, R04). La restricción única de BD es del anfitrión. |
 | A07 — cuenta usada se desactiva, no se borra | Verificada por ausencia de operación de borrado (R10). |

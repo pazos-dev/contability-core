@@ -2,7 +2,7 @@
 
 Responsabilidad: Asiento, líneas, equilibrio, estados y reversión.
 Especificación desde la raíz: `docs/specs/entries.md`.
-Estado: implementado y probado (criterios E01-E11) por `tests/entries.test.mjs`.
+Estado: implementado y probado (criterios E01-E11) por `tests/domain/entries/entries.test.mjs`.
 
 Archivos:
 
@@ -13,6 +13,12 @@ Archivos:
 - `posting-side.ts` — `DEBIT`/`CREDIT`.
 - `entry-errors.ts` — `EntryError` con códigos estables y fábricas de error.
 - `entry-text.ts` — helper interno de validación de texto, compartido por el agregado y la línea.
+- `dto/journal-entry-dto.ts` — `JournalEntryInput` y `JournalEntryReversalInput` (entradas de construcción),
+  más `JournalEntryFields` y `JournalEntryChanges` (estado validado y campos reemplazables).
+- `dto/journal-entry-line-dto.ts` — `JournalEntryLineInput` y `JournalEntryLineFields`.
+
+Los `*Fields` y `*Changes` se exportan desde su módulo para que la clase los importe, pero no salen por el
+barrel: son internos, igual que antes de tener archivo propio.
 
 Sin dependencias de Node, HTTP, base de datos, framework o aplicación.
 Importa `Money` de `money/index.ts` y `AccountingDate` de `period/index.ts`: nunca archivos internos ajenos.

@@ -18,9 +18,10 @@ S3. Decisión del usuario sobre pruebas, textual del preview aprobado: «Espejo 
 `tests/application/`, `tests/adapters/` y `tests/public-api.test.mjs`.
 
 S4. Regla de separación: `dto/` reúne toda forma de datos del dominio y ninguna de esas formas tiene
-comportamiento — las entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`,
-`IsoCurrencyEntry`) y las formas internas que consume el constructor privado (`*Fields`, `*Changes`). Cada
-archivo de objeto de valor contiene sólo su clase.
+comportamiento — las entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`) y las
+formas internas que consume el constructor privado (`*Fields`, `*Changes`). Cada archivo de objeto de valor
+contiene sólo su clase. Los archivos generados quedan fuera de la regla, porque la próxima regeneración los
+sobrescribe: `currency-catalog.ts` conserva su `IsoCurrencyEntry`.
 
 S5. Consistencia de tipos de estado: `AccountStatus` y `JournalStatus` dejan de declararse dentro del archivo
 de la clase y viven en `account-status.ts` y `journal-status.ts`, igual que `period-status.ts` y
@@ -39,7 +40,7 @@ la profundidad relativa del import relativo.
 
 | ID | Spec | Tarea | Commit |
 | --- | --- | --- | --- |
-| T1 | S2, S4, S5, S7 | Extraer las 12 interfaces y los 2 tipos de estado a `dto/` en los cinco dominios; barrels con las rutas nuevas | `refactor(domain): move every data shape into per-domain dto folders` |
+| T1 | S2, S4, S5, S7 | Extraer las 14 formas de datos y los 2 tipos de estado a `dto/` en los cinco dominios; barrels con las rutas nuevas | `refactor(domain): move every data shape into per-domain dto folders` |
 | T2 | S3, S8 | Reagrupar los 14 archivos de prueba en espejo de `src/` y ajustar los imports a `dist/` | `test: mirror the source tree in the tests folder` |
 | T3 | S2, S3, S6 | Documentar: `ARCHITECTURE.md`, los cinco README de dominio, `tests/README.md` y `STATUS.md` | `docs(domain): document the dto folders and the test layout` |
 
@@ -62,3 +63,15 @@ agrupan en espejo de `src/`.
 
 L5. Se descartó mover los DTO a la capa de aplicación: era la tercera opción del preview y no se eligió, así
 que el dominio sigue publicando sus DTO de construcción y `ARCHITECTURE.md` no cambia de modelo de capas.
+
+L6. Corrección durante la implementación: `currency-catalog.ts` se declara generado («Do not edit by hand»,
+`pnpm sync:iso4217`), así que `IsoCurrencyEntry` no se movió. La alternativa era editar también el generador
+para reubicar una interfaz de seis líneas, y eso agrega superficie de fallo sin quitar ningún defecto. La
+regla de S4 se ajustó para excluir los archivos generados en lugar de dejar la spec contradiciendo al código.
+Cuatro formas de datos más de las que decía el diagnóstico inicial: son 14, no 12, al contar `CurrencyJSON`
+y `MoneyJSON`.
+
+L7. Al mover las pruebas aparecieron rutas viejas en más documentos que los previstos: las seis specs de
+casos de uso, `docs/specs/currency-catalog.md`, `docs/specs/ledger.md` y `docs/STATUS.md`. Se corrigieron
+porque son documentos vigentes. Los `docs/tasks/*.md` de tareas ya cerradas conservan sus rutas: son
+registro de lo que era cierto al cerrar, no guía actual.

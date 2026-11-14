@@ -149,7 +149,7 @@ Burbujea `ENTRY_STATE` del dominio cuando el original no está POSTED.
 
 ## Verificación
 
-- Pruebas: `tests/reverse-entry.test.mjs`.
+- Pruebas: `tests/application/reverse-entry.test.mjs`.
 - Una prueba por criterio V01-V16, más el caso de un asiento de tres líneas con dos cuentas y lado mixto
   para confirmar que el espejado no depende de la posición.
 - V13 se prueba con el adaptador en memoria real, inyectando el fallo en `record` y comparando el estado

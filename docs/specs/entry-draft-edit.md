@@ -103,5 +103,5 @@ Burban los de dominio: `ENTRY_STATE`, `DUPLICATE_LINE_ID`, `INVALID_ENTRY_LINE`,
 
 ## Verificación
 
-- Pruebas: `tests/entry-draft-edit.test.mjs`, una por criterio de L01 a L13.
+- Pruebas: `tests/application/entry-draft-edit.test.mjs`, una por criterio de L01 a L13.
 - `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
