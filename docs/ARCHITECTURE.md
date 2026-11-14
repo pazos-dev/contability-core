@@ -20,8 +20,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/entries/` | `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`, `posting-side.ts`, `entry-errors.ts`, `entry-text.ts`. |
 | `src/core/domain/period/` | `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`, `period-errors.ts`. |
 | `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. |
-| `src/core/application/use-cases/` | Crear/contabilizar/revertir asiento y cerrar período. |
-| `src/core/application/contracts/` | Entradas/salidas serializables; entidades y modelos ORM no son DTOs públicos. |
+| `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso y, al lado, sus contratos de entrada y salida serializables. Entidades y modelos ORM no son DTOs públicos. Internos: la superficie es `Accounting`. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
 | `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |
