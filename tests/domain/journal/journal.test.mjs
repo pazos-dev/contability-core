@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Journal, JournalError } from '../dist/index.js';
+import { Journal, JournalError } from '../../../dist/index.js';
 
 const base = {
   id: 'jrn-1',

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Account, AccountCode, AccountError } from '../dist/index.js';
+import { Account, AccountCode, AccountError } from '../../../dist/index.js';
 
 const base = {
   id: 'acc-1',

@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Currency, Money, MoneyError } from '../dist/index.js';
+import { Currency, Money, MoneyError } from '../../../dist/index.js';
 
 const uyu = Currency.create('UYU', 2);
 const usd = Currency.create('USD', 2);

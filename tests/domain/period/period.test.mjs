@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { AccountingDate, AccountingPeriod, PeriodError } from '../dist/index.js';
+import { AccountingDate, AccountingPeriod, PeriodError } from '../../../dist/index.js';
 
 const d = (text) => AccountingDate.create(text);
 

@@ -6,7 +6,7 @@
 // Only codes with a decimal minor unit carry a scale. Codes whose official minor unit is not a
 // decimal scale (precious metals, SDR, testing and other non-decimal codes) are kept apart so the
 // error can say why. The SHA-256 above is provenance, not a runtime check: the tripwire against an
-// unintended table change is tests/currency-catalog.test.mjs (IC11), which pins the non-2 scales and
+// unintended table change is tests/domain/money/currency-catalog.test.mjs (IC11), which pins the non-2 scales and
 // the codes without a decimal minor unit. Changing them requires updating that test deliberately.
 
 /** Publication date of the incorporated ISO 4217 list, as declared by its source. */

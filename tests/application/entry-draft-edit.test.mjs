@@ -6,7 +6,7 @@ import {
   ApplicationError,
   EntryError,
   createInMemoryAccounting,
-} from '../dist/index.js';
+} from '../../dist/index.js';
 
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 

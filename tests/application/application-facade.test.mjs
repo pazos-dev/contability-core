@@ -6,7 +6,7 @@ import {
   ApplicationError,
   Currency,
   createInMemoryAccounting,
-} from '../dist/index.js';
+} from '../../dist/index.js';
 
 const LEDGERS = { 'ledger-1': 'chart-1' };
 const uyu = Currency.create('UYU', 2);

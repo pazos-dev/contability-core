@@ -8,7 +8,7 @@ import {
   ISO_4217_PUBLISHED,
   listIsoCurrencies,
   listIsoCurrenciesWithoutMinorUnit,
-} from '../dist/index.js';
+} from '../../../dist/index.js';
 
 // Reason-specific matchers: the spec requires the error to distinguish why a currency was rejected.
 const FORMAT = /must be three uppercase letters A-Z/;
