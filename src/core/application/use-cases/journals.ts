@@ -1,36 +1,9 @@
-import { Journal, type JournalStatus } from '../../domain/journal/index.js';
+import { Journal } from '../../domain/journal/index.js';
 import * as errors from '../errors.js';
 import type { ApplicationDeps } from '../ports/index.js';
+import type { RegisterJournalInput, RegisterJournalResult, SetJournalStatusInput, SetJournalStatusResult } from './contracts.js';
+import { requireChartOfAccountsId } from './guards.js';
 import { fingerprintOf, remember, replay } from './shared/index.js';
-
-/** Serializable input of `registerJournal`. */
-export interface RegisterJournalInput {
-  readonly ledgerId: string;
-  readonly journalId: string;
-  readonly code: string;
-  readonly name: string;
-  readonly idempotencyKey?: string;
-}
-
-export interface RegisterJournalResult {
-  readonly ledgerId: string;
-  readonly journalId: string;
-  readonly code: string;
-  readonly status: JournalStatus;
-}
-
-/** Serializable input of `setJournalStatus`. */
-export interface SetJournalStatusInput {
-  readonly ledgerId: string;
-  readonly journalId: string;
-  readonly status: JournalStatus;
-}
-
-export interface SetJournalStatusResult {
-  readonly ledgerId: string;
-  readonly journalId: string;
-  readonly status: JournalStatus;
-}
 
 const REGISTER_OPERATION = 'registerJournal';
 
@@ -59,7 +32,7 @@ export class RegisterJournal {
       );
       if (stored !== undefined) return stored;
 
-      if ((await scope.ledgers.chartOfAccountsIdOf(ledgerId)) === undefined) throw errors.ledgerNotFound(ledgerId);
+      await requireChartOfAccountsId(scope, ledgerId);
 
       if ((await scope.journals.findById(ledgerId, journalId)) !== undefined) {
         throw errors.journalAlreadyExists(journalId);
@@ -101,7 +74,7 @@ export class SetJournalStatus {
     if (status !== 'ACTIVE' && status !== 'INACTIVE') throw errors.invalidApplicationInput('status', status);
 
     return this.#deps.unitOfWork.run(async (scope) => {
-      if ((await scope.ledgers.chartOfAccountsIdOf(ledgerId)) === undefined) throw errors.ledgerNotFound(ledgerId);
+      await requireChartOfAccountsId(scope, ledgerId);
 
       const journal = await scope.journals.findById(ledgerId, journalId);
       if (journal === undefined) throw errors.journalNotFound(journalId);

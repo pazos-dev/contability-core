@@ -76,3 +76,9 @@ ahora `entries.ts` con 6 sentencias y 12 bindings, donde antes `post-entry.ts` s
 área entera repartía ~31 sentencias. `accounting.ts` sigue con 32 bindings: es la raíz de composición y tiene
 que nombrar las once clases y los veintidós contratos, pero bajó de 9 a 5 sentencias.
 `pnpm check` en verde con 217/217 sin tocar una sola expectativa.
+
+L7. Revisión posterior del mismo usuario: los contratos de `entries.ts` eran ruido en medio del comportamiento
+y las cadenas de `if` se repetían. Eso movió `contracts` a un módulo propio y agregó `guards.ts`, con lo que
+las cifras de L6 quedaron desactualizadas: hoy la capa tiene 43 archivos, 95 sentencias y 192 bindings, y a
+cambio `entries.ts` bajó de 520 a 413 líneas y los `if` con `throw` de las áreas de 53 a 16. Ver
+`readable-use-cases.md`, que también registra por qué se descartó el objeto de reglas.
