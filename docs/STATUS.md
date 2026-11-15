@@ -1,7 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 006e, el libro contable como
-agregado (`docs/specs/ledger.md`); antes, una carpeta por área en
+Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 006f, la moneda funcional del
+libro (`docs/specs/ledger.md`, L17-L24; cierra Q08 como moneda única por libro); antes, 006e, el libro contable
+como agregado (`docs/specs/ledger.md`); antes, una carpeta por área en
 `use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
 antes, nombres de módulo unificados
 en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
@@ -236,6 +237,40 @@ mixto de monedas.
   área, no una por caso de uso**: cuentas, diarios y períodos en `registration.test.mjs`, asientos en
   `entry-draft.test.mjs`.
 
+### 006f-ledger-currency — `docs/specs/ledger.md`, L17-L24 y `docs/specs/entries.md`, E12
+
+Resuelve Q08 con la opción A: **una moneda funcional por libro**, sin conversión.
+
+- `Ledger` gana `currency: Currency` —el value object, no un código suelto, porque la escala forma parte de la
+  identidad monetaria y se persiste con el importe—, `requireCurrency` rechaza con `INVALID_LEDGER` cualquier
+  cosa que no sea un `Currency`, y `#copyWith` la conserva: no hay operación para cambiarla.
+- `RegisterLedgerInput.currency` viaja como `CurrencyJSON { code, scale }` y el caso de uso la hidrata con
+  `Currency.fromJSON`; el dominio nunca ve JSON, igual que las líneas de un asiento con `Money`. `currency`
+  entra en la **huella de idempotencia** y en `RegisterLedgerResult`: la misma clave con otra moneda es
+  `IDEMPOTENCY_CONFLICT` y no un resultado guardado.
+- Contabilizar exige que el asiento esté en la moneda del libro: `requireLedgerCurrency` en
+  `use-cases/entries/rules.ts`, invocada desde `post` y desde `reverse` —las dos vías que dejan un asiento en
+  `POSTED`—, con el código nuevo `LEDGER_CURRENCY_MISMATCH` y `details` como `code/scale`.
+- Los **borradores no se validan por moneda**, igual que no se validan por balance ni por período abierto: el
+  reparto ya establecido es borrador tolerante y `post` estricto (L23).
+- `requireActiveLedger` ya devolvía el `Ledger`, así que la guarda no agrega una lectura: en `post` y `reverse`
+  se reemplaza `requireChartOfAccountsId` por `requireActiveLedger` y se usa `ledger.chartOfAccountsId`.
+- La moneda entra en la huella en forma canónica `code/scale` y se hidrata **antes** de mirar el registro de
+  idempotencia: el orden de las claves de un objeto no es parte de la petición, y un llamador que ya no manda
+  moneda recibe `INVALID_CURRENCY` en lugar de un resultado guardado sin moneda.
+- `LEDGER_CURRENCY_MISMATCH` lleva `details` como `ledgerCurrency` y `entryCurrency` en formato `code/scale`,
+  porque `ApplicationError.details` es un mapa de strings por contrato y la escala es parte de la identidad.
+- Sin conversión: `Money` no gana API de tasas y `CURRENCY_MISMATCH` sigue igual. Multimoneda operativa en un
+  mismo libro queda fuera y necesitaría tasa, fecha de tasa, importe funcional por línea y cuentas de
+  diferencia de cambio.
+- Migración a cargo del anfitrión: los libros ya persistidos no tienen moneda y el core no inventa una por
+  defecto (Q09). Los registros de idempotencia guardados por un alta anterior tampoco coinciden con la huella
+  nueva: el anfitrión decide si los descarta al migrar o acepta que un reintento con la misma clave falle.
+- Pruebas nuevas: L17-L21 y la regla 18 en `tests/application/ledger.test.mjs` y el agregado en
+  `tests/domain/ledger/ledger.test.mjs`; L22 y L24 en `tests/application/post-entry.test.mjs`, incluida la vía
+  de `reverse`; L23 en `tests/application/entry-draft.test.mjs`. El arnés `tests/application/seed.mjs` siembra
+  los libros en `TEST_CURRENCY` (`UYU`/2) y acepta otra moneda como tercer argumento.
+
 ### Contrato de la capa de aplicación — fachada `Accounting`
 
 - `Accounting` (`src/core/application/facade/accounting.ts`) es la **única** superficie pública de la capa: un
@@ -443,9 +478,10 @@ El siguiente incremento es **008: consultas e informes** — saldos por cuenta, 
 con especificaciones propias, donde el libro es el sujeto natural: es el ámbito de aislamiento y el dueño del
 plan de cuentas. Alternativa posterior: el contrato escrito del adaptador del anfitrión (007).
 
-Lo que **no** se promete: no hay multimoneda, porque la moneda funcional del libro sigue abierta (Q08); no hay
-consolidación entre libros; y el plan de cuentas no es una entidad del core (Q07), sino un identificador del
-anfitrión que el libro guarda sin verificar.
+Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
+una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
+plan de cuentas no es una entidad del core (Q07), sino un identificador del anfitrión que el libro guarda sin
+verificar.
 
 ## Relevo de sesión
 

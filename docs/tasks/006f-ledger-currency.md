@@ -49,10 +49,10 @@ moneda supuesta contabilizaría mal en silencio.
 
 | ID | Specs | Qué | Commit |
 | --- | --- | --- | --- |
-| T1 | S1, S2, S3, S9 | `Ledger` exige `currency: Currency` en `create`; inmutable en `#copyWith`; `INVALID_LEDGER` si no es una instancia de `Currency`; barrel y README del área | `feat(ledger): require a functional currency on every ledger` |
-| T2 | S4, S8 | `RegisterLedgerInput.currency: CurrencyJSON`, hidratación con `Currency.fromJSON`, moneda en la huella y en `RegisterLedgerResult` | `feat(ledger): take the functional currency into the idempotency fingerprint` |
-| T3 | S5, S6, S7 | `requireLedgerCurrency` en `use-cases/entries/rules.ts`; `LEDGER_CURRENCY_MISMATCH` en el catálogo de errores; guarda en `post` y `reverse` | `feat(entries): reject posting in a currency other than the ledger's` |
-| T4 | S10 | Adaptar los call sites de prueba y el seed, escribir las pruebas nuevas y actualizar `STATUS.md`, `OPEN-QUESTIONS.md` y los README de área | `docs(ledger): record the functional currency and the migration the host owes` |
+| T1 | S1, S2, S3, S9 | `Ledger` exige `currency: Currency` en `create`; inmutable en `#copyWith`; `INVALID_LEDGER` si no es una instancia de `Currency`; barrel y README del área | `43f7090` |
+| T2 | S4, S8 | `RegisterLedgerInput.currency: CurrencyJSON`, hidratación con `Currency.fromJSON`, moneda en la huella y en `RegisterLedgerResult` | `43f7090` |
+| T3 | S5, S6, S7 | `requireLedgerCurrency` en `use-cases/entries/rules.ts`; `LEDGER_CURRENCY_MISMATCH` en el catálogo de errores; guarda en `post` y `reverse` | `43f7090` |
+| T4 | S10 | Adaptar los call sites de prueba y el seed, escribir las pruebas nuevas y actualizar `STATUS.md`, `OPEN-QUESTIONS.md` y los README de área | `43f7090` + este commit |
 
 ## Log
 
@@ -72,3 +72,26 @@ contiene un `Currency` y `JournalEntryLineInput.amount` es un `Money`, no un JSO
 
 L5. No se agrega `Ledger.toJSON`. `Account`, `Journal` y `AccountingPeriod` tampoco lo tienen: sólo los value
 objects (`Currency`, `Money`, `AccountingDate`) serializan. El anfitrión mapea el libro desde sus getters.
+
+L6. `pnpm test` **no** prueba el código actual: corre sobre `dist/`, y el build es un paso aparte. La primera
+corrida dio 244 en verde con las pruebas rotas, porque `dist/` era de las 13:09 y el fuente de las 18:23. La
+suite de verdad es `pnpm check`, que encadena `check:project`, `typecheck`, `build` y `test`.
+
+L7. La verificación independiente se disparó por el ítem 3 de riesgo: `RegisterLedgerInput` gana un campo
+**obligatorio** y eso rompe el contrato que un anfitrión ya consume. Reportó un bloqueante y cinco
+advertencias, todas corregidas: (a) el ejemplo de `README.md` no compilaba (`TS2345`), reproducido con `tsc`;
+(b) la huella guardada por un alta anterior ya no coincide, así que un reintento legítimo tras migrar es
+`IDEMPOTENCY_CONFLICT` — decisión del anfitrión y ahora documentada en `ledger.md`; (c) la huella usaba el
+objeto crudo, así que `{scale, code}` contradecía el contrato «mismos valores, mismo texto» de
+`idempotency.ts`; se pasa a forma canónica `code/scale` y se hidrata antes de buscar el registro, con lo que
+un llamador viejo recibe `INVALID_CURRENCY` en vez de un resultado sin moneda; (d) la guarda de `reverse` no
+tenía prueba; (e) L18 y L19 no cubrían toda la regla 14 ni el registro de idempotencia, y la regla 18 no
+tenía prueba; (f) faltaba la fila 006f en `docs/ROADMAP.md`.
+
+L8. Las pruebas nuevas no son vacuas: se rompieron las dos guardas a propósito (el `instanceof` de
+`requireCurrency` y las dos llamadas a `requireLedgerCurrency`) y fallaron exactamente L19, L22, L23 y L24.
+Después se restauró el código y la suite volvió a verde.
+
+L9. Rebanadas: `d3ac19a` (especificación y decisiones) y `43f7090` (dominio, aplicación, pruebas y README) suman
+756 líneas, más de las ~400 de una rebanada. El corte no se forzó más porque el campo nuevo no compila con la
+mitad del cambio: dominio, DTO, caso de uso y las 23 llamadas de prueba van juntos o no van.
