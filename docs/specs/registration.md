@@ -75,6 +75,14 @@ Reglas de contrato:
    identidad de la entidad. Misma clave, mismo id y código, nombre, tipo, padre, flag o fechas distintas es
    otra petición y produce `IDEMPOTENCY_CONFLICT`. Huir de esta regla convierte un conflicto en un éxito
    silencioso que ignora los argumentos nuevos del llamador.
+   El **formato** de la huella también es contrato, porque un anfitrión la persiste junto con el resultado: los
+   nombres de campo se ordenan, los campos ausentes (`undefined`) se omiten y el resultado es el
+   `JSON.stringify` de los pares `[campo, valor]`. No es un hash y no hace falta que lo sea: se compara contra
+   lo guardado, no se usa como identidad. Agregar un campo a un caso de uso, renombrarlo o cambiar cómo se
+   serializa un DTO no altera la regla, pero sí el texto de la huella: las claves registradas con el formato
+   anterior dejan de reconocerse y una repetición pasa a reportarse como `IDEMPOTENCY_CONFLICT` en lugar de
+   devolver el resultado guardado. Migrar o invalidar esas claves es trabajo del anfitrión; el formato queda
+   escrito acá para que no se descubra por accidente.
 7. `IdempotencyRegistry` **copia** el resultado al registrarlo y al recuperarlo: el objeto que recibe el
    llamador nunca es el objeto guardado, igual que en un adaptador durable que serializa a una fila.
    `readonly` y `Readonly<>` sólo existen en compilación; un resultado mutado en ejecución no puede cambiar

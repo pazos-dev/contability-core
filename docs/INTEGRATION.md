@@ -24,6 +24,7 @@ un contrato que el anfitrión debe cumplir al implementar los puertos.
 | --- | --- |
 | Las reglas contables y de coherencia, con códigos de error estables | Una `UnitOfWork` que sea una transacción real de su motor |
 | Que todas las lecturas y entregas al puerto ocurran dentro de ese alcance | Atomicidad y rollback de su motor |
+| Una huella de idempotencia de formato escrito: campos ordenados, ausentes omitidos, pares serializados | Guardar la huella tal como llega, y decidir qué hace con las registradas cuando cambie un DTO: migrarlas o invalidarlas |
 | Consultar unicidad antes de entregar: código de cuenta, código de diario, solapamiento de períodos, una sola reversión | Restricciones únicas en su esquema que cierren la ventana entre la consulta y la escritura |
 | Un identificador de asiento que nunca se reutiliza, comprobado antes de entregar | Clave primaria sobre `(ledgerId, entryId)`, que es la garantía durable |
 | Rechazar un asiento si el período ya está cerrado en el momento de la lectura | Serialización o detección de versión entre cierre y contabilización |
