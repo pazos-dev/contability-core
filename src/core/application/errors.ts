@@ -6,6 +6,7 @@ export type ApplicationErrorCode =
   | 'INVALID_APPLICATION_INPUT'
   | 'LEDGER_NOT_FOUND'
   | 'LEDGER_ALREADY_EXISTS'
+  | 'LEDGER_INACTIVE'
   | 'ACCOUNT_NOT_FOUND'
   | 'ACCOUNT_ALREADY_EXISTS'
   | 'ACCOUNT_CODE_DUPLICATE'
@@ -59,6 +60,10 @@ export function ledgerAlreadyExists(ledgerId: string): ApplicationError {
   return new ApplicationError('LEDGER_ALREADY_EXISTS', `Ledger ${JSON.stringify(ledgerId)} is already registered.`, {
     ledgerId,
   });
+}
+
+export function ledgerInactive(ledgerId: string): ApplicationError {
+  return new ApplicationError('LEDGER_INACTIVE', `Ledger ${JSON.stringify(ledgerId)} is inactive.`, { ledgerId });
 }
 
 export function accountNotFound(accountId: string): ApplicationError {

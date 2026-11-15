@@ -308,3 +308,13 @@ test('the draft is postable afterwards, closing the circuit', async () => {
   assert.equal(stored(memory)[0].status, 'POSTED');
   assert.ok(JournalEntry !== undefined && JournalEntryLine !== undefined && Money !== undefined && AccountingDate !== undefined);
 });
+
+test('L11: an inactive ledger rejects creating a draft, and nothing is written', async () => {
+  const { memory, app } = await harness();
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  await assert.rejects(app.createEntryDraft(draftInput()), assertCode('LEDGER_INACTIVE'));
+
+  assert.equal(stored(memory).length, 0);
+  assert.deepEqual(memory.snapshot().idempotency, []);
+});

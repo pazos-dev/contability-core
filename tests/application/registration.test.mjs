@@ -686,3 +686,45 @@ test('an inherited property name is not a known ledger', async () => {
 
   assert.equal(storedJournals(memory).length, 0);
 });
+
+// L11: one test per area, not one per use case. The ledger is the first rule of every flow, so the same
+// guard has to be proven on each area and not eleven times.
+
+test('L11: an inactive ledger rejects registering an account', async () => {
+  const { memory, app } = await harness();
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  await assert.rejects(app.registerAccount(accountInput()), assertCode('LEDGER_INACTIVE'));
+
+  assert.equal(storedAccounts(memory).length, 0);
+});
+
+test('L11: an inactive ledger rejects registering a journal', async () => {
+  const { memory, app } = await harness();
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  await assert.rejects(
+    app.registerJournal({ ledgerId: 'ledger-1', journalId: 'jrn-1', code: 'VENTAS', name: 'Ventas' }),
+    assertCode('LEDGER_INACTIVE'),
+  );
+
+  assert.equal(storedJournals(memory).length, 0);
+});
+
+test('L11: an inactive ledger rejects registering a period', async () => {
+  const { memory, app } = await harness();
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  await assert.rejects(
+    app.registerPeriod({
+      ledgerId: 'ledger-1',
+      periodId: 'per-2026',
+      name: 'Ejercicio 2026',
+      startDate: '2026-01-01',
+      endDate: '2026-12-31',
+    }),
+    assertCode('LEDGER_INACTIVE'),
+  );
+
+  assert.equal(storedPeriods(memory).length, 0);
+});

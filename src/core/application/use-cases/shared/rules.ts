@@ -1,6 +1,7 @@
 import type { Account } from '../../../domain/account/index.js';
 import type { JournalEntry } from '../../../domain/entries/index.js';
 import type { Journal } from '../../../domain/journal/index.js';
+import type { Ledger } from '../../../domain/ledger/index.js';
 import type { AccountingDate, AccountingPeriod } from '../../../domain/period/index.js';
 import * as errors from '../../errors.js';
 import type { UnitOfWorkScope } from '../../ports.js';
@@ -23,15 +24,27 @@ import type { UnitOfWorkScope } from '../../ports.js';
  */
 
 /**
- * The ledger resolves its chart of accounts (Q07). Absent ledger is `LEDGER_NOT_FOUND`.
+ * The ledger exists and is active. Absent is `LEDGER_NOT_FOUND`, inactive is `LEDGER_INACTIVE` (R6):
+ * a status that still allowed writes would not mean anything, so every write of the module passes here.
+ *
+ * This is the first rule of every use case, in the place where the chart of accounts used to be resolved:
+ * the ledger is the scope that gives the rest of the entities their meaning.
+ */
+export async function requireActiveLedger(scope: UnitOfWorkScope, ledgerId: string): Promise<Ledger> {
+  const ledger = await scope.ledgers.findById(ledgerId);
+  if (ledger === undefined) throw errors.ledgerNotFound(ledgerId);
+  if (ledger.status !== 'ACTIVE') throw errors.ledgerInactive(ledgerId);
+  return ledger;
+}
+
+/**
+ * The ledger resolves its chart of accounts (Q07), after the ledger itself is known to be active.
  *
  * The ledger is the only source of that relation since `chartOfAccountsByLedger` disappeared from the
  * adapter: a ledger that nobody registered cannot be operated on, not even by configuration.
  */
 export async function requireChartOfAccountsId(scope: UnitOfWorkScope, ledgerId: string): Promise<string> {
-  const ledger = await scope.ledgers.findById(ledgerId);
-  if (ledger === undefined) throw errors.ledgerNotFound(ledgerId);
-  return ledger.chartOfAccountsId;
+  return (await requireActiveLedger(scope, ledgerId)).chartOfAccountsId;
 }
 
 /** The entry exists in this ledger; an id of another ledger is indistinguishable from a missing one. */
