@@ -57,6 +57,16 @@ ser un contexto acotado y vive en `src/core/domain/shared/money/`, dentro de la 
 `errors/`. `describe-value.ts` pasa a `shared/`. `check:project` exige los cuatro contextos acotados y, aparte,
 el barrel, README y spec del kernel compartido. Registrado en ADR 0003, que sustituye ese punto de ADR 0002.
 
+S13. Requerimiento posterior, textual: «en casos de usos esta port y en domain dto que es lo mismo con diferente
+nombre deja plasmado usar un mismo nombre para todo cuando sean iguales conso y busca si hay alguna otra csrpeta
+parecida».
+
+S14. Un mismo nombre para la misma naturaleza en todas las capas, y el empaquetado sigue la convención de su
+capa. `dto` = formas de datos sin comportamiento; `ports` = contratos de comportamiento que el anfitrión
+implementa. Por eso `use-cases/contracts.ts` pasa a `application/dto.ts`, y `StoredOperation` sale de `ports/` a
+ese módulo: `ports/` queda sólo con interfaces de comportamiento. La regla y su tabla viven en
+`ARCHITECTURE.md`, sección «Nombres de módulos».
+
 ## Tasks
 
 | ID | Spec | Tarea | Commit |
@@ -68,6 +78,8 @@ el barrel, README y spec del kernel compartido. Registrado en ADR 0003, que sust
 | T5 | S9, S10 | Documentar la agrupación por naturaleza en `ARCHITECTURE.md`, los cinco README y `STATUS.md` | `docs(domain): document the folder taxonomy` |
 | T6 | S11, S12 | Mover `money/` a `shared/money/` plano y `describe-value.ts` a `shared/`; imports, barrels, `check:project`, generador y pruebas | `refactor(domain): move money into the shared kernel and flatten it` |
 | T7 | S11, S12 | ADR 0003, nota en ADR 0002, `ARCHITECTURE.md`, `DOMAIN.md`, las dos specs, `STATUS.md` y este documento | `docs(domain): record money as the shared kernel` |
+| T8 | S13, S14 | Renombrar `contracts.ts` a `dto.ts` y sacar `StoredOperation` de `ports/`; imports, barrels y `check:project` | `refactor(application): name the data module dto and empty ports of data` |
+| T9 | S14 | Regla de nombres en `ARCHITECTURE.md`, README de `use-cases/`, `STATUS.md` y este documento | `docs: state one name per kind across layers` |
 
 ## Log
 
@@ -137,3 +149,21 @@ importe monetario sin pasar por el dominio.
 - `check:project` pasa a codificar la distinción en lugar de listar cinco pares.
 - La decisión se registró en un ADR nuevo (0003) con las alternativas descartadas, y ADR 0002 conserva su texto
   con una nota de sustitución: es historia, no guía vigente.
+
+L12. «en casos de usos esta port y en domain dto que es lo mismo con diferente nombre deja plasmado usar un mismo
+nombre para todo cuando sean iguales conso y busca si hay alguna otra csrpeta parecida».
+
+Inventario antes de tocar: `application/use-cases/contracts.ts` y `domain/<contexto>/dto/` eran la misma cosa
+con dos nombres. `ports/` no era lo mismo —son contratos de comportamiento— pero tenía adentro un DTO,
+`StoredOperation`, y eso es lo que hacía que las dos carpetas se leyeran iguales. Revisadas el resto:
+`domain/shared/` y `application/use-cases/shared/` ya comparten nombre; `application/errors.ts` y
+`domain/<contexto>/errors/` comparten nombre y difieren sólo en empaquetado, que la regla justifica (una clase
+de error para toda la capa contra una por contexto); `src/composition/` está vacía salvo README; y
+`src/adapters/memory/` no entra en la regla porque es un adaptador concreto, no una capa con naturalezas.
+
+L13. Nombre elegido: `dto`, y no `contracts`. `contract` ya significa otra cosa en este proyecto —el contrato
+con el anfitrión, que son los puertos—, y esa ambigüedad es justamente lo que produjo la confusión. `dto` ya
+existía en cinco carpetas; renombrar un archivo es más barato y no compite con ningún otro uso de la palabra.
+`application/dto.ts` queda en la raíz de la capa y no dentro de `use-cases/` porque también contiene
+`StoredOperation`, que el puerto de idempotencia necesita: dejarlo en `use-cases/` obligaría a que `ports/`
+importara de `use-cases/`, es decir, a invertir la dependencia entre las dos carpetas.

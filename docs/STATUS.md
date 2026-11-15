@@ -1,9 +1,10 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: `money` como kernel compartido
-en `domain/shared/money/` (ADR 0003), sobre el DTO por dominio y las pruebas en espejo de `src/`, el refactor de
-la idempotencia (`Idempotency`), el contrato de clases y la fachada `Accounting`, 006d-application (edición de
-las líneas de un borrador), 006c, 006b y 006a-application, 006-entries y 005-currency-catalog revisado al modelo
+Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: nombres de módulo unificados
+en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
+`domain/shared/money/` (ADR 0003), el DTO por dominio y las pruebas en espejo de `src/`, el refactor de la
+idempotencia (`Idempotency`), el contrato de clases y la fachada `Accounting`, 006d-application (edición de las
+líneas de un borrador), 006c, 006b y 006a-application, 006-entries y 005-currency-catalog revisado al modelo
 mixto de monedas.
 
 ## Implementado y verificado
@@ -253,6 +254,10 @@ mixto de monedas.
   `scripts/run-tests.mjs` ya descubría `*.test.mjs` de forma recursiva, así que no cambió.
 - Sin cambio de comportamiento: 217 pruebas y `pnpm check` en verde, sin una expectativa editada. Las specs y
   los README apuntan a las rutas nuevas.
+- Un mismo nombre para la misma naturaleza en todas las capas: `dto` para datos y `ports` para comportamiento.
+  `use-cases/contracts.ts` pasó a `application/dto.ts` —era lo mismo con otro nombre— y `StoredOperation` salió
+  de `ports/` a ese módulo, porque es un dato y no un contrato de comportamiento. La regla y su tabla están en
+  `ARCHITECTURE.md`, sección «Nombres de módulos».
 
 ### API pública
 

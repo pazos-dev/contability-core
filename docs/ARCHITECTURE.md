@@ -20,8 +20,9 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/period/` | Raíz: `accounting-period.ts` (agregado). `value-objects/accounting-date.ts`; `types/period-status.ts`; `errors/period-errors.ts`; `dto/accounting-period-dto.ts`. |
 | `src/core/domain/shared/` | Kernel compartido del dominio: `describe-value.ts` y `money/`. |
 | `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
-| `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. |
-| `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso y, al lado, sus contratos de entrada y salida serializables. Entidades y modelos ORM no son DTOs públicos. Internos: la superficie es `Accounting`. |
+| `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
+| `src/core/application/dto.ts` | Las 22 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
+| `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso, más `guards.ts` y `shared/`. Internos: la superficie es `Accounting`. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
 | `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |
@@ -55,6 +56,25 @@ raíz, porque es su puerta de entrada; los ayudantes internos, en la raíz de su
 `entries/`) o en `shared/` si los comparten varios contextos (`describe-value.ts`); y los archivos generados,
 que conservan la ubicación donde los escribe su generador (`shared/money/currency-catalog.ts` con su
 `IsoCurrencyEntry`).
+
+## Nombres de módulos
+
+El mismo nombre se usa en todas las capas para la misma naturaleza, y el empaquetado sigue la convención de su
+capa: carpeta con un archivo por concepto cuando hay varias piezas, módulo único cuando la capa concentra una
+sola.
+
+| Nombre | Contenido | Dónde |
+| --- | --- | --- |
+| `dto` | Formas de datos sin comportamiento: entradas y salidas, representaciones serializadas y el estado validado que recibe un constructor privado. | `domain/<contexto>/dto/`, `domain/shared/money/dto/`, `application/dto.ts` |
+| `ports` | Contratos de comportamiento que el anfitrión implementa: repositorios, unidad de trabajo, dependencias. | `application/ports/` |
+| `errors` | La clase de error, sus códigos estables y sus fábricas. | `domain/<contexto>/errors/`, `application/errors.ts` |
+| `types` | Uniones cerradas de las que está hecho el modelo: estados, lado de contabilización, tipo de cuenta. | `domain/<contexto>/types/` |
+| `value-objects` | Valores inmutables con invariantes propias. | `domain/<contexto>/value-objects/` |
+| `shared` | Kernel compartido dentro de su capa. | `domain/shared/`, `application/use-cases/shared/` |
+
+La frontera que más se confunde es `ports` contra `dto`: `ports` es lo que el anfitrión debe implementar y está
+lleno de métodos; `dto` es lo que viaja y no tiene ninguno. Un tipo de datos dentro de `ports` está en el lugar
+equivocado — así estaba `StoredOperation`, que ahora vive en `application/dto.ts` y los puertos importan de ahí.
 
 ## API pública por dominio
 
