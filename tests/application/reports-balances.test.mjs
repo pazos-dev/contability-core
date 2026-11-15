@@ -137,12 +137,37 @@ function summary(row) {
 }
 
 /**
- * Everything a report must not touch: the entries with their lines, the idempotency registry, and the
- * accounts. A domain object is immutable, so a plain projection is the comparable form.
+ * Everything a report must not touch: the books, the chart, the journals, the periods, the entries with their
+ * lines and the idempotency registry. Rule 17 says a report writes **nothing**, so the proof has to cover the
+ * whole module and not only the entries. A domain object is immutable and stores in private fields, so each
+ * snapshot is projected through its getters into a comparable form.
  */
 function stateOf(memory) {
   const snapshot = memory.snapshot();
   return {
+    ledgers: snapshot.ledgers.map((ledger) => [
+      ledger.id,
+      ledger.name,
+      ledger.chartOfAccountsId,
+      ledger.currency.code,
+      ledger.currency.scale,
+      ledger.status,
+    ]),
+    journals: snapshot.journals.map((journal) => [
+      journal.ledgerId,
+      journal.id,
+      journal.code,
+      journal.name,
+      journal.status,
+    ]),
+    periods: snapshot.periods.map((period) => [
+      period.ledgerId,
+      period.id,
+      period.name,
+      period.startDate.value,
+      period.endDate.value,
+      period.status,
+    ]),
     entries: snapshot.entries.map((entry) => ({
       id: entry.id,
       status: entry.status,
@@ -491,7 +516,7 @@ test('TB10: a group account row does not include its child', async () => {
   assert.equal(result.balanced, true);
 });
 
-test('TB11: from after to is INVALID_APPLICATION_INPUT and an impossible from is INVALID_DATE', async () => {
+test('TB11: from after to is INVALID_APPLICATION_INPUT and an impossible date is INVALID_DATE', async () => {
   const { memory, app } = await harness();
   await postTwoEntries(app);
   const before = stateOf(memory);
@@ -504,11 +529,70 @@ test('TB11: from after to is INVALID_APPLICATION_INPUT and an impossible from is
     app.trialBalance({ ledgerId: 'ledger-1', from: '2026-02-30' }),
     assertPeriodCode('INVALID_DATE'),
   );
+  // Both ends are created before the range is compared, so an impossible `to` is a date error too.
+  await assert.rejects(
+    app.trialBalance({ ledgerId: 'ledger-1', to: '2026-02-30' }),
+    assertPeriodCode('INVALID_DATE'),
+  );
   // The date rule is lower-numbered than the ordering rule, so an impossible date wins over a bad range.
   await assert.rejects(
     app.trialBalance({ ledgerId: 'ledger-1', from: '2026-02-30', to: '2026-01-01' }),
     assertPeriodCode('INVALID_DATE'),
   );
+
+  assert.deepEqual(stateOf(memory), before);
+});
+
+test('S7: a trial balance that does not agree reports the totals and balanced false', async () => {
+  // The credit leg points at an account outside the ledger's chart. No legitimate posting path can build it
+  // (posting resolves every line against the plan), so the port lies and the report has to show the gap
+  // instead of hiding it: `balanced: false` with the two totals is the whole use of a trial balance.
+  const outsideEntry = JournalEntry.createDraft({
+    id: 'outside',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-03-15'),
+    description: 'Cuenta fuera del plan',
+  })
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l1',
+        accountId: 'acc-cash',
+        side: 'DEBIT',
+        amount: Money.fromDecimal('100.00', uyu),
+      }),
+    )
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l2',
+        accountId: 'acc-outside',
+        side: 'CREDIT',
+        amount: Money.fromDecimal('100.00', uyu),
+      }),
+    )
+    .post();
+
+  const { memory, app } = await harness({
+    memoryOptions: {
+      overrides: () => ({
+        postedEntries: {
+          findPostedMovements: async () => ({ entries: [outsideEntry], nextCursor: null }),
+        },
+      }),
+    },
+  });
+  const before = stateOf(memory);
+
+  const result = await app.trialBalance({ ledgerId: 'ledger-1' });
+  const rows = rowsById(result);
+
+  // Rule 7: the account outside the chart is never listed, so its credit is not in the rows.
+  assert.deepEqual(Object.keys(rows).sort(), ['acc-bank', 'acc-cash', 'acc-rev']);
+  assert.deepEqual(summary(rows['acc-cash']), ['1.1.01', '10000', '0', '10000', 'DEBIT']);
+  // The totals are the column sums of the rows, so they disagree and the report says so.
+  assert.deepEqual(result.totals, { debit: amount('100.00'), credit: zero() });
+  assert.equal(result.balanced, false);
 
   assert.deepEqual(stateOf(memory), before);
 });

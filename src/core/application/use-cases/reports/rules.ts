@@ -1,3 +1,4 @@
+import type { JournalEntry } from '../../../domain/entries/index.js';
 import type { Ledger } from '../../../domain/ledger/index.js';
 import { AccountingDate } from '../../../domain/period/index.js';
 import * as errors from '../../errors.js';
@@ -62,4 +63,19 @@ export function requireReportLimit(limit: number | undefined): number {
     throw errors.invalidApplicationInput('limit', limit);
   }
   return limit;
+}
+
+/**
+ * Rule 1 applied again at the port boundary: only a `POSTED` entry of the requested ledger belongs to a
+ * report.
+ *
+ * The port is asked for exactly that, and the core checks it again because a report states its result as its
+ * own and a draft — which has lines and can balance — would otherwise be indistinguishable from an accounting
+ * fact. Entries of another ledger are dropped for the same reason: they are not part of the book being read.
+ *
+ * It is a discard and not an error. A host that returns more than it was asked for made a mistake the report
+ * can correct by ignoring the excess, and a report may not fail over data it never requested.
+ */
+export function isReportEntry(entry: JournalEntry, ledgerId: string): boolean {
+  return entry.status === 'POSTED' && entry.ledgerId === ledgerId;
 }

@@ -34,11 +34,17 @@ core, no en el anfitrión.
 El mayor por cuenta del incremento 008b pagina por **fila** mientras `PostedEntriesQuery` pagina por
 **asiento**, y por eso ordena y corta el core. El cursor que produce es la posición
 `(accountingDate, entryId, lineId)` de la última fila devuelta —no un desplazamiento del puerto ni un saldo— y
-el llamador no lo interpreta. Un cursor no se cree: la página que llega por cursor vuelve a drenar el rango
-desde `from` y reconstruye el saldo corriente, porque un acumulado que viajara en el cursor sería un importe
-que el llamador puede falsificar y el reporte afirmaría como propio. El costo de esa página es proporcional a
-las filas ya informadas —lineal, no constante— y es deliberado: un saldo materializado, una caché o un cierre
-de saldos abrirían justamente la divergencia entre asiento y saldo que D1 existe para cerrar.
+el llamador no lo interpreta. La procedencia del cursor se comprueba contra las filas drenadas: si su posición
+no es una de las filas de esa cuenta y ese rango, es `INVALID_APPLICATION_INPUT`, porque aceptarlo saltearía
+filas en silencio. Un cursor tampoco se cree para un importe: cada página vuelve a drenar **el rango completo**
+desde `from` y a ordenarlo para derivar el saldo corriente, así que recorrer todo el reporte cuesta cuadrático
+en las filas del rango —lecturas al puerto y comparaciones—. Es deliberado: un saldo materializado, una caché o
+un cierre de saldos abrirían justamente la divergencia entre asiento y saldo que D1 existe para cerrar, y un
+acumulado que viajara en el cursor sería un importe que el llamador puede falsificar.
+
+El core vuelve a aplicar la regla 1 en el borde del puerto: descarta lo que no sea `POSTED` o que pertenezca a
+otro libro, en vez de fallar. Un puerto que devuelve de más no puede ensuciar el reporte, y el exceso es un
+error del anfitrión que se corrige ignorándolo, no un error del llamador.
 
 `AccountRepository.findByChart` enumera las cuentas de un plan, y vive en ese repositorio y no en un puerto
 aparte: el criterio es la forma de la lectura —un puerto se separa cuando la lectura es por rango, paginada o
