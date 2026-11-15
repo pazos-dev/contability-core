@@ -88,10 +88,11 @@ comprobar el estado del asiento, para no duplicar el filtro; `from > to` reutili
 con `field: 'from'` porque `errors.ts` quedó fuera de las superficies permitidas; los `totals` son la suma de
 las columnas, así que una reversión sube las dos columnas por igual mientras los saldos netean a cero.
 
-L9. La rama `feat/006f-ledger-currency` acumula ahora dos incrementos (006f y 008a) en cinco commits. Los cortes
-son limpios y separables — `d3ac19a`, `43f7090` y `fed6046` son 006f; `96663e3` y el commit de documentación de
-008a son 008a — así que se pueden revisar como dos PR encadenados si se prefiere. Supera la rebanada de ~400
-líneas por la regla del ítem 3: el cambio de contrato de 006f y el de 008a no compilan con medio cambio.
+L9. Las dos entregas se separaron en dos ramas para revisión encadenada, sin reescribir historial ni perder
+commits: `feat/006f-ledger-currency` termina en `fed6046` (006f), `feat/008-reports` termina en `4c24355` y su
+base es la anterior (008). `stack/006f+008` conserva el estado apilado original como ref de respaldo. Cada punta
+se verificó verde por separado: **260** pruebas en el tip de 006f y **293** en el de 008. En el camino se
+renombró la rama original en vez de resetearla, así que ningún commit dejó de ser alcanzable.
 
 L10. 008b implementado en `72ae14f`: 290 pruebas en verde y 12 pruebas nuevas. El cursor lo produce el core y
 lleva sólo la clave de orden de la última fila; cada página vuelve a drenar el rango para derivar el saldo
