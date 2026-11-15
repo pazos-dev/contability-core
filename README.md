@@ -57,10 +57,16 @@ await accounting.registerLedger({
   ledgerId: 'empresa-1',
   name: 'Contabilidad principal',
   chartOfAccountsId: 'plan-1',
+  currency: { code: 'UYU', scale: 2 },
   idempotencyKey: 'crear-libro-empresa-1',
 });
+```
 
-const result = await accounting.registerAccount({
+La moneda funcional se declara en el alta y no cambia después: el libro lleva una sola unidad de cuenta y
+contabilizar un asiento en otra moneda se rechaza con `LEDGER_CURRENCY_MISMATCH`. La escala viaja con el
+código porque forma parte de la identidad monetaria y se persiste con el importe, no se deduce del código.
+
+```ts
   ledgerId: 'empresa-1',
   accountId: 'caja-001',
   code: '1101',

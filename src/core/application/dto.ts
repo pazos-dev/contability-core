@@ -3,7 +3,7 @@ import type { EntryStatus, PostingSide } from '../domain/entries/index.js';
 import type { JournalStatus } from '../domain/journal/index.js';
 import type { LedgerStatus } from '../domain/ledger/index.js';
 import type { PeriodStatus } from '../domain/period/index.js';
-import type { MoneyJSON } from '../domain/shared/money/index.js';
+import type { CurrencyJSON, MoneyJSON } from '../domain/shared/money/index.js';
 
 /**
  * Data shapes of this layer: the inputs and outputs of every use case, plus the record the idempotency port
@@ -22,11 +22,14 @@ import type { MoneyJSON } from '../domain/shared/money/index.js';
 /**
  * Serializable input of `registerLedger`. The ledger id is chosen by the caller, like every id of this
  * module: the core never invents one. The chart of accounts is an opaque identifier of the host (Q07).
+ * The functional currency travels as `CurrencyJSON` because the scale is part of currency identity and is
+ * persisted with the amount rather than deduced from the code (Q08).
  */
 export interface RegisterLedgerInput {
   readonly ledgerId: string;
   readonly name: string;
   readonly chartOfAccountsId: string;
+  readonly currency: CurrencyJSON;
   readonly idempotencyKey?: string;
 }
 
@@ -34,6 +37,7 @@ export interface RegisterLedgerResult {
   readonly ledgerId: string;
   readonly name: string;
   readonly chartOfAccountsId: string;
+  readonly currency: CurrencyJSON;
   readonly status: LedgerStatus;
 }
 
