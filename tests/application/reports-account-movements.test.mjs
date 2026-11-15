@@ -159,13 +159,48 @@ function summary(row) {
   return [row.accountingDate, row.entryId, row.lineId, row.side, row.amount.minorUnits];
 }
 
+/** Rows keyed by account, for the balance reports, which return one row per account. */
+function rowsById(result) {
+  return Object.fromEntries(result.rows.map((row) => [row.accountId, row]));
+}
+
+/** The compact form of one account-balance row: code, debit, credit, balance and side. */
+function rowSummary(row) {
+  return [row.code, row.debit.minorUnits, row.credit.minorUnits, row.balance.minorUnits, row.side];
+}
+
 /**
- * Everything a report must not touch: the entries with their lines, the idempotency registry and the
- * accounts. A domain object is immutable, so a plain projection is the comparable form.
+ * Everything a report must not touch: the books, the chart, the journals, the periods, the entries with their
+ * lines and the idempotency registry. Rule 17 says a report writes **nothing**, so the proof has to cover the
+ * whole module and not only the entries. A domain object is immutable and stores in private fields, so each
+ * snapshot is projected through its getters into a comparable form.
  */
 function stateOf(memory) {
   const snapshot = memory.snapshot();
   return {
+    ledgers: snapshot.ledgers.map((ledger) => [
+      ledger.id,
+      ledger.name,
+      ledger.chartOfAccountsId,
+      ledger.currency.code,
+      ledger.currency.scale,
+      ledger.status,
+    ]),
+    journals: snapshot.journals.map((journal) => [
+      journal.ledgerId,
+      journal.id,
+      journal.code,
+      journal.name,
+      journal.status,
+    ]),
+    periods: snapshot.periods.map((period) => [
+      period.ledgerId,
+      period.id,
+      period.name,
+      period.startDate.value,
+      period.endDate.value,
+      period.status,
+    ]),
     entries: snapshot.entries.map((entry) => ({
       id: entry.id,
       status: entry.status,
@@ -327,6 +362,20 @@ test('GL02: openingBalance is the net before from and the first row continues fr
   assert.deepEqual(whole.openingBalance, zero());
   assert.deepEqual(whole.closingBalance, amount('240.00'));
   assert.equal(whole.rows.length, 5);
+
+  // Rule 5: `to` alone has no floor, so the opening balance is zero and the page starts at the first row.
+  const untilMiddle = await app.accountMovements({
+    ledgerId: 'ledger-1',
+    accountId: 'acc-cash',
+    to: '2026-03-15',
+  });
+  assert.deepEqual(untilMiddle.openingBalance, zero());
+  assert.deepEqual(untilMiddle.rows.map((row) => row.entryId), ['before', 'at-from', 'middle']);
+  assert.deepEqual(
+    untilMiddle.rows.map((row) => row.runningBalance.minorUnits),
+    ['10000', '12000', '15000'],
+  );
+  assert.deepEqual(untilMiddle.closingBalance, amount('150.00'));
 });
 
 test('GL03: a page returns limit rows with a cursor and the closing balance of its last row', async () => {
@@ -530,8 +579,9 @@ test('GL08: limit defaults to 100, accepts 1..1000 and rejects anything else', a
   assert.equal(max.rows.length, 101);
   assert.equal(max.nextCursor, null);
 
-  // Rule 14: outside the range is INVALID_APPLICATION_INPUT.
-  for (const limit of [0, 1001, -1]) {
+  // Rule 14: outside the range is INVALID_APPLICATION_INPUT, and a limit is a page size, so it is an integer:
+  // 2.5 rows and NaN are not a page the report can honour.
+  for (const limit of [0, 1001, -1, 2.5, Number.NaN]) {
     await assert.rejects(
       app.accountMovements({ ledgerId: 'ledger-1', accountId: 'acc-cash', limit }),
       assertApplicationCode('INVALID_APPLICATION_INPUT'),
@@ -629,25 +679,208 @@ test('report rule 9: an INACTIVE ledger is reported normally', async () => {
 });
 
 test('GL09: a cursor the report did not produce is INVALID_APPLICATION_INPUT', async () => {
-  const { memory, app } = await harness({ chart: [CASH, REVENUE] });
+  const { memory, app } = await harness({ chart: [CASH, BANK, REVENUE] });
   await pagingScenario(app);
+  // Two movements on another account, so a cursor of that account exists to be replayed on this one.
+  for (const [entryId, accountingDate] of [
+    ['e-bank-1', '2026-03-02'],
+    ['e-bank-2', '2026-03-03'],
+  ]) {
+    await post(app, {
+      entryId,
+      accountingDate,
+      lines: [line('l1', 'acc-bank', 'DEBIT', '15.00'), line('l2', 'acc-rev', 'CREDIT', '15.00')],
+    });
+  }
   const before = stateOf(memory);
+  const cash = { ledgerId: 'ledger-1', accountId: 'acc-cash' };
 
-  // A cursor is opaque, so the only valid values are the ones this report produced. Starting over on a
-  // forged one would repeat rows, and continuing from it would skip them.
-  const forged = [
+  // Positive control: a cursor this report produced still continues the page with the following rows in
+  // order, so what is refused below is refused for its provenance and not for its shape.
+  const first = await app.accountMovements({ ...cash, limit: 3 });
+  assert.equal(typeof first.nextCursor, 'string');
+  const continued = await app.accountMovements({ ...cash, limit: 3, cursor: first.nextCursor });
+  assert.deepEqual(continued.rows.map(keyOf), [
+    '2026-03-03|e3|l3',
+    '2026-03-04|e4|l1',
+    '2026-03-05|e5|l1',
+  ]);
+  assert.deepEqual(continued.closingBalance, amount('145.00'));
+  assert.equal(continued.nextCursor, null);
+
+  // Cursors this report did produce, for positions and ranges a later request does not contain.
+  const bankCursor = (await app.accountMovements({ ledgerId: 'ledger-1', accountId: 'acc-bank', limit: 1 }))
+    .nextCursor;
+  const endCursor = (await app.accountMovements({ ...cash, limit: 5 })).nextCursor; // 2026-03-04
+  const startCursor = (await app.accountMovements({ ...cash, limit: 1 })).nextCursor; // 2026-03-01
+  const narrowCursor = (
+    await app.accountMovements({ ...cash, from: '2026-03-01', to: '2026-03-03', limit: 2 })
+  ).nextCursor; // 2026-03-02
+  for (const cursor of [bankCursor, endCursor, startCursor, narrowCursor]) assert.equal(typeof cursor, 'string');
+
+  // Rule 14: a well-formed position that is not one of the drained rows of this account and range would skip
+  // rows in silence, so it is refused. Accepted, the first probe would have returned 2 of the 6 rows.
+  const notProduced = [
+    // a real entry with a line that never existed
+    [cash, JSON.stringify(['am1', '2026-03-02', 'e2', 'l9'])],
+    // an entry that never existed
+    [cash, JSON.stringify(['am1', '2026-03-02', 'e-nope', 'l1'])],
+    // a date past the end of the requested range
+    [{ ...cash, to: '2026-03-03' }, endCursor],
+    // a date before the requested start
+    [{ ...cash, from: '2026-03-03' }, startCursor],
+    // a cursor produced for another range
+    [{ ...cash, from: '2026-03-04' }, narrowCursor],
+    // a cursor produced for another account
+    [cash, bankCursor],
+  ];
+
+  for (const [input, cursor] of notProduced) {
+    await assert.rejects(
+      app.accountMovements({ ...input, cursor }),
+      assertApplicationCode('INVALID_APPLICATION_INPUT'),
+    );
+    assert.deepEqual(stateOf(memory), before);
+  }
+
+  // A cursor is opaque, so a value this report could never have written is refused whatever its content.
+  for (const cursor of [
     'not-a-cursor',
     '[]',
     JSON.stringify(['am1', '2026-03-02']),
     JSON.stringify(['other', '2026-03-02', 'e2', 'l1']),
     JSON.stringify(['am1', '2026-02-30', 'e2', 'l1']),
-  ];
-  for (const cursor of forged) {
+  ]) {
     await assert.rejects(
-      app.accountMovements({ ledgerId: 'ledger-1', accountId: 'acc-cash', cursor }),
+      app.accountMovements({ ...cash, cursor }),
       assertApplicationCode('INVALID_APPLICATION_INPUT'),
     );
   }
+  assert.deepEqual(stateOf(memory), before);
+});
+
+test('GL10: a port that returns a draft and an entry of another ledger is discarded, not obeyed', async () => {
+  // Rule 1 is checked again at the port boundary. A host that returns a draft and an entry of another ledger
+  // is an excess the report corrects by ignoring it — it does not fail, because the excess is not the
+  // caller's error.
+  const draft = JournalEntry.createDraft({
+    id: 'draft',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-03-16'),
+    description: 'Borrador',
+  })
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l1',
+        accountId: 'acc-cash',
+        side: 'DEBIT',
+        amount: Money.fromDecimal('500.00', uyu),
+      }),
+    )
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l2',
+        accountId: 'acc-rev',
+        side: 'CREDIT',
+        amount: Money.fromDecimal('500.00', uyu),
+      }),
+    );
+  const foreign = JournalEntry.createDraft({
+    id: 'foreign',
+    ledgerId: 'ledger-2',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-03-17'),
+    description: 'Otro libro',
+  })
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l1',
+        accountId: 'acc-cash',
+        side: 'DEBIT',
+        amount: Money.fromDecimal('3000.00', uyu),
+      }),
+    )
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l2',
+        accountId: 'acc-rev',
+        side: 'CREDIT',
+        amount: Money.fromDecimal('3000.00', uyu),
+      }),
+    )
+    .post();
+
+  const { memory, app } = await harness({
+    chart: { 'ledger-1': [CASH, REVENUE], 'ledger-2': [BANK] },
+    ledgers: { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' },
+    memoryOptions: {
+      overrides: (defaults) => ({
+        postedEntries: {
+          findPostedMovements: async (ledgerId, criteria, page) => {
+            const result = await defaults.postedEntries.findPostedMovements(ledgerId, criteria, page);
+            return { entries: [...result.entries, draft, foreign], nextCursor: result.nextCursor };
+          },
+        },
+      }),
+    },
+  });
+  await post(app, {
+    entryId: 'real',
+    accountingDate: '2026-03-01',
+    lines: [line('l1', 'acc-cash', 'DEBIT', '10.00'), line('l2', 'acc-rev', 'CREDIT', '10.00')],
+  });
+  const before = stateOf(memory);
+
+  const balances = await app.accountBalances({ ledgerId: 'ledger-1' });
+  const balanceRows = rowsById(balances);
+  // Both stray entries carry lines on chart-1 accounts, so only the discard keeps them out: the draft's 500
+  // and the other ledger's 3000 are not in these numbers.
+  assert.deepEqual(rowSummary(balanceRows['acc-cash']), ['1.1.01', '1000', '0', '1000', 'DEBIT']);
+  assert.deepEqual(rowSummary(balanceRows['acc-rev']), ['4.1.01', '0', '1000', '-1000', 'CREDIT']);
+  // And the chart of the ledger lists its own accounts only (rule 7).
+  assert.deepEqual(Object.keys(balanceRows).sort(), ['acc-cash', 'acc-rev']);
+  assert.equal(balanceRows['acc-bank'], undefined);
+
+  const trial = await app.trialBalance({ ledgerId: 'ledger-1' });
+  assert.deepEqual(trial.rows, balances.rows);
+  assert.deepEqual(trial.totals, { debit: amount('10.00'), credit: amount('10.00') });
+  assert.equal(trial.balanced, true);
+
+  const movements = await app.accountMovements({ ledgerId: 'ledger-1', accountId: 'acc-cash' });
+  assert.deepEqual(movements.rows.map((row) => row.entryId), ['real']);
+  assert.deepEqual(movements.closingBalance, amount('10.00'));
+
+  assert.deepEqual(stateOf(memory), before);
+});
+
+test('GL11: a page with no rows closes at the opening balance and reports no next cursor', async () => {
+  const { memory, app } = await harness({ chart: [CASH, REVENUE] });
+  await pagingScenario(app);
+  const before = stateOf(memory);
+  const cash = { ledgerId: 'ledger-1', accountId: 'acc-cash' };
+
+  // A cursor this report produced, pointing at the row that ends a wider read.
+  const wide = await app.accountMovements({ ...cash, limit: 5 });
+  assert.equal(wide.rows.length, 5);
+  assert.equal(typeof wide.nextCursor, 'string');
+
+  // The same cursor asked over a range that ends on that row: no row follows, so there is no row to close on.
+  const empty = await app.accountMovements({
+    ...cash,
+    limit: 3,
+    to: wide.rows.at(-1).accountingDate,
+    cursor: wide.nextCursor,
+  });
+
+  assert.deepEqual(empty.rows, []);
+  assert.deepEqual(empty.closingBalance, empty.openingBalance);
+  assert.deepEqual(empty.closingBalance, zero());
+  assert.equal(empty.nextCursor, null);
+  // Not the balance at the end of that range, which is what a closing balance is not (rule 13).
+  assert.notDeepEqual(empty.closingBalance, amount('95.00'));
 
   assert.deepEqual(stateOf(memory), before);
 });
