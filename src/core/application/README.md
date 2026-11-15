@@ -2,7 +2,7 @@
 
 Coordinar dominio y puertos; validaciones entre entidades y atomicidad.
 
-Estado: incremento 006a implementado — casos de uso de registro de cuentas, diarios y períodos.
+Estado: incrementos 006a y 006e implementados — registro de cuentas, diarios, períodos y libros; el libro es la primera regla de todo flujo.
 Todos corren dentro de `UnitOfWork`, no aceptan un plan de cuentas del llamador y no leen reloj ni
 generan identificadores. Especificación: `docs/specs/registration.md`. Consultar docs/ARCHITECTURE.md
 desde la raíz.
@@ -22,7 +22,9 @@ aislamiento entre instancias; las dependencias viajan por parámetro, siempre.
 contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`.
 
 `UnitOfWork` es la única puerta: los repositorios salen de su alcance, así que ningún caso de uso abre una
-conexión independiente. `LedgerDirectory` es la única fuente de la relación libro-plan (Q07) y
+conexión independiente. `LedgerRepository` es la única fuente de la relación libro-plan (Q07), y el libro es
+una entidad con estado y nombre desde el incremento 006e: un libro inactivo se rechaza con `LEDGER_INACTIVE`
+antes que cualquier otra regla, así que el primer paso de los once casos de uso existentes es el mismo.
 `PostedMovementsQuery` evita que el registro de cuentas dependa del dominio de asientos.
 
 Dos contratos del puerto que se leen mal si no están dichos: `EntryRepository.findReversalsOf` devuelve

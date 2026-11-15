@@ -88,15 +88,16 @@ interface UnitOfWork {
 }
 
 interface UnitOfWorkScope {
-  readonly ledgers: LedgerDirectory;
+  readonly ledgers: LedgerRepository;
   readonly accounts: AccountRepository;
   readonly journals: JournalRepository;
   readonly periods: PeriodRepository;
   readonly idempotency: IdempotencyRegistry;
 }
 
-interface LedgerDirectory {
-  chartOfAccountsIdOf(ledgerId: string): Promise<string | undefined>;
+interface LedgerRepository {
+  findById(ledgerId: string): Promise<Ledger | undefined>;
+  save(ledger: Ledger): Promise<void>;
 }
 
 interface AccountRepository {
@@ -274,7 +275,7 @@ El cierre no está acá: ver `close-period.md`.
 
 | ID | Tema | Impacto |
 | --- | --- | --- |
-| Q07 | Relación empresa/libros y varios libros por plan | Hoy un libro tiene exactamente un plan y lo declara el puerto. Un libro con dos planes o un plan compartido entre libros requiere cambiar `LedgerDirectory`. |
+| Q07 | Relación empresa/libros y varios libros por plan | Hoy un libro tiene exactamente un plan y lo declara el libro mismo. Un libro con dos planes o un plan compartido entre libros requiere cambiar `LedgerRepository`. |
 | — | Desactivar una cuenta con hijos activos | Sin regla: se permite. Bloquearlo exige una consulta de hijos y una decisión de negocio. |
 | — | Renombrar cuentas y diarios | `rename` existe en el dominio y ningún caso de uso lo expone todavía. |
 | — | Detección de ciclos | No se implementa porque no es alcanzable; si algún día existe una operación que cambie `parentId`, vuelve a hacer falta. |
@@ -285,8 +286,10 @@ El cierre no está acá: ver `close-period.md`.
   `UnitOfWork` queda fijado para que el anfitrión lo implemente sobre una transacción real.
 - La comprobación de código único y de solapamiento vive dentro de la unidad de trabajo, no antes, para
   que una restricción de base pueda sustituirla sin mover el caso de uso.
-- `LedgerDirectory` es el único punto que conoce la relación libro–plan. No se crea una entidad `Ledger`
-  en esta fase.
+- `LedgerRepository` es el único punto que conoce la relación libro–plan, y el libro es una entidad `Ledger`
+  con nombre y estado desde el incremento 006e: el caso de uso resuelve el libro y lee su `chartOfAccountsId`
+  de ahí. Un libro que no se registró es indistinguible de uno inexistente (`LEDGER_NOT_FOUND`), y uno
+  inactivo se rechaza con `LEDGER_INACTIVE` antes que cualquier otra regla.
 - Autenticación y autorización pertenecen al anfitrión. El caso de uso no recibe usuario.
 
 ## Verificación

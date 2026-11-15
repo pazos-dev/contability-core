@@ -30,12 +30,11 @@ después sea un incremento encima y no una reescritura.
 
 | ID | Tarea | Spec | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Dominio `Ledger` + `LedgerError`; inmutable, plan inmutable, nace `ACTIVE` | S1, spec R1-R5, L01, L03, L14 | dominio `src/core/domain/ledger/` | e76860d |
-| T2 | `LedgerRepository` reemplaza `LedgerDirectory`; `MemoryMaps.ledgers`; se elimina `chartOfAccountsByLedger` | S3, L13 | puertos + adaptador | pendiente |
-| T3 | `registerLedger`: idempotencia → id libre → validación → escritura única; `LEDGER_ALREADY_EXISTS` | L01-L05, L12, L15, L16 | `use-cases/ledgers/` | pendiente |
-| T4 | `setLedgerStatus`: valor admitido → libro → transición no-op → escritura; `LEDGER_INACTIVE` | L06-L10 | `use-cases/ledgers/` | pendiente |
-| T5 | `LEDGER_INACTIVE` en los once casos de uso, sin mover la posición del libro en cada flujo | L11 | `use-cases/*/rules.ts` | pendiente |
-| T6 | Fachada a trece métodos, superficie pública, `STATUS`/`ARCHITECTURE`/`INTEGRATION` | S2, todos | fachada + docs | pendiente |
+| T1 | Dominio `Ledger` + `LedgerError`; inmutable, plan inmutable, nace `ACTIVE` | S1, spec R1-R5, L01, L03, L14 | dominio `src/core/domain/ledger/` | b6e915b |
+| T2 | `LedgerRepository` reemplaza `LedgerDirectory`, `registerLedger` con idempotencia e id libre, `chartOfAccountsByLedger` eliminado | S2, S3, L01-L05, L12, L13, L15, L16 | puertos, adaptador, `use-cases/ledgers/`, arneses de prueba | 32b3bcc |
+| T3 | `setLedgerStatus`: valor admitido → libro → transición no-op → escritura; `LEDGER_INACTIVE` | L06-L10 | `use-cases/ledgers/` | pendiente |
+| T4 | `LEDGER_INACTIVE` en los once casos de uso, sin mover la posición del libro en cada flujo | L11 | `use-cases/*/rules.ts` | pendiente |
+| T5 | Fachada a trece métodos, superficie pública, `STATUS`/`ARCHITECTURE`/`INTEGRATION` | S2, todos | fachada + docs | pendiente |
 
 ## Log
 
@@ -53,3 +52,10 @@ dale tienes permiso.
 L4. Interpretación registrada y avisada al humano: el punto 3 se leyó como sí a la recomendación, es decir
 sin moneda funcional ahora y con `Ledger.create` recibiendo un objeto. Queda pendiente de corrección explícita
 si el humano quería la moneda en este incremento.
+
+L5. El corte original de seis tareas se reordenó a cinco: quitar `chartOfAccountsByLedger` sin `registerLedger`
+deja las suites sin forma de crear un libro, así que el antiguo T2 y T3 se fusionaron en un solo corte. El T1
+también tenía mal registrado su sha (apuntaba al commit previo al `amend`); queda corregido a `b6e915b`.
+
+L6. `INVALID_LEDGER` burbujea **sin envolver**: es error de dominio, no de aplicación. La primera versión de la
+prueba L03 lo esperaba como `ApplicationError` y falló; la prueba se corrigió, el código no.

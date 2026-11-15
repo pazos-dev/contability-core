@@ -1,6 +1,7 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: una carpeta por área en
+Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 006e, el libro contable como
+agregado (`docs/specs/ledger.md`); antes, una carpeta por área en
 `use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
 antes, nombres de módulo unificados
 en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
@@ -103,7 +104,8 @@ mixto de monedas.
 ### 006a-application — `docs/specs/registration.md`, R01-R17
 
 - `src/core/application/`: `errors.ts` (`ApplicationError` con códigos estables), `ports/index.ts`
-  (`UnitOfWork` y su alcance, `LedgerDirectory`, repositorios de cuentas, diarios y períodos,
+  (`UnitOfWork` y su alcance, `LedgerRepository` — `LedgerDirectory` en 006a, reemplazado en 006e —,
+  repositorios de cuentas, diarios y períodos,
   `IdempotencyRegistry`, `PostedMovementsQuery`), los contratos y cinco casos de uso.
 - `src/adapters/memory/`: mapas de valores inmutables, `snapshot()` de lectura y una unidad de trabajo
   que restaura el estado anterior completo cuando el trabajo falla. Sin durabilidad ni aislamiento, dicho
@@ -112,7 +114,9 @@ mixto de monedas.
   `registerPeriod`. Cada uno es una fábrica de función asíncrona y corre entero dentro de una sola
   llamada a `unitOfWork.run`, lecturas incluidas: los repositorios solo existen en el alcance de la
   unidad de trabajo, así que no hay conexiones independientes disfrazadas de transacción.
-- `chartOfAccountsId` no es una entrada: lo resuelve `LedgerDirectory` desde el libro (Q07). El anfitrión
+- `chartOfAccountsId` no es una entrada: lo resuelve el libro (Q07). En 006a lo resolvía el puerto
+  `LedgerDirectory`; desde 006e lo resuelve `LedgerRepository`, que devuelve el `Ledger` con nombre y estado,
+  así que un libro inactivo se rechaza antes con `LEDGER_INACTIVE`. El anfitrión
   no puede declarar un plan distinto al del libro, y una cuenta de otro plan se reporta como
   `ACCOUNT_NOT_FOUND`, sin distinguirla de una inexistente.
 - A05 y J03 verificadas: código único por plan y por libro, permitido en otro plan o en otro libro. P07
@@ -206,11 +210,37 @@ mixto de monedas.
 - El core no persiste nada: calcula sobre valores inmutables y entrega el resultado al puerto que le da el
   anfitrión. Sin conexiones, sin almacenamiento, sin sistema de archivos.
 
+### 006e-ledger — `docs/specs/ledger.md`, L01-L16
+
+- `src/core/domain/ledger/`: `ledger.ts` (agregado `Ledger` con `id`, `name`, `chartOfAccountsId` y estado
+  `ACTIVE`/`INACTIVE`; `rename`, `deactivate` y `activate` devuelven copias y el plan nunca cambia),
+  `types/ledger-status.ts`, `errors/ledger-errors.ts`, `dto/ledger-dto.ts` y su `README.md`. El barrel publica
+  `Ledger`, `LedgerError`, `LedgerInput`, `LedgerErrorCode` y `LedgerStatus`.
+- El puerto `LedgerRepository` (`findById`, `save`) reemplaza a `LedgerDirectory` en el alcance de la unidad de
+  trabajo y `LEDGER_NOT_FOUND` pasa a decir «is not registered». El plan sigue siendo un identificador
+  opaco: el core no verifica que exista (Q07) y no hay operación para cambiarlo.
+- `Ledgers.register`: idempotencia, id libre (`LEDGER_ALREADY_EXISTS`), validación del dominio y escritura de
+  libro y registro de idempotencia en una sola unidad de trabajo.
+- `Ledgers.setStatus`: guarda de valor, libro (`LEDGER_NOT_FOUND`) y copia con el estado nuevo. Repetir el
+  estado actual es un no-op, y por eso no lleva clave de idempotencia.
+- La fachada `Accounting` expone **trece** métodos; `tests/public-api.test.mjs` los fija junto con el barrel
+  `core/domain/ledger`.
+- `requireActiveLedger` en `use-cases/shared/rules.ts` es la primera regla de los once casos de uso existentes,
+  en la misma posición donde antes se resolvía el plan: ausente es `LEDGER_NOT_FOUND` e inactivo es
+  `LEDGER_INACTIVE`. `requireChartOfAccountsId` delega en ella y devuelve el plan del libro.
+- El adaptador en memoria elimina `options.chartOfAccountsByLedger`: `MemoryMaps` tiene un mapa `ledgers`,
+  `snapshot()` los expone y los arneses siembran los libros que necesitan con `registerLedger`
+  (`tests/application/seed.mjs`). Un libro inexistente ya no puede aparecer por configuración.
+- Pruebas: `tests/domain/ledger/ledger.test.mjs` (reglas locales, L03 y L14), `tests/application/ledger.test.mjs`
+  (L01-L10, L12, L15 y L16), L13 por R04 en `tests/application/registration.test.mjs`, y L11 **una prueba por
+  área, no una por caso de uso**: cuentas, diarios y períodos en `registration.test.mjs`, asientos en
+  `entry-draft.test.mjs`.
+
 ### Contrato de la capa de aplicación — fachada `Accounting`
 
 - `Accounting` (`src/core/application/facade/accounting.ts`) es la **única** superficie pública de la capa: un
   objeto con un método por caso de uso (`app.postEntry(input)`). El barrel exporta `Accounting` y
-  `ApplicationError`, nada más; las once clases no salen del paquete.
+  `ApplicationError`, nada más; las cinco clases de área no salen del paquete.
 - Por dentro, cada caso de uso es una clase con `execute(input)` que recibe `ApplicationDeps` (sólo
   `unitOfWork`) y no guarda nada más. La fachada las compone en el constructor y sólo delega: no agrega
   validación, estado ni traducción de errores. Esa separación es lo que deja el objeto como contrato y
@@ -226,10 +256,11 @@ mixto de monedas.
   y adaptadores quedaron igual.
 - Corte limpio, sin alias: el paquete es `private` en 0.0.0 y no hay consumidores registrados. Un anfitrión
   migra `makePostEntry(deps)(input)` → `new Accounting(deps).postEntry(input)`.
-- `tests/application/application-facade.test.mjs` recorre los once métodos, la propagación de errores sin escritura
-  parcial y que dos fachadas sobre las mismas dependencias compartan los almacenes. Los siete archivos de
-  test que antes componían casos de uso ahora hablan sólo con la fachada: la suite completa pasa por la
-  superficie pública, así que un export de más rompe `public-api` y un método faltante rompe el resto.
+- `tests/application/application-facade.test.mjs` recorre el circuito completo a través de la fachada, la
+  propagación de errores sin escritura parcial y que dos fachadas sobre las mismas dependencias compartan los
+  almacenes. Los siete archivos de test que antes componían casos de uso ahora hablan sólo con la fachada: la
+  suite completa pasa por la superficie pública, así que un export de más rompe `public-api` y un método
+  faltante rompe el resto.
 
 ### Refactor de dominio — DTO y organización de pruebas
 
@@ -296,14 +327,13 @@ solo agrega esos barrels.
 
 - `shared/money/index.ts`: `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`,
   `listIsoCurrenciesWithoutMinorUnit` y sus tipos.
+- `ledger/index.ts`: `Ledger`, `LedgerError`, `LedgerInput`, `LedgerErrorCode`, `LedgerStatus`.
 - `account/index.ts`: `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos.
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 - `core/application/index.ts`: `Accounting`, `ApplicationError` y los tipos de dato (`dto`) y de puerto. Las
-  once clases de caso de uso (`RegisterAccount`, `SetAccountStatus`, `RegisterJournal`, `SetJournalStatus`,
-  `RegisterPeriod`, `ClosePeriod`, `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`,
-  `ReversePostedEntry`) viven en `use-cases/` como implementación interna y no se exportan.
+  trece operaciones de caso de uso viven en `use-cases/` como implementación interna y no se exportan.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos (`entries`) como costura de composición: es el único adaptador que existe en esta fase y un
   anfitrión que arme asientos con el dominio necesita poder guardarlos. Crear y editar borradores por caso
@@ -323,7 +353,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 217 pruebas, 217 correctas, 0 fallos. |
+| `pnpm test` | 243 pruebas, 243 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -340,8 +370,10 @@ agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U18b en
 C01-C04, C06 y C07 en `tests/application/close-period.test.mjs`; V01-V16 en `tests/application/reverse-entry.test.mjs`; D01-D13 en
 `tests/application/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
 `tests/application/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
-que faltaba; `tests/application/application-facade.test.mjs` para los once métodos de `Accounting`, la propagación de
-errores y dos fachadas sobre las mismas dependencias compartiendo los almacenes.
+que faltaba; L01-L16 del libro en `tests/domain/ledger/ledger.test.mjs` y `tests/application/ledger.test.mjs`, con L11
+una prueba por área y L13 cubierto por R04; `tests/application/application-facade.test.mjs` para el circuito completo a
+través de `Accounting`, la propagación de errores y dos fachadas sobre las mismas dependencias compartiendo los
+almacenes.
 
 ## Validaciones que esperan la capa de aplicación
 
@@ -396,21 +428,24 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 
 ## Pendiente de implementar
 
-**006e: libro contable como agregado** — especificado en `docs/specs/ledger.md`, **sin código**: hoy el libro
-es configuración del adaptador (`chartOfAccountsByLedger`) y el core no tiene `Ledger`, `LedgerRepository`,
-`registerLedger` ni `setLedgerStatus`. Después, consultas e informes (008) y extensiones (009), más el
-contrato escrito del adaptador del anfitrión (007). Sin ORM, HTTP ni interfaz visual en este repositorio.
+**008: consultas e informes** — saldos por cuenta, mayor y balance de comprobación, con especificaciones
+propias: no hay spec escrita ni código. Después, el **contrato escrito del adaptador del anfitrión (007)**, que
+documenta las garantías que hoy no vienen del core (transacción, aislamiento, unicidad durable, claves
+primarias), y **009: extensiones** según necesidad demostrada. Sin ORM, HTTP ni interfaz visual en este
+repositorio.
 
 ## Siguiente tarea
 
-El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir) y
-consulta de referencias, pero **no puede dar de alta un libro**: su único ámbito de aislamiento llega por
-configuración del adaptador, así que un anfitrión que cree libros en runtime no puede usarlo sin un atajo.
-El siguiente incremento es **006e**, ya especificado en `docs/specs/ledger.md`: implementar `Ledger`,
-`LedgerRepository`, `registerLedger`, `setLedgerStatus` y `LEDGER_INACTIVE` en los once casos de uso.
-Con eso el motor queda autocontenido y recién ahí tiene sentido **008: consultas e informes** — saldos por
-cuenta, mayor y balance de comprobación, donde el libro es el sujeto natural. Alternativa posterior: el
-contrato escrito del adaptador del anfitrión (007).
+El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir),
+consulta de referencias y el libro como agregado con su plan y su estado, así que ya no hay conceptos del
+módulo que sólo existan por configuración del adaptador.
+El siguiente incremento es **008: consultas e informes** — saldos por cuenta, mayor y balance de comprobación,
+con especificaciones propias, donde el libro es el sujeto natural: es el ámbito de aislamiento y el dueño del
+plan de cuentas. Alternativa posterior: el contrato escrito del adaptador del anfitrión (007).
+
+Lo que **no** se promete: no hay multimoneda, porque la moneda funcional del libro sigue abierta (Q08); no hay
+consolidación entre libros; y el plan de cuentas no es una entidad del core (Q07), sino un identificador del
+anfitrión que el libro guarda sin verificar.
 
 ## Relevo de sesión
 

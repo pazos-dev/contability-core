@@ -2,9 +2,9 @@
 
 Responsabilidad: libro contable como ámbito de aislamiento y dueño de **un** plan de cuentas.
 Especificación desde la raíz: `docs/specs/ledger.md`.
-Estado: reglas locales implementadas y probadas (R1-R5, L01, L03, L14) en
-`tests/domain/ledger/ledger.test.mjs`; casos de uso, puerto y adaptador en curso (T2-T6 de
-`docs/tasks/006e-ledger.md`).
+Estado: incremento 006e completo y verificado. Reglas locales probadas (R1-R5, L01, L03, L14) en
+`tests/domain/ledger/ledger.test.mjs`, puerto `LedgerRepository`, adaptador en memoria y casos de uso implementados;
+el detalle por tarea vive en `docs/tasks/006e-ledger.md`.
 
 Archivos:
 

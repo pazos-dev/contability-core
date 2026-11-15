@@ -14,6 +14,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 
 | Ruta | Archivos previstos; crear al implementar su especificación |
 | --- | --- |
+| `src/core/domain/ledger/` | Raíz: `ledger.ts` (agregado). `types/ledger-status.ts`; `errors/ledger-errors.ts`; `dto/ledger-dto.ts`. |
 | `src/core/domain/account/` | Raíz: `account.ts` (agregado). `value-objects/account-code.ts`; `types/account-type.ts`, `types/account-status.ts`; `errors/account-errors.ts`; `dto/account-dto.ts`. |
 | `src/core/domain/journal/` | Raíz: `journal.ts` (agregado). `types/journal-status.ts`; `errors/journal-errors.ts`; `dto/journal-dto.ts`. |
 | `src/core/domain/entries/` | Raíz: `journal-entry.ts` (agregado) y `entry-text.ts` (ayudante interno). `value-objects/journal-entry-line.ts`; `types/entry-status.ts`, `types/posting-side.ts`; `errors/entry-errors.ts`; `dto/journal-entry-dto.ts`, `dto/journal-entry-line-dto.ts`. |
@@ -21,9 +22,9 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/shared/` | Kernel compartido del dominio: `describe-value.ts` y `money/`. |
 | `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
 | `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
-| `src/core/application/dto.ts` | Las 22 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
+| `src/core/application/dto.ts` | Las 26 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
 | `src/core/application/facade/` | La puerta de entrada: `accounting.ts` con la clase `Accounting`, única superficie pública de la capa. |
-| `src/core/application/use-cases/` | Una carpeta por área con la clase de operaciones estáticas y su `rules.ts`: `accounts/`, `journals/`, `periods/`, `entries/` (esta suma `result.ts`); más `shared/` con las reglas que invocan dos o más áreas y la idempotencia. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
+| `src/core/application/use-cases/` | Una carpeta por área con la clase de operaciones estáticas y su `rules.ts`: `ledgers/`, `accounts/`, `journals/`, `periods/`, `entries/` (esta suma `result.ts`); más `shared/` con las reglas que invocan dos o más áreas y la idempotencia. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
 | `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |
@@ -33,7 +34,7 @@ La organización en singular es una normalización del kit: evitar duplicados co
 
 ### Agrupación por naturaleza
 
-Los cuatro contextos acotados (`account`, `journal`, `entries`, `period`) agrupan sus archivos por naturaleza
+Los cinco contextos acotados (`ledger`, `account`, `journal`, `entries`, `period`) agrupan sus archivos por naturaleza
 y dejan en la raíz sólo su agregado:
 
 | Carpeta | Contenido |
@@ -88,6 +89,7 @@ cambiar sin romper el contrato público.
 | Barrel | Superficie publicada |
 | --- | --- |
 | `src/core/domain/shared/money/index.ts` | `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit`, `IsoCurrencyEntry` y sus tipos. |
+| `src/core/domain/ledger/index.ts` | `Ledger`, `LedgerError`, `LedgerInput`, `LedgerErrorCode`, `LedgerStatus`. |
 | `src/core/domain/account/index.ts` | `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos. |
 | `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
 | `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
@@ -96,7 +98,7 @@ cambiar sin romper el contrato público.
 | `src/adapters/memory/index.ts` | `createInMemoryAccounting` y sus tipos. |
 
 `src/index.ts` solo re-exporta esos barrels, nunca archivos internos, y un tipo interno no se publica
-por accidente. `pnpm check:project` exige el `index.ts` de los cuatro contextos acotados y el barrel del kernel
+por accidente. `pnpm check:project` exige el `index.ts` de los cinco contextos acotados y el barrel del kernel
 compartido; `tests/public-api.test.mjs` fixa la superficie de cada barrel y la del paquete.
 
 ## Límites importantes

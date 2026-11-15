@@ -1,8 +1,10 @@
 # SPEC — Libro contable
 
-Estado: **lista para implementar, sin código**. Este documento fija el comportamiento del incremento 006e;
-nada de lo que describe existe todavía y ningún criterio de acá puede reportarse como verificado.
-Ruta prevista: dominio en `src/core/domain/ledger/`, casos de uso en
+Estado: **implementado y verificado** en el incremento 006e. Este documento fija el comportamiento del libro
+contable; lo que describe existe y está probado en `tests/domain/ledger/ledger.test.mjs` y
+`tests/application/ledger.test.mjs`, con L11 cubierto una prueba por área en `tests/application/registration.test.mjs`
+y `tests/application/entry-draft.test.mjs`, y L13 por la prueba de unicidad por plan que ya existía (R04).
+Ruta: dominio en `src/core/domain/ledger/`, casos de uso en
 `src/core/application/use-cases/ledgers/`.
 Depende de: `registration.md` (convenciones de casos de uso, puertos, errores e idempotencia),
 `journal.md` y `account.md` (convenciones de entidad y estado).
@@ -13,10 +15,10 @@ Que el anfitrión pueda dar de alta y gobernar sus libros **a través del motor*
 registrar un libro con su plan de cuentas, desactivarlo y reactivarlo, y que todo caso de uso existente
 rechace operar sobre un libro inactivo.
 
-Hoy el libro no es una entidad del core: es un identificador que el adaptador en memoria recibe al
-construirse (`chartOfAccountsByLedger`) y que el puerto `LedgerDirectory.chartOfAccountsIdOf` resuelve a un
-plan. Consecuencia: el libro no se puede crear en runtime, no tiene nombre ni estado, y es el único concepto
-del módulo sin caso de uso.
+Antes de este incremento el libro no era una entidad del core: era un identificador que el adaptador en
+memoria recibía al construirse (`chartOfAccountsByLedger`) y que el puerto `LedgerDirectory.chartOfAccountsIdOf`
+resolvía a un plan. La consecuencia era concreta: el libro no se podía crear en runtime, no tenía nombre ni
+estado, y era el único concepto del módulo sin caso de uso. Ese es el problema que este incremento resolvió.
 
 ## Alcance y exclusiones
 
@@ -194,11 +196,17 @@ Pendientes, con lo que bloquean:
 
 ## Verificación
 
-- Pruebas previstas: `tests/application/ledger.test.mjs` (L01-L10, L12-L16), los ocho archivos de casos de uso para L11
-  —una prueba por área, no once—, y `tests/public-api.test.mjs` para la superficie de trece métodos, que
-  también falla si `Ledger` o `LedgerRepository` se filtran al paquete fuera del barrel.
-- L13 se cubre reutilizando la prueba de unicidad por plan que ya existe en `tests/application/registration.test.mjs`,
-  alimentada ahora por dos libros registrados en lugar de por configuración.
+- Pruebas: `tests/domain/ledger/ledger.test.mjs` para las reglas locales del agregado (L03, L14 e
+  inmutabilidad) y `tests/application/ledger.test.mjs` para L01-L10, L12, L15 y L16.
+- L11 se cubre una prueba por área, no once: `tests/application/registration.test.mjs` para cuentas, diarios y
+  períodos, y `tests/application/entry-draft.test.mjs` para asientos.
+- L13 se cubre con la prueba de unicidad por plan que ya existe en `tests/application/registration.test.mjs`
+  (R04), alimentada ahora por dos libros registrados en lugar de por configuración.
+- `tests/public-api.test.mjs` fija la superficie de trece métodos y el barrel `core/domain/ledger`, y falla si
+  `Ledger` se filtra al paquete fuera de él.
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
-- Estado hoy: **nada de esto está implementado**. No hay `Ledger`, ni `LedgerRepository`, ni
-  `registerLedger`, ni `setLedgerStatus`, y el adaptador en memoria todavía exige `chartOfAccountsByLedger`.
+- Estado hoy: **implementado y verificado**. Existen `Ledger`, `LedgerRepository`, `registerLedger` y
+  `setLedgerStatus`; la fachada expone trece métodos; `chartOfAccountsByLedger` ya no existe en el adaptador
+  en memoria y los libros se siembran registrándolos. Siguen fuera de alcance: moneda funcional del libro
+  (Q08), cambio de plan de un libro (sin operación), borrado (se desactiva) y verificación de que el plan
+  exista (Q07, a cargo del anfitrión).

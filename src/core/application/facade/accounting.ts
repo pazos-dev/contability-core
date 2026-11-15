@@ -36,7 +36,7 @@ import { Periods } from '../use-cases/periods/periods.js';
  *
  * It is a composition, not a new layer on top: each method forwards to the static operation of the same
  * name and adds nothing — no validation, no state, no error translation. The four area classes are
- * internal to `use-cases/`, so the host never has to choose between eleven symbols.
+ * internal to `use-cases/`, so the host never has to choose between thirteen symbols.
  *
  * `#deps` is the reason this class is instantiable. The operations themselves are stateless: they receive
  * the dependencies as a parameter and group by area, so nothing about them needs an object. Binding the

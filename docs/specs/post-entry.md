@@ -165,7 +165,7 @@ Burban los de dominio sin envolver, con su código original.
 | ID | Tema | Impacto |
 | --- | --- | --- |
 | Q11 | Numeración oficial de asientos y su ámbito | Hoy no se numera. Introducirla exige contrato y control de concurrencia. |
-| Q07 | Varios libros por plan o varios planes por libro | Cambia `LedgerDirectory` y la comprobación de plan de las líneas. |
+| Q07 | Varios libros por plan o varios planes por libro | Cambia `LedgerRepository` y la comprobación de plan de las líneas. |
 | — | Editar líneas de un borrador persistido | No hay caso de uso; el agregado permite `addLine`/`removeLine` sobre copias. |
 | — | Reintento automático del anfitrión ante `ENTRY_STATE` | El core no reintenta; devuelve el error con código estable. |
 

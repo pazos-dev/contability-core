@@ -59,3 +59,28 @@ test('API: the package still aggregates the domain barrels', async () => {
     );
   }
 });
+
+// The facade is the only public entry point of the application layer: thirteen use cases, no more and no
+// fewer. Adding one without deciding how it is published fails here.
+test('API: the facade exposes exactly the thirteen use cases', async () => {
+  const { Accounting } = await import('../dist/index.js');
+  const expected = [
+    'addEntryLine',
+    'closePeriod',
+    'createEntryDraft',
+    'postEntry',
+    'registerAccount',
+    'registerJournal',
+    'registerLedger',
+    'registerPeriod',
+    'removeEntryLine',
+    'reversePostedEntry',
+    'setAccountStatus',
+    'setJournalStatus',
+    'setLedgerStatus',
+  ];
+
+  const methods = Object.getOwnPropertyNames(Accounting.prototype).filter((name) => name !== 'constructor');
+
+  assert.deepEqual(methods.sort(), expected);
+});
