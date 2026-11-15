@@ -23,7 +23,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
 | `src/core/application/dto.ts` | Las 22 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
 | `src/core/application/facade/` | La puerta de entrada: `accounting.ts` con la clase `Accounting`, única superficie pública de la capa. |
-| `src/core/application/use-cases/` | Una clase por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con una operación estática por caso de uso, más `entries-rules.ts`, `entries-result.ts`, `guards.ts` y `shared/`. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
+| `src/core/application/use-cases/` | Una clase por área (`accounts.ts`, `journals.ts`, `periods.ts`) con una operación estática por caso de uso; `entries/` como carpeta porque tiene tres piezas (`entries.ts`, `rules.ts`, `result.ts`); más `guards.ts` y `shared/`. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
 | `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |

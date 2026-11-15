@@ -16,14 +16,19 @@ fachada es la única que las ata una vez. Las entradas y salidas serializables n
 | `journals.ts` | `Journals.register`, `Journals.setStatus` |
 | `periods.ts` | `Periods.register`, `Periods.close` |
 | `entries.ts` | `Entries.createDraft`, `Entries.addLine`, `Entries.removeLine`, `Entries.post`, `Entries.reverse` |
-| `entries-rules.ts` | Precondiciones propias del área: diario y período del borrador, reversión previa |
-| `entries-result.ts` | Serialización de líneas, borradores y asientos; `lineOf` y `normalizedLine` |
+| `entries/entries.ts` | `Entries.createDraft`, `Entries.addLine`, `Entries.removeLine`, `Entries.post`, `Entries.reverse` |
+| `entries/rules.ts` | Precondiciones propias del área: diario y período del borrador, reversión previa |
+| `entries/result.ts` | Serialización de líneas, borradores y asientos; `lineOf` y `normalizedLine` |
 | `../dto.ts` | Las 22 entradas/salidas serializables de la capa. No vive en esta carpeta: son datos, no casos de uso |
 | `guards.ts` | Precondiciones compartidas por dos o más áreas: libro, asiento, id libre, diario activo, período abierto que contiene la fecha, cuenta del plan y cuenta contabilizable |
 | `shared/` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
 
 El nombre de la clase da el sustantivo y el método el verbo: `Entries.post(deps, input)` se lee mejor que
 `Entries.postEntry(deps, input)` y que el antiguo `PostEntry.execute(input)`.
+
+`entries/` es carpeta porque tiene tres piezas; las otras tres áreas tienen una sola y quedan como archivo. Es
+la regla de empaquetado aplicada sin excepciones: la carpeta aparece cuando agrupa algo, no para decorar. Por eso
+los módulos de apoyo se llaman `rules` y `result` —naturaleza, como `dto` o `errors`— y no `entries-rules`.
 
 **Prohibido un campo estático en estas cuatro clases.** Un `static #deps` convertiría el diseño en estado global
 mutable: dos mundos aislados en el mismo proceso se pisarían y los tests pasarían a depender del orden. Las

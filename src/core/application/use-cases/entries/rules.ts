@@ -1,6 +1,6 @@
-import type { JournalEntry } from '../../domain/entries/index.js';
-import * as errors from '../errors.js';
-import type { UnitOfWorkScope } from '../ports.js';
+import type { JournalEntry } from '../../../domain/entries/index.js';
+import * as errors from '../../errors.js';
+import type { UnitOfWorkScope } from '../../ports.js';
 
 /** A draft may point to any journal of the ledger; it does not have to be active yet. */
 export async function requireJournalInLedger(

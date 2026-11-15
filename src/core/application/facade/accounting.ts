@@ -22,7 +22,7 @@ import type {
   SetJournalStatusResult,
 } from '../dto.js';
 import { Accounts } from '../use-cases/accounts.js';
-import { Entries } from '../use-cases/entries.js';
+import { Entries } from '../use-cases/entries/entries.js';
 import { Journals } from '../use-cases/journals.js';
 import { Periods } from '../use-cases/periods.js';
 

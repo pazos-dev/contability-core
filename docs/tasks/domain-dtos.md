@@ -103,6 +103,7 @@ cualquiera de las cuatro clases queda prohibido explícitamente por S17.
 | T13 | S16 | Documentar la estructura nueva en `ARCHITECTURE.md`, los dos README de la capa y `STATUS.md` | `docs(application): document the per-use-case layout` |
 | T14 | S17 | Cuatro clases de área con operaciones estáticas y fachada adaptada | `refactor(application): group use cases into four area classes with static operations` |
 | T15 | S17 | Documentar el modelo en `ARCHITECTURE.md`, los dos README y `STATUS.md` | `docs(application): document the static operations model` |
+| T16 | S17 | `entries/` vuelve a ser carpeta (tres piezas) y sus módulos de apoyo pierden el prefijo ad-hoc | `refactor(application): give entries a folder and drop the ad-hoc prefixes` |
 
 ## Log
 
@@ -236,3 +237,12 @@ del método como verbo (`Entries.post`, no `Entries.postEntry`). `Accounting` no
 anteriores, no se retipearon, y las clases sólo pudieron cambiar de forma; lo único que cambió de visibilidad son
 las reglas propias de `accounts`, que pasaron a funciones privadas del módulo. Medido: 940 → 759 líneas y 15 → 7
 archivos. Se advierte lo que el commit anterior había ganado y este revierte: el archivo por caso de uso.
+
+L20. «porque volviste a colocar los casos de uso fuera de carpetas? o es idea mia». No era idea suya: `4ef969d`
+creó las carpetas y `84ec958` las colapsó al pasar a una clase por área. La causa fue S17, pero la decisión de no
+dejar carpetas con un `index.ts` adentro fue propia, aplicando la regla que el usuario había pedido para `ports/`.
+Al revisarlo apareció una inconsistencia real que él no había nombrado: `entries-rules.ts` y `entries-result.ts`
+se nombraban por área más rol inventado, contra S14, que nombra los módulos por naturaleza. Corrección: `entries/`
+vuelve a ser carpeta porque tiene tres piezas —`entries.ts`, `rules.ts`, `result.ts`— y las tres áreas de una
+sola pieza quedan planas. La regla se aplica sin excepciones en las dos direcciones: la carpeta aparece cuando
+agrupa algo, y el nombre del módulo es naturaleza, no `área-rol`.

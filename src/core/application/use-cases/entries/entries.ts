@@ -1,6 +1,6 @@
-import { JournalEntry } from '../../domain/entries/index.js';
-import { AccountingDate } from '../../domain/period/index.js';
-import type { ApplicationDeps } from '../ports.js';
+import { JournalEntry } from '../../../domain/entries/index.js';
+import { AccountingDate } from '../../../domain/period/index.js';
+import type { ApplicationDeps } from '../../ports.js';
 import type {
   AddEntryLineInput,
   CreateEntryDraftInput,
@@ -10,7 +10,7 @@ import type {
   RemoveEntryLineInput,
   ReversePostedEntryInput,
   ReversePostedEntryResult,
-} from '../dto.js';
+} from '../../dto.js';
 import {
   requireAccountOfPlan,
   requireActiveJournal,
@@ -19,15 +19,15 @@ import {
   requireFreeEntryId,
   requireOpenPeriodContaining,
   requirePostableAccount,
-} from './guards.js';
-import { fingerprintOf, Idempotency } from './shared/index.js';
-import { draftResultOf, lineOf, normalizedLine, postedResultOf } from './entries-result.js';
+} from '../guards.js';
+import { fingerprintOf, Idempotency } from '../shared/index.js';
+import { draftResultOf, lineOf, normalizedLine, postedResultOf } from './result.js';
 import {
   requireJournalInLedger,
   requireNoPostedReversal,
   requireNoReversal,
   requirePeriodInLedger,
-} from './entries-rules.js';
+} from './rules.js';
 
 const CREATE_OPERATION = 'createEntryDraft';
 const ADD_OPERATION = 'addEntryLine';
