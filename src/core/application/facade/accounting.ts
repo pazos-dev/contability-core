@@ -2,6 +2,8 @@ import type { ApplicationDeps } from '../ports.js';
 import type {
   AccountBalancesInput,
   AccountBalancesResult,
+  AccountMovementsInput,
+  AccountMovementsResult,
   AddEntryLineInput,
   ClosePeriodInput,
   ClosePeriodResult,
@@ -40,10 +42,10 @@ import { Reports } from '../use-cases/reports/reports.js';
  *
  * It is a composition, not a new layer on top: each method forwards to the static operation of the same
  * name and adds nothing — no validation, no state, no error translation. The five area classes are
- * internal to `use-cases/`, so the host never has to choose between fifteen symbols.
+ * internal to `use-cases/`, so the host never has to choose between sixteen symbols.
  *
- * Thirteen methods write and two read: `accountBalances` and `trialBalance` are the first read-only surface
- * of the module. Reads take no idempotency key, because repeating them has no second effect.
+ * Thirteen methods write and three read: `accountBalances`, `trialBalance` and `accountMovements` are the
+ * read-only surface of the module. Reads take no idempotency key, because repeating them has no second effect.
  *
  * `#deps` is the reason this class is instantiable. The operations themselves are stateless: they receive
  * the dependencies as a parameter and group by area, so nothing about them needs an object. Binding the
@@ -115,5 +117,9 @@ export class Accounting {
 
   trialBalance(input: AccountBalancesInput): Promise<TrialBalanceResult> {
     return Reports.trialBalance(this.#deps, input);
+  }
+
+  accountMovements(input: AccountMovementsInput): Promise<AccountMovementsResult> {
+    return Reports.accountMovements(this.#deps, input);
   }
 }

@@ -21,9 +21,10 @@ fachada es la única que las ata una vez. Las entradas y salidas serializables n
 | `entries/entries.ts` | `Entries.createDraft`, `Entries.addLine`, `Entries.removeLine`, `Entries.post`, `Entries.reverse` |
 | `entries/rules.ts` | Precondiciones del área: reversión previa, en cualquier estado (al revertir) o ya contabilizada (al contabilizar) |
 | `entries/result.ts` | Serialización de líneas, borradores y asientos; `lineOf` y `normalizedLine` |
-| `reports/reports.ts` | `Reports.accountBalances`, `Reports.trialBalance`. Las dos primeras operaciones de **lectura** del módulo: no escriben ni llevan idempotencia |
-| `reports/aggregate.ts` | Agregación compartida por los dos reportes: drena las páginas de `postedEntries`, acumula por cuenta y arma las filas. Es interna al área |
-| `reports/rules.ts` | Precondiciones del área: libro sin exigir estado activo y rango de fechas con las fechas creadas antes de compararlas |
+| `reports/reports.ts` | `Reports.accountBalances`, `Reports.trialBalance` y `Reports.accountMovements`. Las tres operaciones de **lectura** del módulo: no escriben ni llevan idempotencia |
+| `reports/aggregate.ts` | Agregación compartida por los dos reportes de saldos: drena las páginas de `postedEntries`, acumula por cuenta y arma las filas. Es interna al área |
+| `reports/movements.ts` | Mayor por cuenta: drenado, orden total `(accountingDate, entryId, lineId)`, saldo de apertura y corriente, y el cursor de posición. Es interna al área |
+| `reports/rules.ts` | Precondiciones del área: libro sin exigir estado activo, rango de fechas con las fechas creadas antes de compararlas y límite de página con default y cotas |
 | `../dto.ts` | Las 26 entradas/salidas serializables de la capa. No vive en esta carpeta: son datos, no casos de uso |
 | `shared/rules.ts` | Precondiciones compartidas por dos o más áreas: libro, asiento, id libre de asiento, diario, período, cuenta del plan y cuenta contabilizable |
 | `shared/idempotency.ts` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
@@ -41,6 +42,14 @@ caso de uso necesita para **validar una escritura** es un método de repositorio
 sólo si su forma lo justifica —rango, paginación o volumen—. Por eso los movimientos contabilizados llegan por
 `PostedEntriesQuery` y las cuentas de un plan llegan por `AccountRepository.findByChart`: la enumeración de un
 plan no tiene rango ni paginación.
+
+El mayor por cuenta (`accountMovements`) es el único reporte con cursor, y el cursor es suyo, no del puerto:
+`PostedEntriesQuery` pagina por asiento y el mayor por fila, así que el core drena, ordena por
+`(accountingDate, entryId, lineId)` y corta. El cursor guarda sólo la posición de la última fila devuelta —un
+marcador de versión y los tres valores de esa posición— y **ningún importe**. Una página alcanzada por cursor
+vuelve a drenar el rango desde `from` para reconstruir el saldo de apertura y el corriente: confiar en el
+cursor convertiría un dato del llamador en un saldo que el reporte afirma como propio. El costo es lineal en las
+filas ya informadas y no se esconde con una foto, caché o saldo materializado (D1, regla 17).
 
 Una regla vive al lado de las operaciones que la invocan, en `<área>/rules.ts`, porque es el área la que la
 decide. Sube a `shared/rules.ts` sólo cuando dos o más áreas la invocan: ahí están el libro y su plan, la
@@ -71,4 +80,5 @@ llamada a `unitOfWork.run`. Las cuatro clases son **internas**: la superficie p�
 `../index.ts` re-exporta los datos y los puertos.
 
 Especificaciones: `docs/specs/registration.md`, `docs/specs/post-entry.md`, `docs/specs/close-period.md`,
-`docs/specs/reverse-entry.md`, `docs/specs/entry-draft.md` y `docs/specs/entry-draft-edit.md`.
+`docs/specs/reverse-entry.md`, `docs/specs/entry-draft.md`, `docs/specs/entry-draft-edit.md` y
+`docs/specs/reports.md`.
