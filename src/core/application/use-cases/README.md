@@ -21,7 +21,10 @@ fachada es la única que las ata una vez. Las entradas y salidas serializables n
 | `entries/entries.ts` | `Entries.createDraft`, `Entries.addLine`, `Entries.removeLine`, `Entries.post`, `Entries.reverse` |
 | `entries/rules.ts` | Precondiciones del área: reversión previa, en cualquier estado (al revertir) o ya contabilizada (al contabilizar) |
 | `entries/result.ts` | Serialización de líneas, borradores y asientos; `lineOf` y `normalizedLine` |
-| `../dto.ts` | Las 22 entradas/salidas serializables de la capa. No vive en esta carpeta: son datos, no casos de uso |
+| `reports/reports.ts` | `Reports.accountBalances`, `Reports.trialBalance`. Las dos primeras operaciones de **lectura** del módulo: no escriben ni llevan idempotencia |
+| `reports/aggregate.ts` | Agregación compartida por los dos reportes: drena las páginas de `postedEntries`, acumula por cuenta y arma las filas. Es interna al área |
+| `reports/rules.ts` | Precondiciones del área: libro sin exigir estado activo y rango de fechas con las fechas creadas antes de compararlas |
+| `../dto.ts` | Las 26 entradas/salidas serializables de la capa. No vive en esta carpeta: son datos, no casos de uso |
 | `shared/rules.ts` | Precondiciones compartidas por dos o más áreas: libro, asiento, id libre de asiento, diario, período, cuenta del plan y cuenta contabilizable |
 | `shared/idempotency.ts` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
 
@@ -30,7 +33,14 @@ El nombre de la clase da el sustantivo y el método el verbo: `Entries.post(deps
 
 `entries/` no es la excepción: **cada área tiene su carpeta** con la clase de operaciones y su `rules.ts`. La
 carpeta no decora nada —agrupa la clase y las precondiciones que esa clase invoca— y es la misma forma en las
-cuatro áreas, así que no hay que recordar cuál quedó como archivo y cuál como carpeta.
+cinco áreas, así que no hay que recordar cuál quedó como archivo y cuál como carpeta.
+
+`reports/` es la única área que no escribe. Esa diferencia es la que decide dónde vive una lectura: lo que un
+caso de uso necesita para **validar una escritura** es un método de repositorio (`findById`, `findByCode`,
+`findOverlapping`, `findReversalsOf`); lo que existe sólo para **producir salida** es un puerto de consulta, y
+sólo si su forma lo justifica —rango, paginación o volumen—. Por eso los movimientos contabilizados llegan por
+`PostedEntriesQuery` y las cuentas de un plan llegan por `AccountRepository.findByChart`: la enumeración de un
+plan no tiene rango ni paginación.
 
 Una regla vive al lado de las operaciones que la invocan, en `<área>/rules.ts`, porque es el área la que la
 decide. Sube a `shared/rules.ts` sólo cuando dos o más áreas la invocan: ahí están el libro y su plan, la

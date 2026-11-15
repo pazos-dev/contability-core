@@ -2,7 +2,7 @@
 
 Adaptador en memoria para desarrollo y pruebas.
 
-Estado: implementado para 006a, 006b y 006e.
+Estado: implementado para 006a, 006b, 006e y 008a.
 
 | Archivo | Responsabilidad |
 | --- | --- |
@@ -32,6 +32,11 @@ Decisiones de copia, que son parte del contrato y no un detalle:
   copiado y nunca sale entero.
 - `findReversalsOf` recorre el mapa y devuelve **todas** las coincidencias: el adaptador no elige una
   "primera" reversión, porque ese orden no significa nada fuera del mapa.
+- `findByChart` y `findPostedMovements` recorren los mapas con filtros, no con claves: el primero enumera las
+  cuentas de un plan y el segundo pagina los asientos `POSTED` de un libro por rango inclusivo de fecha
+  contable y, opcionalmente, por cuenta. El cursor de esa paginación es un desplazamiento sobre un orden
+  total —fecha contable y luego id de asiento, que es único dentro del libro— y es opaco para el llamador:
+  sólo tiene que ser estable mientras se drena la misma lectura.
 
 `snapshot()` es una vista de lectura para composición y pruebas; nunca es un camino de escritura.
 `options.overrides` existe para reemplazar un puerto puntual en una prueba, por ejemplo para forzar un

@@ -19,6 +19,15 @@ export interface LedgerRepository {
 export interface AccountRepository {
   findById(accountId: string): Promise<Account | undefined>;
   findByCode(chartOfAccountsId: string, code: string): Promise<Account | undefined>;
+  /**
+   * Every account of one chart of accounts.
+   *
+   * It lives here and not in a port of its own because the shape of the read decides where a port goes: a
+   * read is separated when it is ranged, paginated or bulk output, and enumerating a chart is none of
+   * those. The account already owns `chartOfAccountsId`, and two ports over accounts would force the host
+   * to keep two coherent implementations — the duplication `LedgerDirectory` was removed to avoid.
+   */
+  findByChart(chartOfAccountsId: string): Promise<readonly Account[]>;
   save(account: Account): Promise<void>;
 }
 
@@ -75,6 +84,30 @@ export interface PostedMovementsQuery {
 }
 
 /**
+ * Paged read of the posted entries of a ledger, for the reports.
+ *
+ * It returns POSTED entries with their lines and never aggregates: the trial balance and the single
+ * currency rule are invariants of the core, so a port that returned totals would move both out of it
+ * (rule 15). Only `POSTED` entries belong to a report — a draft is not an accounting fact — and a reversal
+ * is one more entry, never a reason to hide the one it reverses.
+ *
+ * `from` and `to` are inclusive on the accounting date and optional; an absent one is unbounded, which is
+ * not the same as an empty range. The order inside a page is not part of the contract: the core orders the
+ * result, so the host only has to return every matching entry exactly once while the cursor advances.
+ */
+export interface PostedEntriesQuery {
+  findPostedMovements(
+    ledgerId: string,
+    criteria: {
+      readonly from?: AccountingDate;
+      readonly to?: AccountingDate;
+      readonly accountId?: string;
+    },
+    page: { readonly limit: number; readonly cursor?: string },
+  ): Promise<{ readonly entries: readonly JournalEntry[]; readonly nextCursor: string | null }>;
+}
+
+/**
  * One transactional context. Repositories are reachable only from its scope, so a use case cannot
  * open an independent connection and call it a unit of work.
  */
@@ -86,6 +119,7 @@ export interface UnitOfWorkScope {
   readonly entries: EntryRepository;
   readonly idempotency: IdempotencyRegistry;
   readonly postedMovements: PostedMovementsQuery;
+  readonly postedEntries: PostedEntriesQuery;
 }
 
 export interface UnitOfWork {

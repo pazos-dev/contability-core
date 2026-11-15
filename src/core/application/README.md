@@ -24,9 +24,17 @@ contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`.
 `UnitOfWork` es la única puerta: los repositorios salen de su alcance, así que ningún caso de uso abre una
 conexión independiente. `LedgerRepository` es la única fuente de la relación libro-plan (Q07) y de la moneda
 funcional del libro (Q08), y el libro es una entidad con estado y nombre desde el incremento 006e: un libro
-inactivo se rechaza con `LEDGER_INACTIVE` antes que cualquier otra regla, así que el primer paso de los once
-casos de uso existentes es el mismo. `PostedMovementsQuery` evita que el registro de cuentas dependa del
-dominio de asientos.
+inactivo se rechaza con `LEDGER_INACTIVE` antes que cualquier otra regla, así que el primer paso de los trece
+casos de uso que escriben es el mismo. Los dos reportes no pasan por esa regla: leer no exige libro activo, y
+un libro `INACTIVE` se reporta con normalidad. `PostedMovementsQuery` evita que el registro de cuentas dependa
+del dominio de asientos; `PostedEntriesQuery` es la lectura paginada de asientos contabilizados que usan los
+reportes, y devuelve asientos con sus líneas, nunca totales: el cuadre y la moneda única se verifican en el
+core, no en el anfitrión.
+
+`AccountRepository.findByChart` enumera las cuentas de un plan, y vive en ese repositorio y no en un puerto
+aparte: el criterio es la forma de la lectura —un puerto se separa cuando la lectura es por rango, paginada o
+de salida en volumen—, y dos puertos sobre cuentas obligarían al anfitrión a mantener dos implementaciones
+coherentes.
 
 La moneda funcional es una regla cruzada y por eso vive acá: el asiento conoce `ledgerId`, no el libro. `post` y
 `reverse` —las dos vías que dejan un asiento en `POSTED`— llaman a `requireLedgerCurrency`, que compara la

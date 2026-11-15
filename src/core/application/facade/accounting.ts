@@ -1,5 +1,7 @@
 import type { ApplicationDeps } from '../ports.js';
 import type {
+  AccountBalancesInput,
+  AccountBalancesResult,
   AddEntryLineInput,
   ClosePeriodInput,
   ClosePeriodResult,
@@ -24,19 +26,24 @@ import type {
   SetJournalStatusResult,
   SetLedgerStatusInput,
   SetLedgerStatusResult,
+  TrialBalanceResult,
 } from '../dto.js';
 import { Accounts } from '../use-cases/accounts/accounts.js';
 import { Entries } from '../use-cases/entries/entries.js';
 import { Journals } from '../use-cases/journals/journals.js';
 import { Ledgers } from '../use-cases/ledgers/ledgers.js';
 import { Periods } from '../use-cases/periods/periods.js';
+import { Reports } from '../use-cases/reports/reports.js';
 
 /**
  * Every use case of the module behind one object: the only public entry point of this layer.
  *
  * It is a composition, not a new layer on top: each method forwards to the static operation of the same
- * name and adds nothing — no validation, no state, no error translation. The four area classes are
- * internal to `use-cases/`, so the host never has to choose between thirteen symbols.
+ * name and adds nothing — no validation, no state, no error translation. The five area classes are
+ * internal to `use-cases/`, so the host never has to choose between fifteen symbols.
+ *
+ * Thirteen methods write and two read: `accountBalances` and `trialBalance` are the first read-only surface
+ * of the module. Reads take no idempotency key, because repeating them has no second effect.
  *
  * `#deps` is the reason this class is instantiable. The operations themselves are stateless: they receive
  * the dependencies as a parameter and group by area, so nothing about them needs an object. Binding the
@@ -100,5 +107,13 @@ export class Accounting {
 
   reversePostedEntry(input: ReversePostedEntryInput): Promise<ReversePostedEntryResult> {
     return Entries.reverse(this.#deps, input);
+  }
+
+  accountBalances(input: AccountBalancesInput): Promise<AccountBalancesResult> {
+    return Reports.accountBalances(this.#deps, input);
+  }
+
+  trialBalance(input: AccountBalancesInput): Promise<TrialBalanceResult> {
+    return Reports.trialBalance(this.#deps, input);
   }
 }

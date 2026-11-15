@@ -60,11 +60,33 @@ test('API: the package still aggregates the domain barrels', async () => {
   }
 });
 
-// The facade is the only public entry point of the application layer: thirteen use cases, no more and no
-// fewer. Adding one without deciding how it is published fails here.
-test('API: the facade exposes exactly the thirteen use cases', async () => {
+// The application barrel publishes behaviour and data shapes, and the facade is the only entry point for
+// behaviour. Types are erased at runtime, so the facade count is fixed at run time and the type surface is
+// fixed against the declaration file the build emits.
+test('API: the application barrel publishes the report types', async () => {
+  const { readFileSync } = await import('node:fs');
+  const declaration = readFileSync(new URL('../dist/core/application/index.d.ts', import.meta.url), 'utf8');
+  const exportedTypes = [...declaration.matchAll(/export type \{([^}]*)\} from/g)].flatMap((match) =>
+    match[1].split(',').map((name) => name.trim()).filter((name) => name.length > 0),
+  );
+
+  for (const type of [
+    'AccountBalanceRow',
+    'AccountBalancesInput',
+    'AccountBalancesResult',
+    'PostedEntriesQuery',
+    'TrialBalanceResult',
+  ]) {
+    assert.ok(exportedTypes.includes(type), `application barrel must export the type ${type}`);
+  }
+});
+
+// The facade is the only public entry point of the application layer: fifteen use cases after 008a, no more
+// and no fewer. Adding one without deciding how it is published fails here.
+test('API: the facade exposes exactly the fifteen use cases', async () => {
   const { Accounting } = await import('../dist/index.js');
   const expected = [
+    'accountBalances',
     'addEntryLine',
     'closePeriod',
     'createEntryDraft',
@@ -78,6 +100,7 @@ test('API: the facade exposes exactly the thirteen use cases', async () => {
     'setAccountStatus',
     'setJournalStatus',
     'setLedgerStatus',
+    'trialBalance',
   ];
 
   const methods = Object.getOwnPropertyNames(Accounting.prototype).filter((name) => name !== 'constructor');
