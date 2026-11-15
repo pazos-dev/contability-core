@@ -12,6 +12,7 @@ const barrels = {
     'listIsoCurrencies',
     'listIsoCurrenciesWithoutMinorUnit',
   ],
+  'core/domain/ledger': ['Ledger', 'LedgerError'],
   'core/domain/account': ['Account', 'AccountCode', 'AccountError'],
   'core/domain/journal': ['Journal', 'JournalError'],
   'core/domain/period': ['AccountingDate', 'AccountingPeriod', 'PeriodError'],
