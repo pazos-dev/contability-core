@@ -1,4 +1,4 @@
-import type { ApplicationDeps } from './ports/index.js';
+import type { ApplicationDeps } from './ports.js';
 import type {
   AddEntryLineInput,
   ClosePeriodInput,

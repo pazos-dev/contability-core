@@ -1,4 +1,4 @@
-import type { EntryRepository, UnitOfWork, UnitOfWorkScope } from '../../core/application/ports/index.js';
+import type { EntryRepository, UnitOfWork, UnitOfWorkScope } from '../../core/application/ports.js';
 import { createPorts, type StoreHolder } from './repositories.js';
 import { copyMaps, emptyMaps, snapshotOf, type InMemorySnapshot } from './store.js';
 

@@ -5,8 +5,9 @@ contabilizar, cerrar y revertir.
 
 ## Organización
 
-Un archivo por **área** con el comportamiento, un archivo de **contratos** con las entradas y salidas, y un
-archivo de **guardas** con las precondiciones que comparten los casos de uso.
+Un archivo por **área** con el comportamiento y un archivo de **guardas** con las precondiciones que comparten
+los casos de uso. Las entradas y salidas serializables no están acá: viven en `../dto.ts`, porque son datos y no
+casos de uso.
 
 | Archivo | Responsabilidad |
 | --- | --- |
@@ -34,7 +35,7 @@ en el sitio.
 Cada caso de uso es una clase con un único método asíncrono, `execute(input)`, y toda la ejecución
 —lecturas incluidas— ocurre dentro de una sola llamada a `unitOfWork.run`. Las clases son **internas**: la
 superficie pública es la fachada `Accounting` (`../accounting.ts`), que las compone y expone un método por
-caso de uso. `../index.ts` re-exporta los contratos.
+caso de uso. `../index.ts` re-exporta los datos y los puertos.
 
 Especificaciones: `docs/specs/registration.md`, `docs/specs/post-entry.md`, `docs/specs/close-period.md`,
 `docs/specs/reverse-entry.md`, `docs/specs/entry-draft.md` y `docs/specs/entry-draft-edit.md`.

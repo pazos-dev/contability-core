@@ -13,7 +13,7 @@ export type {
   PostedMovementsQuery,
   UnitOfWork,
   UnitOfWorkScope,
-} from './ports/index.js';
+} from './ports.js';
 export type {
   AddEntryLineInput,
   ClosePeriodInput,

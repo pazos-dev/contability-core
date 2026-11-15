@@ -7,7 +7,7 @@ import type {
   LedgerDirectory,
   PeriodRepository,
   PostedMovementsQuery,
-} from '../../core/application/ports/index.js';
+} from '../../core/application/ports.js';
 import { copyResult, keyOf, type MemoryMaps } from './store.js';
 
 /** The store holder exists so a failing unit of work can swap the whole set of maps at once. */

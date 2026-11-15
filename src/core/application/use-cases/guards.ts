@@ -3,7 +3,7 @@ import type { JournalEntry } from '../../domain/entries/index.js';
 import type { Journal } from '../../domain/journal/index.js';
 import type { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
 import * as errors from '../errors.js';
-import type { UnitOfWorkScope } from '../ports/index.js';
+import type { UnitOfWorkScope } from '../ports.js';
 
 /**
  * Preconditions shared by the use cases of this layer.

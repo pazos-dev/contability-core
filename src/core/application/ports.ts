@@ -1,8 +1,8 @@
-import type { Account } from '../../domain/account/index.js';
-import type { JournalEntry } from '../../domain/entries/index.js';
-import type { Journal } from '../../domain/journal/index.js';
-import type { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
-import type { StoredOperation } from '../dto.js';
+import type { Account } from '../domain/account/index.js';
+import type { JournalEntry } from '../domain/entries/index.js';
+import type { Journal } from '../domain/journal/index.js';
+import type { AccountingDate, AccountingPeriod } from '../domain/period/index.js';
+import type { StoredOperation } from './dto.js';
 
 /**
  * Relation between a ledger and its chart of accounts. The application layer never accepts a chart

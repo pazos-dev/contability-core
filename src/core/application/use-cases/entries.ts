@@ -2,7 +2,7 @@ import { JournalEntry, JournalEntryLine, type PostingSide } from '../../domain/e
 import { Money } from '../../domain/shared/money/index.js';
 import { AccountingDate } from '../../domain/period/index.js';
 import * as errors from '../errors.js';
-import type { ApplicationDeps, UnitOfWorkScope } from '../ports/index.js';
+import type { ApplicationDeps, UnitOfWorkScope } from '../ports.js';
 import type {
   AddEntryLineInput,
   CreateEntryDraftInput,

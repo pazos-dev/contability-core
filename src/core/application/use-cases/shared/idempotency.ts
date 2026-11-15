@@ -1,4 +1,4 @@
-import type { UnitOfWorkScope } from '../../ports/index.js';
+import type { UnitOfWorkScope } from '../../ports.js';
 import { idempotencyConflict } from '../../errors.js';
 
 /**

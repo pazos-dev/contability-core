@@ -26,7 +26,7 @@ required.push(
 for (const path of [
   'src/core/application/README.md',
   'src/core/application/index.ts',
-  'src/core/application/ports/index.ts',
+  'src/core/application/ports.ts',
   'src/core/application/use-cases/accounts.ts',
   'src/core/application/dto.ts',
   'src/core/application/use-cases/guards.ts',
