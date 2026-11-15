@@ -12,7 +12,7 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
-import { seedLedgers } from './seed.mjs';
+import { saveEntry, seedLedgers } from './seed.mjs';
 
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
@@ -84,9 +84,9 @@ function storedPeriod(memory, periodId = 'per-ledger-1') {
 
 test('C01: closing a period keeps posted entries and drafts untouched', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(draft('entry-posted'));
+  await saveEntry(memory, draft('entry-posted'));
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-posted', idempotencyKey: 'post-1' });
-  await memory.entries.save(draft('entry-draft'));
+  await saveEntry(memory, draft('entry-draft'));
 
   const result = await app.closePeriod({ ledgerId: 'ledger-1', periodId: 'per-ledger-1', idempotencyKey: 'close-1' });
 

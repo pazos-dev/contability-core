@@ -2,13 +2,13 @@
 
 Adaptador en memoria para desarrollo y pruebas.
 
-Estado: implementado para 006a y 006b.
+Estado: implementado para 006a, 006b y 006e.
 
 | Archivo | Responsabilidad |
 | --- | --- |
 | `store.ts` | Los mapas, las claves compuestas, la copia de respaldo y el snapshot. |
 | `repositories.ts` | Implementación de cada puerto sobre los mapas. |
-| `in-memory-accounting.ts` | Constructor público, costura de pruebas y unidad de trabajo que restaura. |
+| `in-memory-accounting.ts` | Constructor público y unidad de trabajo que restaura. Una sola forma de escribir: el objeto expuesto sólo ofrece `unitOfWork` y `snapshot`. |
 
 Límites explícitos:
 
@@ -16,6 +16,11 @@ Límites explícitos:
 - Sin aislamiento: dos `run` concurrentes pueden intercalarse, porque Node ejecuta un solo hilo y aquí no
   hay bloqueo.
 - Un rollback en memoria no prueba una transacción de base real. Las garantías de 007 se verifican con BD.
+- **Una sola puerta de escritura.** El adaptador no expone ningún repositorio suelto: se escribe dentro de
+  `unitOfWork.run`, igual que en un anfitrión real. Un repositorio sostenido desde afuera escribiría sin
+  respaldo, y un `run` posterior que fallara restauraría una copia anterior y descartaría esa escritura en
+  silencio. Esa costura existió y se cerró; `tests/public-api.test.mjs` fija que el objeto expuesto tenga
+  sólo `unitOfWork` y `snapshot`.
 
 Decisiones de copia, que son parte del contrato y no un detalle:
 

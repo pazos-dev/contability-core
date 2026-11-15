@@ -13,7 +13,7 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
-import { seedLedgers } from './seed.mjs';
+import { saveEntry, seedLedgers } from './seed.mjs';
 
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
@@ -73,7 +73,7 @@ async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
   }
 
   // A posted original with two balanced pairs, so mirroring cannot depend on line position.
-  await memory.entries.save(
+  await saveEntry(memory, 
     draftOf('original', [
       { id: 'line-1', accountId: 'acc-cash-ledger-1', side: 'DEBIT', amount: money('1000.00') },
       { id: 'line-2', accountId: 'acc-rev-ledger-1', side: 'CREDIT', amount: money('1000.00') },
@@ -150,7 +150,7 @@ test('V03: a second full reversal of the same original is rejected', async () =>
 
 test('V04: a draft cannot be reversed', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(draftOf('borrador'));
+  await saveEntry(memory, draftOf('borrador'));
 
   await assert.rejects(
     app.reversePostedEntry(reversalInput({ originalEntryId: 'borrador' })),
@@ -256,7 +256,7 @@ test('V13: a failing save leaves no reversal behind', async () => {
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev-ledger-1', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
   await app.registerJournal({ ledgerId: 'ledger-1', journalId: 'jrn-ledger-1', code: 'VENTAS', name: 'Ventas' });
   await app.registerPeriod({ ledgerId: 'ledger-1', periodId: 'per-ledger-1', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
-  await memory.entries.save(draftOf('original'));
+  await saveEntry(memory, draftOf('original'));
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'original', idempotencyKey: 'post-original' });
 
   await assert.rejects(app.reversePostedEntry(reversalInput()), /storage unavailable/);
@@ -268,7 +268,7 @@ test('V13: a failing save leaves no reversal behind', async () => {
 
 test('V14: a reversal id that is already used is rejected instead of overwriting the entry', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(draftOf('neighbour'));
+  await saveEntry(memory, draftOf('neighbour'));
 
   // "neighbour" is already stored in this ledger: reusing its id would silently replace that entry.
   await assert.rejects(
@@ -286,7 +286,7 @@ test('V14: a reversal id that is already used is rejected instead of overwriting
 
 test('V15: a draft reversal id blocks the reversal before any account or period check', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(draftOf('occupied'));
+  await saveEntry(memory, draftOf('occupied'));
 
   await assert.rejects(
     app.reversePostedEntry(reversalInput({ reversalEntryId: 'occupied' })),
@@ -304,7 +304,7 @@ test('V16: a stored reversal draft blocks a new reversal even before it is poste
   // this original is being reversed elsewhere, and the missing delete operation makes a second one a
   // decision, not a shortcut.
   const original = storedEntry(memory, 'original');
-  await memory.entries.save(
+  await saveEntry(memory, 
     original.createReversalDraft({
       id: 'draft-reversal',
       periodId: 'per-ledger-1',

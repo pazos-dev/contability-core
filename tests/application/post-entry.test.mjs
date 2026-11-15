@@ -13,7 +13,7 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
-import { seedLedgers } from './seed.mjs';
+import { saveEntry, seedLedgers } from './seed.mjs';
 
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
@@ -103,7 +103,7 @@ function storedEntry(memory, ledgerId = 'ledger-1', entryId = 'entry-1') {
 
 test('U01: a balanced draft with an active journal, open period and postable accounts is posted', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   const result = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
 
@@ -129,7 +129,7 @@ test('U01: a balanced draft with an active journal, open period and postable acc
 
 test('U02: an unknown ledger leaves the draft untouched and writes nothing', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-x', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -162,7 +162,7 @@ test('U03a: a failure while recording idempotency rolls the posted entry back', 
       },
     }),
   });
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -175,7 +175,7 @@ test('U03a: a failure while recording idempotency rolls the posted entry back', 
 
 test('U04: the same key and the same request replays without a second effect', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   const first = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
   const second = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
@@ -187,8 +187,8 @@ test('U04: the same key and the same request replays without a second effect', a
 
 test('U05: the same key with another entry is a conflict', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
-  await memory.entries.save(balancedDraft({ id: 'entry-2' }));
+  await saveEntry(memory, balancedDraft());
+  await saveEntry(memory, balancedDraft({ id: 'entry-2' }));
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
 
   await assert.rejects(
@@ -201,7 +201,7 @@ test('U05: the same key with another entry is a conflict', async () => {
 
 test('U08: an entry id that belongs to another ledger is not reachable', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft({ ledgerId: 'ledger-2', journalId: 'jrn-2', periodId: 'per-2' }));
+  await saveEntry(memory, balancedDraft({ ledgerId: 'ledger-2', journalId: 'jrn-2', periodId: 'per-2' }));
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -217,7 +217,7 @@ test('U09: posting into a closed period is rejected', async () => {
     const period = await scope.periods.findById('ledger-1', 'per-2026');
     await scope.periods.save(period.close());
   });
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -230,7 +230,7 @@ test('U09: posting into a closed period is rejected', async () => {
 
 test('U10: a date outside the closed-over period is rejected', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft({ accountingDate: AccountingDate.create('2027-03-15') }));
+  await saveEntry(memory, balancedDraft({ accountingDate: AccountingDate.create('2027-03-15') }));
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -242,8 +242,8 @@ test('U10: a date outside the closed-over period is rejected', async () => {
 
 test('U10: the first and last day of the period are inside it', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft({ id: 'entry-start', accountingDate: AccountingDate.create('2026-01-01') }));
-  await memory.entries.save(balancedDraft({ id: 'entry-end', accountingDate: AccountingDate.create('2026-12-31') }));
+  await saveEntry(memory, balancedDraft({ id: 'entry-start', accountingDate: AccountingDate.create('2026-01-01') }));
+  await saveEntry(memory, balancedDraft({ id: 'entry-end', accountingDate: AccountingDate.create('2026-12-31') }));
 
   const start = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-start', idempotencyKey: 'key-start' });
   const end = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-end', idempotencyKey: 'key-end' });
@@ -262,7 +262,7 @@ test('U11: a grouping account cannot receive a posting', async () => {
     type: 'ASSET',
     postingAllowed: false,
   });
-  await memory.entries.save(balancedDraft().removeLine('line-1').addLine(line({ accountId: 'acc-group' })));
+  await saveEntry(memory, balancedDraft().removeLine('line-1').addLine(line({ accountId: 'acc-group' })));
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -275,7 +275,7 @@ test('U11: a grouping account cannot receive a posting', async () => {
 test('U12: an inactive account cannot receive a posting', async () => {
   const { memory, deps, app } = await harness();
   await app.setAccountStatus({ ledgerId: 'ledger-1', accountId: 'acc-cash', status: 'INACTIVE' });
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -295,7 +295,7 @@ test('U13: an account of another chart of accounts is not reachable', async () =
     type: 'ASSET',
     postingAllowed: true,
   });
-  await memory.entries.save(balancedDraft().removeLine('line-1').addLine(line({ accountId: 'acc-foreign' })));
+  await saveEntry(memory, balancedDraft().removeLine('line-1').addLine(line({ accountId: 'acc-foreign' })));
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -308,7 +308,7 @@ test('U13: an account of another chart of accounts is not reachable', async () =
 test('U14: an inactive journal rejects the posting', async () => {
   const { memory, deps, app } = await harness();
   await app.setJournalStatus({ ledgerId: 'ledger-1', journalId: 'jrn-1', status: 'INACTIVE' });
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -320,7 +320,7 @@ test('U14: an inactive journal rejects the posting', async () => {
 
 test('U14: a journal of another ledger is not found', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft({ journalId: 'jrn-nowhere' }));
+  await saveEntry(memory, balancedDraft({ journalId: 'jrn-nowhere' }));
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
@@ -330,7 +330,7 @@ test('U14: a journal of another ledger is not found', async () => {
 
 test('U15: an already posted entry with a new key is a state error', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
 
   await assert.rejects(
@@ -343,7 +343,7 @@ test('U15: an already posted entry with a new key is a state error', async () =>
 
 test('U16: an unbalanced draft is rejected by the aggregate and stays a draft', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(
+  await saveEntry(memory, 
     JournalEntry.createDraft({
       id: 'entry-1',
       ledgerId: 'ledger-1',
@@ -373,7 +373,7 @@ test('U17: with several invalid conditions the lowest rule wins', async () => {
     const period = await scope.periods.findById('ledger-1', 'per-2026');
     await scope.periods.save(period.close());
   });
-  await memory.entries.save(
+  await saveEntry(memory, 
     balancedDraft().removeLine('line-1').addLine(line({ accountId: 'acc-unknown' })),
   );
 
@@ -389,7 +389,7 @@ test('U17: with several invalid conditions the lowest rule wins', async () => {
 
 test('the movements query reads real postings from the entry repository', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
 
   const posted = await memory.unitOfWork.run((scope) => scope.postedMovements.hasPostedLines('acc-cash'));
@@ -401,7 +401,7 @@ test('the movements query reads real postings from the entry repository', async 
 
 test('a posted account is rejected as a parent by the grouping rule, before the movements guard', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
 
   // Only a postable account can hold postings, and that same account cannot be a parent, so this is the
@@ -425,7 +425,7 @@ test('a posted account is rejected as a parent by the grouping rule, before the 
 test('U18: posting a stored reversal draft cannot create a second reversal of the same original', async () => {
   const { memory, app } = await harness();
 
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
   await app.reversePostedEntry({
     ledgerId: 'ledger-1',
@@ -443,7 +443,7 @@ test('U18: posting a stored reversal draft cannot create a second reversal of th
     periodId: 'per-2026',
     accountingDate: AccountingDate.create('2026-04-02'),
   });
-  await memory.entries.save(secondDraft);
+  await saveEntry(memory, secondDraft);
 
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'reversal-2', idempotencyKey: 'key-2' }),
@@ -455,21 +455,21 @@ test('U18: posting a stored reversal draft cannot create a second reversal of th
 
 test('U18b: a stored reversal draft cannot hide the reversal already posted of the same original', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
   await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
 
   // The host saves two reversal drafts before posting either one. The first one stays a draft for good,
   // so a lookup that answers with a single entry can return that draft and never see the reversal that
   // the second one becomes when it is posted.
   const original = storedEntry(memory);
-  await memory.entries.save(
+  await saveEntry(memory, 
     original.createReversalDraft({
       id: 'reversal-1',
       periodId: 'per-2026',
       accountingDate: AccountingDate.create('2026-04-01'),
     }),
   );
-  await memory.entries.save(
+  await saveEntry(memory, 
     original.createReversalDraft({
       id: 'reversal-2',
       periodId: 'per-2026',
@@ -497,7 +497,7 @@ test('U18b: a stored reversal draft cannot hide the reversal already posted of t
 
 test('U04b: a replay hands out a copy, so a caller cannot rewrite the remembered result', async () => {
   const { memory, app } = await harness();
-  await memory.entries.save(balancedDraft());
+  await saveEntry(memory, balancedDraft());
 
   const first = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
   const asPosted = structuredClone(first);

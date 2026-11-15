@@ -84,3 +84,11 @@ test('API: the facade exposes exactly the thirteen use cases', async () => {
 
   assert.deepEqual(methods.sort(), expected);
 });
+
+// A write that bypasses the unit of work is invisible to every backup: an unrelated failing run could
+// silently discard it. The adapter therefore offers one write path, and the unit of work scope is it.
+test('API: the memory adapter offers one write path, the unit of work', async () => {
+  const { createInMemoryAccounting } = await import('../dist/index.js');
+
+  assert.deepEqual(Object.keys(createInMemoryAccounting()).sort(), ['snapshot', 'unitOfWork']);
+});

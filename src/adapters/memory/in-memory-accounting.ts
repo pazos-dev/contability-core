@@ -1,4 +1,4 @@
-import type { EntryRepository, UnitOfWork, UnitOfWorkScope } from '../../core/application/ports.js';
+import type { UnitOfWork, UnitOfWorkScope } from '../../core/application/ports.js';
 import { createPorts, type StoreHolder } from './repositories.js';
 import { copyMaps, emptyMaps, snapshotOf, type InMemorySnapshot } from './store.js';
 
@@ -21,12 +21,6 @@ export interface InMemoryAccountingOptions {
 
 export interface InMemoryAccounting {
   readonly unitOfWork: UnitOfWork;
-  /**
-   * Entry adapter, exposed for composition: a host that builds drafts from its own domain events has
-   * to persist them somewhere, and this memory adapter is the only implementation in this phase.
-   * The core use cases never reach it this way: they only see the unit of work scope.
-   */
-  readonly entries: EntryRepository;
   snapshot(): InMemorySnapshot;
 }
 
@@ -52,7 +46,6 @@ export function createInMemoryAccounting(options: InMemoryAccountingOptions = {}
 
   return {
     unitOfWork,
-    entries: ports.entries,
     snapshot() {
       return snapshotOf(store.maps);
     },
