@@ -1,4 +1,4 @@
-import type { ApplicationDeps } from './ports.js';
+import type { ApplicationDeps } from '../ports.js';
 import type {
   AddEntryLineInput,
   ClosePeriodInput,
@@ -20,11 +20,18 @@ import type {
   SetAccountStatusResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
-} from './dto.js';
-import { RegisterAccount, SetAccountStatus } from './use-cases/accounts.js';
-import { AddEntryLine, CreateEntryDraft, PostEntry, RemoveEntryLine, ReversePostedEntry } from './use-cases/entries.js';
-import { RegisterJournal, SetJournalStatus } from './use-cases/journals.js';
-import { ClosePeriod, RegisterPeriod } from './use-cases/periods.js';
+} from '../dto.js';
+import { RegisterAccount } from '../use-cases/accounts/register-account.js';
+import { SetAccountStatus } from '../use-cases/accounts/set-account-status.js';
+import { AddEntryLine } from '../use-cases/entries/add-entry-line.js';
+import { CreateEntryDraft } from '../use-cases/entries/create-entry-draft.js';
+import { PostEntry } from '../use-cases/entries/post-entry.js';
+import { RemoveEntryLine } from '../use-cases/entries/remove-entry-line.js';
+import { ReversePostedEntry } from '../use-cases/entries/reverse-posted-entry.js';
+import { RegisterJournal } from '../use-cases/journals/register-journal.js';
+import { SetJournalStatus } from '../use-cases/journals/set-journal-status.js';
+import { ClosePeriod } from '../use-cases/periods/close-period.js';
+import { RegisterPeriod } from '../use-cases/periods/register-period.js';
 
 /**
  * Every use case of the module behind one object: the only public entry point of this layer.

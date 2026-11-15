@@ -1,5 +1,5 @@
 // Public surface of the application layer. Import from here, never from the internal files.
-export { Accounting } from './accounting.js';
+export { Accounting } from './facade/accounting.js';
 export { ApplicationError } from './errors.js';
 export type { ApplicationErrorCode } from './errors.js';
 export type {
