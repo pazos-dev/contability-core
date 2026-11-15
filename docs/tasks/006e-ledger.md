@@ -32,9 +32,9 @@ después sea un incremento encima y no una reescritura.
 | --- | --- | --- | --- | --- |
 | T1 | Dominio `Ledger` + `LedgerError`; inmutable, plan inmutable, nace `ACTIVE` | S1, spec R1-R5, L01, L03, L14 | dominio `src/core/domain/ledger/` | b6e915b |
 | T2 | `LedgerRepository` reemplaza `LedgerDirectory`, `registerLedger` con idempotencia e id libre, `chartOfAccountsByLedger` eliminado | S2, S3, L01-L05, L12, L13, L15, L16 | puertos, adaptador, `use-cases/ledgers/`, arneses de prueba | 32b3bcc |
-| T3 | `setLedgerStatus`: valor admitido → libro → transición no-op → escritura; `LEDGER_INACTIVE` | L06-L10 | `use-cases/ledgers/` | pendiente |
-| T4 | `LEDGER_INACTIVE` en los once casos de uso, sin mover la posición del libro en cada flujo | L11 | `use-cases/*/rules.ts` | pendiente |
-| T5 | Fachada a trece métodos, superficie pública, `STATUS`/`ARCHITECTURE`/`INTEGRATION` | S2, todos | fachada + docs | pendiente |
+| T3 | `setLedgerStatus`: valor admitido → libro → transición no-op → escritura | L06-L10 | `use-cases/ledgers/` | 7543d85 |
+| T4 | `LEDGER_INACTIVE` en los once casos de uso, sin mover la posición del libro en cada flujo | L11 | `use-cases/shared/rules.ts` | f34c7bd |
+| T5 | Fachada a trece métodos, superficie pública, `STATUS`/`ARCHITECTURE`/`INTEGRATION` | S2, todos | fachada + docs | fae2c7c |
 
 ## Log
 
@@ -59,3 +59,14 @@ también tenía mal registrado su sha (apuntaba al commit previo al `amend`); qu
 
 L6. `INVALID_LEDGER` burbujea **sin envolver**: es error de dominio, no de aplicación. La primera versión de la
 prueba L03 lo esperaba como `ApplicationError` y falló; la prueba se corrigió, el código no.
+
+L7. Cierre del incremento. `pnpm check` en verde con **243 pruebas** (eran 217 antes de 006e): 26 nuevas entre
+dominio, casos de uso y superficie. La documentación de T5 se delegó a un worker por presupuesto de contexto;
+reportó 243 y ninguna prueba roja, y el padre verificó lo que quedó fuera de su alcance — `docs/tasks`,
+`src/core/domain/ledger/README.md`, el estado de `src/core/application/README.md` y la frase «eleven symbols»
+que sobrevivía en la fachada y en el índice de la capa.
+
+L8. Pendientes que este incremento **no** cierra, dichos para no prometerlos: moneda funcional del libro
+(Q08 abierta), operación para cambiar el plan de cuentas, borrado de libros, verificación de que el plan exista
+(Q07) y concurrencia o unicidad durable (Q09, del anfitrión). El plan de cuentas como entidad sigue sin ser
+prioridad y reabre Q07 cuando toque.
