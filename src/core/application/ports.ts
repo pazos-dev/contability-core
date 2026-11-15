@@ -1,15 +1,18 @@
 import type { Account } from '../domain/account/index.js';
 import type { JournalEntry } from '../domain/entries/index.js';
 import type { Journal } from '../domain/journal/index.js';
+import type { Ledger } from '../domain/ledger/index.js';
 import type { AccountingDate, AccountingPeriod } from '../domain/period/index.js';
 import type { StoredOperation } from './dto.js';
 
 /**
- * Relation between a ledger and its chart of accounts. The application layer never accepts a chart
- * of accounts from the caller: the ledger owns the relation (Q07), so a host cannot declare one.
+ * The ledger is the accounting scope and the owner of its chart of accounts. The application layer never
+ * accepts a chart of accounts from the caller (Q07): it resolves the ledger and reads the chart from it.
+ * A ledger that was never registered is indistinguishable from a missing one.
  */
-export interface LedgerDirectory {
-  chartOfAccountsIdOf(ledgerId: string): Promise<string | undefined>;
+export interface LedgerRepository {
+  findById(ledgerId: string): Promise<Ledger | undefined>;
+  save(ledger: Ledger): Promise<void>;
 }
 
 /** Accounts are global by id; code uniqueness is scoped by chart of accounts. */
@@ -76,7 +79,7 @@ export interface PostedMovementsQuery {
  * open an independent connection and call it a unit of work.
  */
 export interface UnitOfWorkScope {
-  readonly ledgers: LedgerDirectory;
+  readonly ledgers: LedgerRepository;
   readonly accounts: AccountRepository;
   readonly journals: JournalRepository;
   readonly periods: PeriodRepository;

@@ -11,6 +11,8 @@ import type {
   RegisterAccountResult,
   RegisterJournalInput,
   RegisterJournalResult,
+  RegisterLedgerInput,
+  RegisterLedgerResult,
   RegisterPeriodInput,
   RegisterPeriodResult,
   RemoveEntryLineInput,
@@ -24,6 +26,7 @@ import type {
 import { Accounts } from '../use-cases/accounts/accounts.js';
 import { Entries } from '../use-cases/entries/entries.js';
 import { Journals } from '../use-cases/journals/journals.js';
+import { Ledgers } from '../use-cases/ledgers/ledgers.js';
 import { Periods } from '../use-cases/periods/periods.js';
 
 /**
@@ -43,6 +46,10 @@ export class Accounting {
 
   constructor(deps: ApplicationDeps) {
     this.#deps = deps;
+  }
+
+  registerLedger(input: RegisterLedgerInput): Promise<RegisterLedgerResult> {
+    return Ledgers.register(this.#deps, input);
   }
 
   registerAccount(input: RegisterAccountInput): Promise<RegisterAccountResult> {

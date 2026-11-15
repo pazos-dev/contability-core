@@ -13,6 +13,8 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
+import { seedLedgers } from './seed.mjs';
+
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
 
@@ -60,10 +62,12 @@ function balancedDraft(overrides = {}) {
     .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT' }));
 }
 
-async function harness(options = {}) {
-  const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS, ...options });
+async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+  const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, ledgers);
 
   await app.registerAccount({
     ledgerId: 'ledger-1',

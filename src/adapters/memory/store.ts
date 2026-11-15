@@ -1,6 +1,7 @@
 import type { Account } from '../../core/domain/account/index.js';
 import type { JournalEntry } from '../../core/domain/entries/index.js';
 import type { Journal } from '../../core/domain/journal/index.js';
+import type { Ledger } from '../../core/domain/ledger/index.js';
 import type { AccountingPeriod } from '../../core/domain/period/index.js';
 import type { StoredOperation } from '../../core/application/dto.js';
 
@@ -14,6 +15,7 @@ export interface InMemoryIdempotencyRecord {
 
 /** Read-only view of what the adapter holds, for composition checks and tests. */
 export interface InMemorySnapshot {
+  readonly ledgers: readonly Ledger[];
   readonly accounts: readonly Account[];
   readonly journals: readonly Journal[];
   readonly periods: readonly AccountingPeriod[];
@@ -29,6 +31,7 @@ export interface StoredIdempotency extends StoredOperation {
 
 /** Every store of the adapter. Domain values are deeply frozen, so a copy of a map is a backup. */
 export interface MemoryMaps {
+  readonly ledgers: Map<string, Ledger>;
   readonly accounts: Map<string, Account>;
   readonly journals: Map<string, Journal>;
   readonly periods: Map<string, AccountingPeriod>;
@@ -66,6 +69,7 @@ export function keyOf(...parts: readonly string[]): string {
 
 export function emptyMaps(): MemoryMaps {
   return {
+    ledgers: new Map(),
     accounts: new Map(),
     journals: new Map(),
     periods: new Map(),
@@ -76,6 +80,7 @@ export function emptyMaps(): MemoryMaps {
 
 export function copyMaps(maps: MemoryMaps): MemoryMaps {
   return {
+    ledgers: new Map(maps.ledgers),
     accounts: new Map(maps.accounts),
     journals: new Map(maps.journals),
     periods: new Map(maps.periods),
@@ -86,6 +91,7 @@ export function copyMaps(maps: MemoryMaps): MemoryMaps {
 
 export function snapshotOf(maps: MemoryMaps): InMemorySnapshot {
   return {
+    ledgers: [...maps.ledgers.values()],
     accounts: [...maps.accounts.values()],
     journals: [...maps.journals.values()],
     periods: [...maps.periods.values()],

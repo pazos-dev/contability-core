@@ -22,11 +22,16 @@ import type { UnitOfWorkScope } from '../../ports.js';
  * thing that removes the repetition is one named function per rule.
  */
 
-/** The ledger resolves its chart of accounts (Q07). Absent ledger is `LEDGER_NOT_FOUND`. */
+/**
+ * The ledger resolves its chart of accounts (Q07). Absent ledger is `LEDGER_NOT_FOUND`.
+ *
+ * The ledger is the only source of that relation since `chartOfAccountsByLedger` disappeared from the
+ * adapter: a ledger that nobody registered cannot be operated on, not even by configuration.
+ */
 export async function requireChartOfAccountsId(scope: UnitOfWorkScope, ledgerId: string): Promise<string> {
-  const chartOfAccountsId = await scope.ledgers.chartOfAccountsIdOf(ledgerId);
-  if (chartOfAccountsId === undefined) throw errors.ledgerNotFound(ledgerId);
-  return chartOfAccountsId;
+  const ledger = await scope.ledgers.findById(ledgerId);
+  if (ledger === undefined) throw errors.ledgerNotFound(ledgerId);
+  return ledger.chartOfAccountsId;
 }
 
 /** The entry exists in this ledger; an id of another ledger is indistinguishable from a missing one. */

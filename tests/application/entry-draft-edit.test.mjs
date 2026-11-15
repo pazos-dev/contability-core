@@ -8,6 +8,8 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
+import { seedLedgers } from './seed.mjs';
+
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 
 function assertCode(code) {
@@ -38,10 +40,12 @@ function credit(lineId, minorUnits = '100000') {
   return { lineId, accountId: 'acc-rev', side: 'CREDIT', amount: amount(minorUnits) };
 }
 
-async function harness() {
-  const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS });
+async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+  const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, ledgers);
 
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
@@ -233,7 +237,6 @@ test('L12: the same key with another line is a conflict', async () => {
 
 test('L13: a failing save leaves the stored draft untouched', async () => {
   const memory = createInMemoryAccounting({
-    chartOfAccountsByLedger: LEDGERS,
     overrides: (scope) => ({
       entries: {
         ...scope.entries,
@@ -247,6 +250,8 @@ test('L13: a failing save leaves the stored draft untouched', async () => {
   });
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, LEDGERS);
 
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });

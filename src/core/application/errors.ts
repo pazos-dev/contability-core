@@ -5,6 +5,7 @@
 export type ApplicationErrorCode =
   | 'INVALID_APPLICATION_INPUT'
   | 'LEDGER_NOT_FOUND'
+  | 'LEDGER_ALREADY_EXISTS'
   | 'ACCOUNT_NOT_FOUND'
   | 'ACCOUNT_ALREADY_EXISTS'
   | 'ACCOUNT_CODE_DUPLICATE'
@@ -49,7 +50,13 @@ export function invalidApplicationInput(field: string, value: unknown): Applicat
 }
 
 export function ledgerNotFound(ledgerId: string): ApplicationError {
-  return new ApplicationError('LEDGER_NOT_FOUND', `Ledger ${JSON.stringify(ledgerId)} is not known to the directory.`, {
+  return new ApplicationError('LEDGER_NOT_FOUND', `Ledger ${JSON.stringify(ledgerId)} is not registered.`, {
+    ledgerId,
+  });
+}
+
+export function ledgerAlreadyExists(ledgerId: string): ApplicationError {
+  return new ApplicationError('LEDGER_ALREADY_EXISTS', `Ledger ${JSON.stringify(ledgerId)} is already registered.`, {
     ledgerId,
   });
 }

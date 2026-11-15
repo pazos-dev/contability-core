@@ -12,6 +12,8 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
+import { seedLedgers } from './seed.mjs';
+
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
 
@@ -59,10 +61,12 @@ function draft(id, status = 'DRAFT') {
   return status === 'POSTED' ? entry.post() : entry;
 }
 
-async function harness(options = {}) {
-  const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS, ...options });
+async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+  const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, ledgers);
 
   for (const ledgerId of ['ledger-1', 'ledger-2']) {
     await app.registerAccount({ ledgerId, accountId: `acc-cash-${ledgerId}`, code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });

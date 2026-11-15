@@ -1,6 +1,7 @@
 import type { AccountStatus, AccountType } from '../domain/account/index.js';
 import type { EntryStatus, PostingSide } from '../domain/entries/index.js';
 import type { JournalStatus } from '../domain/journal/index.js';
+import type { LedgerStatus } from '../domain/ledger/index.js';
 import type { PeriodStatus } from '../domain/period/index.js';
 import type { MoneyJSON } from '../domain/shared/money/index.js';
 
@@ -15,6 +16,26 @@ import type { MoneyJSON } from '../domain/shared/money/index.js';
  * single place to re-export the surface from. Domain instances never appear in these shapes: `Money` travels
  * as `MoneyJSON`.
  */
+
+// ── Ledgers ──────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Serializable input of `registerLedger`. The ledger id is chosen by the caller, like every id of this
+ * module: the core never invents one. The chart of accounts is an opaque identifier of the host (Q07).
+ */
+export interface RegisterLedgerInput {
+  readonly ledgerId: string;
+  readonly name: string;
+  readonly chartOfAccountsId: string;
+  readonly idempotencyKey?: string;
+}
+
+export interface RegisterLedgerResult {
+  readonly ledgerId: string;
+  readonly name: string;
+  readonly chartOfAccountsId: string;
+  readonly status: LedgerStatus;
+}
 
 // ── Accounts ─────────────────────────────────────────────────────────────────────────────────────────
 

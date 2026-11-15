@@ -4,7 +4,7 @@ import type {
   EntryRepository,
   IdempotencyRegistry,
   JournalRepository,
-  LedgerDirectory,
+  LedgerRepository,
   PeriodRepository,
   PostedMovementsQuery,
 } from '../../core/application/ports.js';
@@ -21,11 +21,14 @@ export interface StoreHolder {
  * Ledger scoping is done by the key, not by a filter: `journals.findById(ledger, id)` builds a key from
  * both, so an id of another ledger simply does not exist here.
  */
-export function createPorts(store: StoreHolder, chartOfAccountsByLedger: Readonly<Record<string, string>>) {
-  const ledgers: LedgerDirectory = {
-    async chartOfAccountsIdOf(ledgerId) {
-      // Own properties only: a ledger id such as "constructor" must be unknown, not inherited.
-      return Object.hasOwn(chartOfAccountsByLedger, ledgerId) ? chartOfAccountsByLedger[ledgerId] : undefined;
+export function createPorts(store: StoreHolder) {
+  const ledgers: LedgerRepository = {
+    async findById(ledgerId) {
+      // Own keys only: a ledger id such as "constructor" must be unknown, not inherited.
+      return store.maps.ledgers.get(ledgerId);
+    },
+    async save(ledger) {
+      store.maps.ledgers.set(ledger.id, ledger);
     },
   };
 

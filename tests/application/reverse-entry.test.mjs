@@ -13,6 +13,8 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
+import { seedLedgers } from './seed.mjs';
+
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
 
@@ -56,10 +58,12 @@ function draftOf(
   );
 }
 
-async function harness() {
-  const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS });
+async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+  const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, ledgers);
 
   for (const ledgerId of ['ledger-1', 'ledger-2']) {
     await app.registerAccount({ ledgerId, accountId: `acc-cash-${ledgerId}`, code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
@@ -233,7 +237,6 @@ test('V11/V12: idempotency replays the same request and conflicts with another',
 
 test('V13: a failing save leaves no reversal behind', async () => {
   const memory = createInMemoryAccounting({
-    chartOfAccountsByLedger: LEDGERS,
     overrides: (scope) => ({
       entries: {
         ...scope.entries,
@@ -246,6 +249,8 @@ test('V13: a failing save leaves no reversal behind', async () => {
   });
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, LEDGERS);
 
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash-ledger-1', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev-ledger-1', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });

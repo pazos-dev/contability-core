@@ -12,8 +12,6 @@ import { copyMaps, emptyMaps, snapshotOf, type InMemorySnapshot } from './store.
  */
 
 export interface InMemoryAccountingOptions {
-  /** Ledger to chart of accounts map used by the `LedgerDirectory` port. */
-  readonly chartOfAccountsByLedger?: Readonly<Record<string, string>>;
   /**
    * Testing seam: replaces any port of the default scope. Receives the scope that was just built so a
    * caller can delegate to the real repositories and only change one operation.
@@ -34,7 +32,7 @@ export interface InMemoryAccounting {
 
 export function createInMemoryAccounting(options: InMemoryAccountingOptions = {}): InMemoryAccounting {
   const store: StoreHolder = { maps: emptyMaps() };
-  const ports = createPorts(store, options.chartOfAccountsByLedger ?? {});
+  const ports = createPorts(store);
 
   const defaults: UnitOfWorkScope = ports;
   const scope: UnitOfWorkScope = { ...defaults, ...(options.overrides?.(defaults) ?? {}) };

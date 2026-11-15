@@ -8,6 +8,8 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
+import { seedLedgers } from './seed.mjs';
+
 const LEDGERS = { 'ledger-1': 'chart-1' };
 const uyu = Currency.create('UYU', 2);
 
@@ -28,10 +30,12 @@ function assertCode(code) {
   };
 }
 
-function harness() {
-  const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS });
+async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+  const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, ledgers);
 
   return { memory, deps, app };
 }
@@ -71,7 +75,7 @@ async function chart(app) {
 }
 
 test('the facade runs the whole module: chart, draft, edit, posting, closing and reversal', async () => {
-  const { memory, app } = harness();
+  const { memory, app } = await harness();
   await chart(app);
 
   // Journals and accounts can be deactivated and reactivated without losing identity.
@@ -151,7 +155,7 @@ test('the facade runs the whole module: chart, draft, edit, posting, closing and
 });
 
 test('the facade propagates the use case errors unchanged and leaves no partial write', async () => {
-  const { memory, app } = harness();
+  const { memory, app } = await harness();
   await chart(app);
 
   await assert.rejects(
@@ -176,7 +180,7 @@ test('the facade propagates the use case errors unchanged and leaves no partial 
 });
 
 test('two facades over the same deps share the stores, because the facade holds no state', async () => {
-  const { memory, deps, app } = harness();
+  const { memory, deps, app } = await harness();
   const sameApp = new Accounting(deps);
   await chart(app);
 

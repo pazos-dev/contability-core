@@ -12,6 +12,8 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
+import { seedLedgers } from './seed.mjs';
+
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 
 function assertCode(code) {
@@ -34,10 +36,12 @@ function amount(minorUnits, code = 'UYU', scale = 2) {
   return { minorUnits, currency: { code, scale } };
 }
 
-async function harness() {
-  const memory = createInMemoryAccounting({ chartOfAccountsByLedger: LEDGERS });
+async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+  const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, ledgers);
 
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
@@ -259,7 +263,6 @@ test('D12: a changed line under the same key is a conflict, not an ignored field
 
 test('D13: a failing save leaves no draft and no idempotency record', async () => {
   const memory = createInMemoryAccounting({
-    chartOfAccountsByLedger: LEDGERS,
     overrides: (scope) => ({
       entries: {
         ...scope.entries,
@@ -271,6 +274,8 @@ test('D13: a failing save leaves no draft and no idempotency record', async () =
   });
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
+
+  await seedLedgers(app, LEDGERS);
 
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-cash', code: '1.1.01', name: 'Caja', type: 'ASSET', postingAllowed: true });
   await app.registerAccount({ ledgerId: 'ledger-1', accountId: 'acc-rev', code: '4.1.01', name: 'Ventas', type: 'REVENUE', postingAllowed: true });
