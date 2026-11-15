@@ -11,7 +11,7 @@ de preparación registradas en ADR 0002.
 | Q04 | JSON y errores | Propuesta técnica lista para primer incremento. | specs/money.md |
 | Q05 | Redondeo | Aplazado; no bloquea suma/resta exactas. | specs/money.md |
 | Q06 | Entorno y módulos | Configurado; instalación/verificación según VALIDACION.md. | README.md |
-| Q07 | Empresa/libro/plan | Resuelta: el libro es una entidad del core con identidad, nombre, **un** plan de cuentas y estado; el anfitrión elige su id y aporta el identificador del plan, que el core no administra. Varios libros pueden compartir un plan; varios planes en un libro, no (el plan no cambia). Falta implementar. | specs/ledger.md |
+| Q07 | Empresa/libro/plan | Resuelta: el libro es una entidad del core con identidad, nombre, **un** plan de cuentas y estado; el anfitrión elige su id y aporta el identificador del plan, que el core no administra. Varios libros pueden compartir un plan; varios planes en un libro, no (el plan no cambia). Implementado en 006e: `Ledger` con estado y `LedgerRepository`; el core sigue sin administrar el plan, que es un identificador opaco y no se verifica que exista. | specs/ledger.md |
 | Q08 | Moneda funcional y conversión | Pendiente; un asiento una moneda inicialmente. | specs/entries.md |
 | Q09 | Persistencia, framework y transacciones | Fuera de este repositorio: el core fija `UnitOfWork` y los puertos; la base, las transacciones y las restricciones las aporta el anfitrión. | INTEGRATION.md |
 | Q10 | Estados y cierre | DRAFT/POSTED, OPEN/CLOSED; reversión con otro asiento. | specs/entries.md y specs/period.md |
