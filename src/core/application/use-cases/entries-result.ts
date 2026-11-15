@@ -1,6 +1,6 @@
-import { JournalEntryLine, type JournalEntry, type PostingSide } from '../../../domain/entries/index.js';
-import { Money } from '../../../domain/shared/money/index.js';
-import type { EntryDraftResult, EntryLineInput, PostedLineResult, PostEntryResult } from '../../dto.js';
+import { JournalEntryLine, type JournalEntry, type PostingSide } from '../../domain/entries/index.js';
+import { Money } from '../../domain/shared/money/index.js';
+import type { EntryDraftResult, EntryLineInput, PostedLineResult, PostEntryResult } from '../dto.js';
 
 /** Serializes one line: a domain value never leaves the module raw. */
 export function serializeLine(line: JournalEntryLine): PostedLineResult {
