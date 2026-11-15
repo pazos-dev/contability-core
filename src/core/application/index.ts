@@ -10,11 +10,15 @@ export type {
   JournalRepository,
   LedgerRepository,
   PeriodRepository,
+  PostedEntriesQuery,
   PostedMovementsQuery,
   UnitOfWork,
   UnitOfWorkScope,
 } from './ports.js';
 export type {
+  AccountBalanceRow,
+  AccountBalancesInput,
+  AccountBalancesResult,
   AddEntryLineInput,
   ClosePeriodInput,
   ClosePeriodResult,
@@ -42,7 +46,8 @@ export type {
   SetLedgerStatusInput,
   SetLedgerStatusResult,
   StoredOperation,
+  TrialBalanceResult,
 } from './dto.js';
 // The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees
-// thirteen symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
+// fifteen symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
 // `use-cases/` are internal wiring for the facade, not part of the package surface.

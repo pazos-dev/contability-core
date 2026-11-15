@@ -1,3 +1,4 @@
+import type { Account } from '../../core/domain/account/index.js';
 import type { JournalEntry } from '../../core/domain/entries/index.js';
 import type {
   AccountRepository,
@@ -6,6 +7,7 @@ import type {
   JournalRepository,
   LedgerRepository,
   PeriodRepository,
+  PostedEntriesQuery,
   PostedMovementsQuery,
 } from '../../core/application/ports.js';
 import { copyResult, keyOf, type MemoryMaps } from './store.js';
@@ -41,6 +43,13 @@ export function createPorts(store: StoreHolder) {
         if (account.chartOfAccountsId === chartOfAccountsId && account.code.value === code) return account;
       }
       return undefined;
+    },
+    async findByChart(chartOfAccountsId) {
+      const found: Account[] = [];
+      for (const account of store.maps.accounts.values()) {
+        if (account.chartOfAccountsId === chartOfAccountsId) found.push(account);
+      }
+      return found;
     },
     async save(account) {
       store.maps.accounts.set(account.id, account);
@@ -123,5 +132,52 @@ export function createPorts(store: StoreHolder) {
     },
   };
 
-  return { ledgers, accounts, journals, periods, entries, idempotency, postedMovements };
+  /**
+   * Paged read over the entries map: it filters by ledger, status, inclusive dates and account, sorts so the
+   * pages partition the result, and returns the window the cursor points at. The cursor is an offset, which
+   * is opaque to the caller and only has to be stable while the same read is drained.
+   */
+  const postedEntries: PostedEntriesQuery = {
+    async findPostedMovements(ledgerId, criteria, page) {
+      const matching: JournalEntry[] = [];
+      for (const entry of store.maps.entries.values()) {
+        if (entry.ledgerId !== ledgerId || entry.status !== 'POSTED') continue;
+        if (criteria.from !== undefined && entry.accountingDate.compare(criteria.from) < 0) continue;
+        if (criteria.to !== undefined && entry.accountingDate.compare(criteria.to) > 0) continue;
+        if (
+          criteria.accountId !== undefined &&
+          !entry.lines.some((line) => line.accountId === criteria.accountId)
+        ) {
+          continue;
+        }
+        matching.push(entry);
+      }
+
+      // `entryId` is unique inside its ledger, so date plus id is a total order and the pages never overlap.
+      matching.sort(
+        (left, right) =>
+          left.accountingDate.compare(right.accountingDate) ||
+          (left.id < right.id ? -1 : left.id > right.id ? 1 : 0),
+      );
+
+      const offset = offsetOf(page.cursor);
+      const window = matching.slice(offset, offset + page.limit);
+      const next = offset + window.length;
+
+      return {
+        entries: window,
+        // An empty window proves nothing follows, whatever the limit: the drain cannot loop on the page alone.
+        nextCursor: window.length === 0 || next >= matching.length ? null : String(next),
+      };
+    },
+  };
+
+  return { ledgers, accounts, journals, periods, entries, idempotency, postedMovements, postedEntries };
+}
+
+/** A cursor this adapter did not produce starts at the beginning instead of throwing at the caller. */
+function offsetOf(cursor: string | undefined): number {
+  if (cursor === undefined) return 0;
+  const offset = Number(cursor);
+  return Number.isInteger(offset) && offset >= 0 ? offset : 0;
 }

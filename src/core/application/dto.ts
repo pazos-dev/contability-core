@@ -242,6 +242,64 @@ export interface ReversePostedEntryResult extends PostEntryResult {
   readonly reversalOfEntryId: string;
 }
 
+// ── Reports ──────────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Serializable input of the two balance reports. `from` and `to` are YYYY-MM-DD and inclusive on the
+ * accounting date; an absent one means unbounded, which the result reports as `null`.
+ */
+export interface AccountBalancesInput {
+  readonly ledgerId: string;
+  readonly from?: string;
+  readonly to?: string;
+}
+
+/**
+ * One account of the ledger's chart with what moved through it in the range.
+ *
+ * `balance` is signed —debit minus credit— so a consumer does not have to know the account type to read
+ * it, and `side` states the same fact for whoever only needs the side. All three amounts travel as
+ * `MoneyJSON` in the ledger's currency: the scale is part of currency identity and is never deduced from
+ * the code.
+ */
+export interface AccountBalanceRow {
+  readonly accountId: string;
+  readonly code: string;
+  readonly name: string;
+  readonly type: AccountType;
+  readonly debit: MoneyJSON;
+  readonly credit: MoneyJSON;
+  readonly balance: MoneyJSON;
+  readonly side: 'DEBIT' | 'CREDIT' | 'ZERO';
+}
+
+/**
+ * Rows only: a balance per account does not assert that the books agree, so this result carries no
+ * `totals` and no `balanced` (rule 18).
+ */
+export interface AccountBalancesResult {
+  readonly ledgerId: string;
+  readonly currency: CurrencyJSON;
+  readonly from: string | null;
+  readonly to: string | null;
+  readonly rows: readonly AccountBalanceRow[];
+}
+
+/**
+ * The same rows as `accountBalances`, for the same input, plus the general totals and the check: there is
+ * no second calculation, there is a second contract. A balance that does not agree is not an error —
+ * `balanced: false` with the totals is what lets the caller find the difference.
+ */
+export interface TrialBalanceResult {
+  readonly ledgerId: string;
+  readonly currency: CurrencyJSON;
+  readonly from: string | null;
+  readonly to: string | null;
+  readonly rows: readonly AccountBalanceRow[];
+  readonly totals: { readonly debit: MoneyJSON; readonly credit: MoneyJSON };
+  readonly balanced: boolean;
+}
+
 // ── Idempotency ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
