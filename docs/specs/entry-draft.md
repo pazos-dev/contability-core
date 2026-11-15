@@ -1,7 +1,7 @@
 # SPEC — Crear un borrador de asiento
 
 Estado: lista para implementar (incremento 006c).
-Ruta: `src/core/application/use-cases/entries/`.
+Ruta: `src/core/application/use-cases/entries.ts`.
 Depende de: `entries.md` (E01-E11) y del contrato general de `registration.md` (puertos, errores, unidad
 de trabajo, huella de idempotencia).
 

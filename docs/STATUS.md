@@ -172,7 +172,7 @@ mixto de monedas.
 
 ### 006c-application — `docs/specs/entry-draft.md`, D01-D13
 
-- `createEntryDraft` en `src/core/application/use-cases/entries/create-entry-draft.ts`: alta de un borrador con cabecera y
+- `createEntryDraft` en `src/core/application/use-cases/entries.ts`: alta de un borrador con cabecera y
   líneas en una sola unidad de trabajo.
 - Cierra el circuito. Hasta 006b, `postEntry` exigía un borrador persistido y **ninguna operación del core
   lo producía**; el hueco quedó registrado como decisión pendiente y ahora está resuelto.
@@ -188,7 +188,7 @@ mixto de monedas.
 
 ### 006d-application — `docs/specs/entry-draft-edit.md`, L01-L13
 
-- `addEntryLine` y `removeEntryLine` en `use-cases/entries/add-entry-line.ts` y `entries/remove-entry-line.ts`: corrigen un borrador
+- `addEntryLine` y `removeEntryLine` en `src/core/application/use-cases/entries.ts`: corrigen un borrador
   entregado al puerto sin borrarlo y sin que el anfitrión toque el repositorio de asientos.
 - Son cálculo puro sobre el agregado: `addLine` y `removeLine` ya existían y son los que deciden. Una
   edición no agrega ningún puerto ni toca el adaptador.
@@ -266,6 +266,11 @@ mixto de monedas.
 - Los casos de uso son un archivo por caso en `use-cases/<área>/`, con el `rules.ts` de cada área y el
   `result.ts` de `entries/`; la fachada vive en `facade/accounting.ts` y **conserva su nombre**, porque lo
   confuso era la ubicación y no la palabra. 719 → 773 líneas: la navegabilidad se paga con cabeceras de import.
+- Los casos de uso son **cuatro clases de área con operaciones estáticas** (`Accounts.register`,
+  `Entries.post`, …): once objetos que sólo cerraban sobre las dependencias desaparecieron, porque el invariante
+  del mundo compartido vive en `Accounting`, que sigue instanciable y con `#deps` privado. **940 → 759 líneas
+  (−19%) y 15 → 7 archivos.** Esto revierte en parte el split anterior, que es el precio de comparar en serio.
+  Un campo estático en esas clases queda prohibido y escrito: sería estado global mutable.
 
 ### API pública
 

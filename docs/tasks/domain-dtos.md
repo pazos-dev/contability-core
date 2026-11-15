@@ -78,6 +78,12 @@ S16. Requerimiento posterior, textual (resto de L15): la puerta de entrada no de
 pasa a `facade/accounting.ts`; los casos de uso van uno por archivo en `use-cases/<área>/`, con un `rules.ts`
 por área y un `result.ts` en `entries/`. Sin cambio de superficie pública.
 
+S17. Requerimiento posterior, textual: «mi idea es mantener accounting que se pueda instanciar como actualmente
+es ... Y lo que yo quiero pasar a clases con métodos estáticos directamente son los casos de uso de la
+aplicación ... varias clases pero con sus métodos estáticos». Una clase por área con una operación estática por
+caso de uso, dependencias por parámetro; `Accounting` queda instanciable y `#deps` privado. Un campo estático en
+cualquiera de las cuatro clases queda prohibido explícitamente por S17.
+
 ## Tasks
 
 | ID | Spec | Tarea | Commit |
@@ -95,6 +101,8 @@ por área y un `result.ts` en `entries/`. Sin cambio de superficie pública.
 | T11 | S15 | `Idempotency.execute` con mitades privadas; 9 call sites | `refactor(application): make Idempotency own the whole cycle` |
 | T12 | S16 | Fachada a `facade/` y casos de uso uno por archivo en `use-cases/<área>/` | `refactor(application): one file per use case in area folders` |
 | T13 | S16 | Documentar la estructura nueva en `ARCHITECTURE.md`, los dos README de la capa y `STATUS.md` | `docs(application): document the per-use-case layout` |
+| T14 | S17 | Cuatro clases de área con operaciones estáticas y fachada adaptada | `refactor(application): group use cases into four area classes with static operations` |
+| T15 | S17 | Documentar el modelo en `ARCHITECTURE.md`, los dos README y `STATUS.md` | `docs(application): document the static operations model` |
 
 ## Log
 
@@ -211,3 +219,20 @@ carpeta propia (`facade/`), porque `Core` no dice nada, `Application` choca con 
 van **uno por archivo** en carpetas por área, no sólo `entries/`. Las clases se extrajeron por rangos de línea,
 no se retipearon: el comportamiento dentro de cada clase es idéntico byte a byte. Lo que sí cambió es la
 visibilidad de los helpers compartidos, que ahora se exportan desde su módulo interno.
+
+L18. «mi idea es mantener accounting que se pueda instanciar como actualmente es para no cometer esos errores ...
+Y lo que yo quiero pasar a clases con métodos estáticos directamente son los casos de uso de la aplicación ...
+Esa es mi propuesta y quiero ver que crees» → «varias clases pero con sus métodos estáticos».
+
+Concesión que corresponde: `new PostEntry(deps)` crea un objeto sin identidad ni ciclo de vida que sólo captura
+un parámetro, es decir un closure con sintaxis de clase. El invariante del mundo compartido vive en `Accounting`,
+no en los once objetos, así que esos objetos no protegían nada que la fachada no garantice ya. La objeción
+anterior valía contra poner el estado en la clase (un `static #deps`), no contra operaciones estáticas con las
+dependencias por parámetro.
+
+L19. Forma adoptada: `Accounts`, `Journals`, `Periods`, `Entries`, con el nombre de la clase como sustantivo y el
+del método como verbo (`Entries.post`, no `Entries.postEntry`). `Accounting` no se tocó: sigue instanciable, con
+`#deps` privado y el test de dos fachadas intacto. Los cuerpos se generaron por script desde los archivos
+anteriores, no se retipearon, y las clases sólo pudieron cambiar de forma; lo único que cambió de visibilidad son
+las reglas propias de `accounts`, que pasaron a funciones privadas del módulo. Medido: 940 → 759 líneas y 15 → 7
+archivos. Se advierte lo que el commit anterior había ganado y este revierte: el archivo por caso de uso.
