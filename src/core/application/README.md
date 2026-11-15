@@ -25,11 +25,20 @@ contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`.
 conexión independiente. `LedgerRepository` es la única fuente de la relación libro-plan (Q07) y de la moneda
 funcional del libro (Q08), y el libro es una entidad con estado y nombre desde el incremento 006e: un libro
 inactivo se rechaza con `LEDGER_INACTIVE` antes que cualquier otra regla, así que el primer paso de los trece
-casos de uso que escriben es el mismo. Los dos reportes no pasan por esa regla: leer no exige libro activo, y
+casos de uso que escriben es el mismo. Los tres reportes no pasan por esa regla: leer no exige libro activo, y
 un libro `INACTIVE` se reporta con normalidad. `PostedMovementsQuery` evita que el registro de cuentas dependa
 del dominio de asientos; `PostedEntriesQuery` es la lectura paginada de asientos contabilizados que usan los
 reportes, y devuelve asientos con sus líneas, nunca totales: el cuadre y la moneda única se verifican en el
 core, no en el anfitrión.
+
+El mayor por cuenta del incremento 008b pagina por **fila** mientras `PostedEntriesQuery` pagina por
+**asiento**, y por eso ordena y corta el core. El cursor que produce es la posición
+`(accountingDate, entryId, lineId)` de la última fila devuelta —no un desplazamiento del puerto ni un saldo— y
+el llamador no lo interpreta. Un cursor no se cree: la página que llega por cursor vuelve a drenar el rango
+desde `from` y reconstruye el saldo corriente, porque un acumulado que viajara en el cursor sería un importe
+que el llamador puede falsificar y el reporte afirmaría como propio. El costo de esa página es proporcional a
+las filas ya informadas —lineal, no constante— y es deliberado: un saldo materializado, una caché o un cierre
+de saldos abrirían justamente la divergencia entre asiento y saldo que D1 existe para cerrar.
 
 `AccountRepository.findByChart` enumera las cuentas de un plan, y vive en ese repositorio y no en un puerto
 aparte: el criterio es la forma de la lectura —un puerto se separa cuando la lectura es por rango, paginada o

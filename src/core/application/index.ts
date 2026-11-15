@@ -19,6 +19,9 @@ export type {
   AccountBalanceRow,
   AccountBalancesInput,
   AccountBalancesResult,
+  AccountMovementRow,
+  AccountMovementsInput,
+  AccountMovementsResult,
   AddEntryLineInput,
   ClosePeriodInput,
   ClosePeriodResult,
@@ -49,5 +52,5 @@ export type {
   TrialBalanceResult,
 } from './dto.js';
 // The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees
-// fifteen symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
+// sixteen symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
 // `use-cases/` are internal wiring for the facade, not part of the package surface.

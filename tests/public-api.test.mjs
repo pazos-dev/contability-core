@@ -74,6 +74,9 @@ test('API: the application barrel publishes the report types', async () => {
     'AccountBalanceRow',
     'AccountBalancesInput',
     'AccountBalancesResult',
+    'AccountMovementRow',
+    'AccountMovementsInput',
+    'AccountMovementsResult',
     'PostedEntriesQuery',
     'TrialBalanceResult',
   ]) {
@@ -81,12 +84,13 @@ test('API: the application barrel publishes the report types', async () => {
   }
 });
 
-// The facade is the only public entry point of the application layer: fifteen use cases after 008a, no more
+// The facade is the only public entry point of the application layer: sixteen use cases after 008b, no more
 // and no fewer. Adding one without deciding how it is published fails here.
-test('API: the facade exposes exactly the fifteen use cases', async () => {
+test('API: the facade exposes exactly the sixteen use cases', async () => {
   const { Accounting } = await import('../dist/index.js');
   const expected = [
     'accountBalances',
+    'accountMovements',
     'addEntryLine',
     'closePeriod',
     'createEntryDraft',
