@@ -24,7 +24,7 @@ Los `*Fields` y `*Changes` se exportan desde su módulo para que la clase los im
 barrel: son internos, igual que antes de tener archivo propio.
 
 Sin dependencias de Node, HTTP, base de datos, framework o aplicación.
-Importa `Money` de `money/index.ts` y `AccountingDate` de `period/index.ts`: nunca archivos internos ajenos.
+Importa `Money` de `shared/money/index.ts` y `AccountingDate` de `period/index.ts`: nunca archivos internos ajenos.
 
 Cada mutación devuelve una copia; el receptor no cambia nunca. Por eso un `post()` rechazado no deja
 nada a medio hacer. `lines` entrega una copia congelada en cada lectura.

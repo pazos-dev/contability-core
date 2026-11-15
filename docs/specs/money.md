@@ -1,7 +1,7 @@
 # SPEC — Money y Currency
 
 Estado: lista para el primer incremento con las propuestas técnicas explícitas de ADR 0002.
-Ruta: `src/core/domain/money/`.
+Ruta: `src/core/domain/shared/money/`.
 
 ## Responsabilidades y contrato propuesto
 

@@ -1,15 +1,16 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: DTO por dominio y pruebas en
-espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contrato de clases y la fachada
-`Accounting`, 006d-application (edición de las líneas de un borrador), 006c, 006b y 006a-application,
-006-entries y 005-currency-catalog revisado al modelo mixto de monedas.
+Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: `money` como kernel compartido
+en `domain/shared/money/` (ADR 0003), sobre el DTO por dominio y las pruebas en espejo de `src/`, el refactor de
+la idempotencia (`Idempotency`), el contrato de clases y la fachada `Accounting`, 006d-application (edición de
+las líneas de un borrador), 006c, 006b y 006a-application, 006-entries y 005-currency-catalog revisado al modelo
+mixto de monedas.
 
 ## Implementado y verificado
 
 ### 001-money — `docs/specs/money.md`, M01-M12
 
-- `src/core/domain/money/`: `currency.ts`, `money.ts`, `money-errors.ts`.
+- `src/core/domain/shared/money/`: `currency.ts`, `money.ts`, `money-errors.ts`.
 - `Currency`: código de tres letras A-Z y escala entera de 0 a 6; inmutable, `equals`, `toJSON`/`fromJSON`.
 - `Money`: `bigint` en unidades mínimas, parser decimal exacto sin redondeo, `add`, `subtract`,
   `compare`, `equals`, `toDecimal`, `toJSON`/`fromJSON`.
@@ -53,7 +54,7 @@ espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contr
 
 ### 005-currency-catalog — `docs/specs/currency-catalog.md`, IC01-IC14, más M05 y M13-M15
 
-- `src/core/domain/money/currency-catalog.ts`: tabla ISO 4217 incorporada, generada desde la lista
+- `src/core/domain/shared/money/currency-catalog.ts`: tabla ISO 4217 incorporada, generada desde la lista
   oficial de SIX Group publicada el 2026-09-17, con fuente y huella del XML en el encabezado.
 - 165 monedas con unidad menor decimal (17 de escala 0, 139 de 2, 7 de 3 y 2 de 4) y 13 códigos ISO
   sin unidad menor decimal (`XAG XAU XBA XBB XBC XBD XDR XPD XPT XSU XTS XUA XXX`).
@@ -229,9 +230,12 @@ espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contr
 
 ### Refactor de dominio — DTO y organización de pruebas
 
-- Cada dominio agrupa por naturaleza y deja en su raíz sólo el agregado: `value-objects/`, `dto/`,
-  `errors/` y `types/`. La frontera entre `types/` y `dto/` es de intención, no de forma: `types/` dice de
-  qué está hecho el modelo y no tiene campos; `dto/` son formas de datos que cruzan un límite.
+- Los cuatro contextos acotados agrupan por naturaleza y dejan en su raíz sólo el agregado: `value-objects/`,
+  `dto/`, `errors/` y `types/`. La frontera entre `types/` y `dto/` es de intención, no de forma: `types/` dice
+  de qué está hecho el modelo y no tiene campos; `dto/` son formas de datos que cruzan un límite.
+- `money` no es un contexto acotado: es el kernel compartido del dominio y vive en `domain/shared/money/`,
+  plano y sin `value-objects/` ni `errors/`, porque es todo valores. `describe-value.ts` lo acompaña en
+  `shared/`. Motivo y alternativas descartadas: ADR 0003.
 - Cada dominio tiene `dto/` con las formas de datos del dominio y una por archivo de objeto de valor: las
   entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`) y el estado ya validado
   que recibe el constructor privado (`*Fields`, `*Changes`). Ninguna tiene comportamiento, y los archivos de
@@ -242,10 +246,9 @@ espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contr
   nombre desde el barrel de su dominio, y `tests/public-api.test.mjs` no necesitó una sola edición.
   `AccountStatus` y `JournalStatus` viven ahora en `account-status.ts` y `journal-status.ts`, como
   `period-status.ts` y `entry-status.ts`.
-- `currency-catalog.ts` queda fuera de la regla: lo genera `pnpm sync:iso4217` y conserva `IsoCurrencyEntry`
-  en la raíz de `money/`, porque editarlo a mano lo perdería en la próxima regeneración. `entry-text.ts`
-  queda en la raíz de `entries/` como el ayudante interno que es, y `describe-value.ts` se comparte desde
-  la raíz de `domain/`.
+- `currency-catalog.ts` queda fuera de la regla: lo genera `pnpm sync:iso4217`, conserva `IsoCurrencyEntry` y
+  vive junto a `currency.ts` en `shared/money/`, porque editarlo a mano lo perdería en la próxima
+  regeneración. `entry-text.ts` queda en la raíz de `entries/` como el ayudante interno que es.
 - Las pruebas espejan `src/`: `tests/domain/<dominio>/`, `tests/application/` y `tests/public-api.test.mjs`.
   `scripts/run-tests.mjs` ya descubría `*.test.mjs` de forma recursiva, así que no cambió.
 - Sin cambio de comportamiento: 217 pruebas y `pnpm check` en verde, sin una expectativa editada. Las specs y
@@ -253,10 +256,11 @@ espejo de `src/`, sobre el refactor de la idempotencia (`Idempotency`), el contr
 
 ### API pública
 
-Cada dominio expone su superficie en su propio `src/core/domain/<dominio>/index.ts` y fuera de esa
-carpeta nadie importa los archivos internos. `src/index.ts` solo agrega esos barrels.
+Cada contexto acotado expone su superficie en su propio `src/core/domain/<dominio>/index.ts`, y el kernel
+compartido en `shared/money/index.ts`; fuera de esa carpeta nadie importa los archivos internos. `src/index.ts`
+solo agrega esos barrels.
 
-- `money/index.ts`: `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`,
+- `shared/money/index.ts`: `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`,
   `listIsoCurrenciesWithoutMinorUnit` y sus tipos.
 - `account/index.ts`: `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos.
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
@@ -289,11 +293,11 @@ exporta algo fuera de ellos.
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
-Cobertura por criterio: M01-M12 en `tests/domain/money/money.test.mjs`; A01, A02, A03, A08 y A09 en
+Cobertura por criterio: M01-M12 en `tests/domain/shared/money/money.test.mjs`; A01, A02, A03, A08 y A09 en
 `tests/domain/account/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
 conservados en `tests/domain/journal/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
-`tests/domain/period/period.test.mjs`; IC01-IC14 en `tests/domain/money/currency-catalog.test.mjs`; E01-E11 en
+`tests/domain/period/period.test.mjs`; IC01-IC14 en `tests/domain/shared/money/currency-catalog.test.mjs`; E01-E11 en
 `tests/domain/entries/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
 inexistente y la reversión rechazada; R01-R17 en `tests/application/registration.test.mjs`, incluidos el fallo de
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y

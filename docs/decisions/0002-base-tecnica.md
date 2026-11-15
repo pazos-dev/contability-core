@@ -2,6 +2,7 @@
 
 Estado: decisiones técnicas adoptadas para preparar este ZIP; no aprobación de políticas fiscales.
 Fecha: 2026-11-06.
+Nota: la ubicación de `money` que fija este ADR fue sustituida por ADR 0003; el resto sigue vigente.
 
 ## Contexto
 

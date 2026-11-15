@@ -13,7 +13,8 @@
 | AccountingPeriod | Intervalo de fechas y estado OPEN/CLOSED. | Registros contables dentro de sí mismo. |
 | Ledger (libro) | Ámbito de aislamiento contable: identidad, nombre, un plan de cuentas y estado ACTIVE/INACTIVE. | Empresa, usuario, autorización, moneda funcional, cuentas ni saldos. |
 
-Las carpetas agrupan conceptos. `money/` no es una entidad: contiene Money y Currency.
+Las carpetas agrupan conceptos. `money/` no es una entidad ni un contexto acotado: contiene Money y Currency y
+vive en `domain/shared/money/` como kernel compartido del dominio (ADR 0003).
 
 ## Cuentas y naturaleza
 

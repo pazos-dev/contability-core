@@ -2,8 +2,9 @@
 
 Separar en cada dominio las formas de datos (entradas de construcción, representaciones serializadas y la
 forma interna que consume el constructor privado) de los archivos de los objetos de valor, agrupar por
-naturaleza `errors/`, `types/` y `value-objects/`, y reagrupar los archivos de prueba en espejo de `src/`.
-Rama `refactor/domain-dtos`; `main` queda en `e00a128` hasta el merge.
+naturaleza `errors/`, `types/` y `value-objects/`, reconocer `money` como kernel compartido del dominio y
+reagrupar los archivos de prueba en espejo de `src/`. Rama `refactor/domain-dtos`; `main` queda en `e00a128`
+hasta el merge.
 
 ## Specs
 
@@ -41,9 +42,20 @@ S9. Requerimiento posterior, textual: «los errors typos y value object tambien 
 dominio agrupa `errors/`, `types/` y `value-objects/` con el mismo criterio que ya usaba `dto/`: una clase o
 una forma de datos por archivo, sin comportamiento mezclado.
 
-S10. El agregado de cada dominio queda en la raíz de su dominio, porque es su puerta de entrada. Quedan
-también en la raíz los ayudantes internos (`entry-text.ts` en `entries/`, `describe-value.ts` compartido en
-`domain/`) y los archivos generados, que conservan la ubicación donde los escribe su generador.
+S10. El agregado de cada contexto acotado queda en la raíz de su dominio, porque es su puerta de entrada.
+Quedan también en la raíz los ayudantes internos (`entry-text.ts` en `entries/`) y los archivos generados, que
+conservan la ubicación donde los escribe su generador.
+
+S11. Requerimiento posterior, textual: «poruqe la estructura de money asi? money es mas bien un value object no
+creo de deba se tener una carpeta de domnio propia y porque dejaste catalog currency fuera como sk fuera lo mas
+importante?». Diagnóstico confirmado: `money/` es la única carpeta del dominio sin agregado y el catálogo
+generado de 223 líneas era el único archivo de su raíz, el 46% de las líneas de la carpeta.
+
+S12. Decisión del usuario entre tres opciones: «Sacar money/ de domain/: kernel compartido». `money` deja de
+ser un contexto acotado y vive en `src/core/domain/shared/money/`, dentro de la capa de dominio y plano
+(`currency.ts`, `money.ts`, `currency-catalog.ts`, `money-errors.ts`, más `dto/`), sin `value-objects/` ni
+`errors/`. `describe-value.ts` pasa a `shared/`. `check:project` exige los cuatro contextos acotados y, aparte,
+el barrel, README y spec del kernel compartido. Registrado en ADR 0003, que sustituye ese punto de ADR 0002.
 
 ## Tasks
 
@@ -54,6 +66,8 @@ también en la raíz los ayudantes internos (`entry-text.ts` en `entries/`, `des
 | T3 | S2, S3, S6 | Documentar: `ARCHITECTURE.md`, los cinco README de dominio, `tests/README.md` y `STATUS.md` | `docs(domain): document the dto folders and the test layout` |
 | T4 | S9, S10 | Mover `errors/`, `types/` y `value-objects/` en los cinco dominios; imports y barrels | `refactor(domain): group errors, types and value objects into their own folders` |
 | T5 | S9, S10 | Documentar la agrupación por naturaleza en `ARCHITECTURE.md`, los cinco README y `STATUS.md` | `docs(domain): document the folder taxonomy` |
+| T6 | S11, S12 | Mover `money/` a `shared/money/` plano y `describe-value.ts` a `shared/`; imports, barrels, `check:project`, generador y pruebas | `refactor(domain): move money into the shared kernel and flatten it` |
+| T7 | S11, S12 | ADR 0003, nota en ADR 0002, `ARCHITECTURE.md`, `DOMAIN.md`, las dos specs, `STATUS.md` y este documento | `docs(domain): record money as the shared kernel` |
 
 ## Log
 
@@ -102,3 +116,24 @@ modelo y no tiene campos; `dto/` son formas de datos que cruzan un límite.
 - `money/` no tiene `types/`: sus uniones cerradas son códigos de error y viven junto a su error, en
   `errors/money-errors.ts`.
 - `currency-catalog.ts`, `entry-text.ts` y `describe-value.ts` no se movieron, por las razones de S10.
+
+L10. «poruqe la estructura de money asi? money es mas bien un value object no creo de deba se tener una carpeta
+de domnio propia y porque dejaste catalog currency fuera como sk fuera lo mas importante?».
+
+Respuesta con evidencia: `money/` no tenía agregado (los únicos cuatro son `Account`, `Journal`,
+`JournalEntry`, `AccountingPeriod`), pero la carpeta existía por decisión previa del proyecto — `AGENTS.md` la
+llama carpeta temática y `check:project` la exigía. Los dos defectos reales eran otros: `value-objects/`
+dentro de una carpeta que es todo valores producía `money/value-objects/money.ts`, y el archivo de 223 líneas
+en la raíz hacía que el catálogo generado pareciera el centro de la carpeta.
+
+L11. Decisión del usuario: kernel compartido, entre las tres opciones del preview. Consecuencias que se
+resolvieron juntas:
+- Se descartó sacar `money/` fuera de `domain/`: rompe el límite de capa, porque un adaptador podría importar un
+importe monetario sin pasar por el dominio.
+- Dentro del kernel la carpeta queda plana, que es lo que responde al segundo defecto: con todo al mismo nivel,
+  el catálogo ya no parece el archivo principal.
+- `describe-value.ts` se mudó a `shared/` por la misma razón: era el otro archivo suelto en la raíz de
+  `domain/` y lo importan todos los dominios.
+- `check:project` pasa a codificar la distinción en lugar de listar cinco pares.
+- La decisión se registró en un ADR nuevo (0003) con las alternativas descartadas, y ADR 0002 conserva su texto
+  con una nota de sustitución: es historia, no guía vigente.

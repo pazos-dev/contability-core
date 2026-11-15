@@ -14,11 +14,12 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 
 | Ruta | Archivos previstos; crear al implementar su especificación |
 | --- | --- |
-| `src/core/domain/money/` | Raíz: `currency-catalog.ts` (generado). `value-objects/currency.ts`, `value-objects/money.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`; `errors/money-errors.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
 | `src/core/domain/account/` | Raíz: `account.ts` (agregado). `value-objects/account-code.ts`; `types/account-type.ts`, `types/account-status.ts`; `errors/account-errors.ts`; `dto/account-dto.ts`. |
 | `src/core/domain/journal/` | Raíz: `journal.ts` (agregado). `types/journal-status.ts`; `errors/journal-errors.ts`; `dto/journal-dto.ts`. |
 | `src/core/domain/entries/` | Raíz: `journal-entry.ts` (agregado) y `entry-text.ts` (ayudante interno). `value-objects/journal-entry-line.ts`; `types/entry-status.ts`, `types/posting-side.ts`; `errors/entry-errors.ts`; `dto/journal-entry-dto.ts`, `dto/journal-entry-line-dto.ts`. |
 | `src/core/domain/period/` | Raíz: `accounting-period.ts` (agregado). `value-objects/accounting-date.ts`; `types/period-status.ts`; `errors/period-errors.ts`; `dto/accounting-period-dto.ts`. |
+| `src/core/domain/shared/` | Kernel compartido del dominio: `describe-value.ts` y `money/`. |
+| `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
 | `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. |
 | `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso y, al lado, sus contratos de entrada y salida serializables. Entidades y modelos ORM no son DTOs públicos. Internos: la superficie es `Accounting`. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
@@ -30,11 +31,12 @@ La organización en singular es una normalización del kit: evitar duplicados co
 
 ### Agrupación por naturaleza
 
-Cada dominio agrupa sus archivos por naturaleza y deja en la raíz sólo su agregado:
+Los cuatro contextos acotados (`account`, `journal`, `entries`, `period`) agrupan sus archivos por naturaleza
+y dejan en la raíz sólo su agregado:
 
 | Carpeta | Contenido |
 | --- | --- |
-| `value-objects/` | Valores inmutables con invariantes propias: `Currency`, `Money`, `AccountCode`, `AccountingDate`, `JournalEntryLine`. |
+| `value-objects/` | Valores inmutables con invariantes propias: `AccountCode`, `AccountingDate`, `JournalEntryLine`. |
 | `dto/` | Formas de datos sin comportamiento: entradas de construcción (`*Input`), representaciones serializadas (`*JSON`) y el estado ya validado que recibe el constructor privado (`*Fields`, `*Changes`). |
 | `errors/` | La clase de error, sus códigos estables y sus fábricas. |
 | `types/` | Las uniones cerradas de las que está hecho el modelo: estados, lado de contabilización, tipo de cuenta. |
@@ -43,20 +45,26 @@ La frontera entre `types/` y `dto/` no es de forma sino de intención: `types/` 
 modelo y no tiene campos — un estado es un estado; `dto/` son formas de datos que cruzan un límite.
 `types/posting-side.ts` es un tipo; `dto/journal-entry-line-dto.ts` son datos.
 
+El kernel compartido no usa esas carpetas: `shared/money/` es todo valores y no tiene agregado, así que
+`value-objects/` produciría `value-objects/money.ts` sin separar nada. Queda plano y conserva sólo `dto/`, que
+sigue separando datos de comportamiento. El motivo y las alternativas descartadas están en ADR 0003.
+
 Los `*Fields` y `*Changes` se exportan desde su módulo para que la clase los importe, pero nunca desde el
-barrel: siguen siendo internos. Quedan fuera de las carpetas, a propósito: el agregado de cada dominio en su
-raíz, porque es la puerta de entrada de ese dominio; los ayudantes internos (`entry-text.ts` en `entries/`,
-`describe-value.ts` compartido en `domain/`); y los archivos generados, que conservan la ubicación donde los
-escribe su generador (`currency-catalog.ts` con su `IsoCurrencyEntry`).
+barrel: siguen siendo internos. Quedan fuera de las carpetas, a propósito: el agregado de cada contexto en su
+raíz, porque es su puerta de entrada; los ayudantes internos, en la raíz de su carpeta (`entry-text.ts` en
+`entries/`) o en `shared/` si los comparten varios contextos (`describe-value.ts`); y los archivos generados,
+que conservan la ubicación donde los escribe su generador (`shared/money/currency-catalog.ts` con su
+`IsoCurrencyEntry`).
 
 ## API pública por dominio
 
-Cada dominio expone su superficie en su propio `index.ts`. Fuera de esa carpeta nadie importa un archivo
-interno: el nombre de los archivos de implementación es libre de cambiar sin romper el contrato público.
+Cada contexto acotado expone su superficie en su propio `index.ts`, y el kernel compartido en el suyo. Fuera
+de esa carpeta nadie importa un archivo interno: el nombre de los archivos de implementación es libre de
+cambiar sin romper el contrato público.
 
 | Barrel | Superficie publicada |
 | --- | --- |
-| `src/core/domain/money/index.ts` | `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit`, `IsoCurrencyEntry` y sus tipos. |
+| `src/core/domain/shared/money/index.ts` | `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit`, `IsoCurrencyEntry` y sus tipos. |
 | `src/core/domain/account/index.ts` | `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos. |
 | `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
 | `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
@@ -65,8 +73,8 @@ interno: el nombre de los archivos de implementación es libre de cambiar sin ro
 | `src/adapters/memory/index.ts` | `createInMemoryAccounting` y sus tipos. |
 
 `src/index.ts` solo re-exporta esos barrels, nunca archivos internos, y un tipo interno no se publica
-por accidente. `pnpm check:project` exige el `index.ts` de los cinco dominios; `tests/public-api.test.mjs`
-fixa la superficie de cada barrel y la del paquete.
+por accidente. `pnpm check:project` exige el `index.ts` de los cuatro contextos acotados y el barrel del kernel
+compartido; `tests/public-api.test.mjs` fixa la superficie de cada barrel y la del paquete.
 
 ## Límites importantes
 
