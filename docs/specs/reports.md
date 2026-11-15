@@ -1,8 +1,8 @@
 # SPEC — Consultas e informes
 
-Estado: **especificada, sin implementar**. Este documento fija el comportamiento de los tres primeros
-reportes del módulo: saldos por cuenta y balance de comprobación (008a) y mayor por cuenta (008b). Nada de
-lo que describe existe todavía en código.
+Estado: **implementado y verificado**. 008a (`accountBalances`, `trialBalance`) y 008b (`accountMovements`)
+existen y están probados. Este documento fija el comportamiento de los tres reportes del módulo. Nada de lo
+que describe existía antes de este incremento: es la primera superficie de **lectura**.
 Ruta prevista: casos de uso en `src/core/application/use-cases/reports/`, puerto de lectura en
 `src/core/application/ports/`, adaptador en memoria en `src/adapters/memory/`.
 Depende de: `ledger.md` (la moneda funcional del libro, L17-L24), `entries.md` (qué es un asiento
@@ -164,8 +164,8 @@ El resultado no expone instancias de dominio: ni `Money`, ni `Account`, ni `Jour
    cero.
 6. **Página.** Una página de movimientos de la cuenta en el rango, ordenada (regla 8).
 7. **Saldo corriente.** Se calcula por fila, empezando desde el saldo de apertura.
-8. **Resultado.** `closingBalance` es el saldo después de la última fila devuelta; `nextCursor` viene del
-   puerto o es `null` si la página es la última.
+8. **Resultado.** `closingBalance` es el saldo después de la última fila devuelta; `nextCursor` lo produce el
+   reporte a partir de la clave de orden de la última fila devuelta, y es `null` si la página es la última.
 
 El orden de las reglas es parte del contrato: con dos condiciones inválidas a la vez gana la de número más
 bajo, y eso es lo que fija qué error ve el llamador.
@@ -173,7 +173,10 @@ bajo, y eso es lo que fija qué error ve el llamador.
 ## Reglas e invariantes
 
 1. **Sólo asientos `POSTED`.** Un borrador no tiene hecho contable: no aparece en ningún reporte, ni con
-   saldo cero. Es la regla que más se rompe en silencio, porque un borrador tiene líneas y puede balancear.
+   saldo cero. Es la regla que más se rompe en silencio, porque un borrador tiene líneas y puede balancear. El
+   core la **vuelve a aplicar** sobre lo que el puerto devuelve, y descarta también lo que no pertenece al
+   libro pedido: un puerto que devuelve de más no puede ensuciar un reporte, y un reporte no falla por un
+   error del anfitrión que se puede corregir descartándolo.
 2. **Una reversión es un asiento más.** Suma con el lado invertido y netea contra el original, que sigue
    `POSTED` y sigue contando. El original **nunca** se excluye por estar revertido: excluirlo daría cero
    donde corresponde el importe, y las dos lecturas parecen razonables hasta que se comparan.
@@ -201,9 +204,14 @@ bajo, y eso es lo que fija qué error ve el llamador.
     signo que los saldos. Sin `from` es cero.
 13. **`closingBalance`** es el saldo después de la última fila de la página devuelta, no el del final del
     rango. En la última página coinciden. `nextCursor` no nulo indica que quedan filas y que el cierre del
-    rango todavía no se alcanzó.
+    rango todavía no se alcanzó. Una página **sin filas** devuelve `closingBalance` igual a `openingBalance`
+    y `nextCursor` en `null`: no hay fila sobre la cual cerrar.
 14. **Paginación acotada.** `limit` por defecto 100, mínimo 1, máximo 1000; fuera de rango es
-    `INVALID_APPLICATION_INPUT`. `cursor` es opaco para el llamador y lo produce el puerto.
+    `INVALID_APPLICATION_INPUT`. `cursor` es opaco para el llamador y lo produce **el core**, no el puerto: el
+    puerto pagina por asiento y este reporte pagina por fila, así que el cursor codifica la clave de orden de
+    la última fila devuelta y nunca un importe acumulado. Un cursor que el reporte no produjo es
+    `INVALID_APPLICATION_INPUT`, y eso incluye un cursor con forma válida cuyo punto de corte no está entre las
+    filas del rango pedido para esa cuenta: aceptarlo saltearía filas en silencio, que es peor que fallar.
 15. **El core agrega, el puerto entrega líneas.** El puerto devuelve asientos `POSTED` con sus líneas, no
     totales: si agregara el anfitrión, el cuadre y la moneda única dejarían de verificarse en el core.
 16. **Determinismo.** El resultado depende sólo de lo almacenado, no del orden en que la persistencia
@@ -252,7 +260,10 @@ llamador vea la diferencia. Un reporte que se niega a mostrar la discrepancia no
 | GL04 | 14 | La última página del mayor | `accountMovements` con el cursor final | `nextCursor` es `null` y `closingBalance` es el saldo al final del rango |
 | GL05 | 11 | Una cuenta inexistente y una de otro plan | `accountMovements` | Las dos son `ACCOUNT_NOT_FOUND` |
 | GL06 | 2 | Un asiento y su reversión, ambos contabilizados | `accountMovements` | Aparecen las cuatro líneas con las dos fechas y el saldo corriente vuelve a cero |
-| GL07 | 15, 17 | Un reporte cualquiera | Dos llamadas idénticas | Mismo resultado y ningún registro de idempotencia ni escritura |
+| GL07 | 15, 17 | Un reporte cualquiera | Dos llamadas idénticas, paginadas también | Mismo resultado y ningún registro de idempotencia ni escritura |
+| GL09 | 14 | Un cursor con forma válida que el reporte no produjo: una fila inexistente, un asiento inexistente, una fecha fuera del rango o el cursor de otro rango | `accountMovements` | `INVALID_APPLICATION_INPUT`; nada se calcula y el estado no cambia. Sin esta guarda el reporte saltearía filas en silencio |
+| GL10 | 1 | Un puerto que devuelve un borrador y un asiento de otro libro | `accountBalances`, `trialBalance` y `accountMovements` | El core los descarta: el reporte sale como si no existieran, sin fallar |
+| GL11 | 13 | Una página sin filas, con un cursor válido que apunta a la última fila del rango | `accountMovements` | `closingBalance` igual a `openingBalance` y `nextCursor` en `null`, no el saldo del final del rango |
 | GL08 | 14 | Un `limit` de 0 o mayor que 1000 | `accountMovements` | `INVALID_APPLICATION_INPUT`; el valor por defecto se usa cuando falta |
 
 ## Decisiones
@@ -278,6 +289,10 @@ Decisiones tomadas al redactar esta spec:
 | Leer no exige libro activo | Los reportes no comprueban `status` | Desactivar un libro cierra la escritura, no el acceso a su historia |
 | `balance` con signo y `side` | Se devuelven los dos | El signo es lo que se suma; el lado es lo que se muestra. Obligar al consumidor a derivar uno de otro según el tipo de cuenta repite una regla del dominio fuera del dominio |
 | El core agrega | El puerto entrega líneas, no totales | El cuadre y la regla de moneda única son invariantes del motor: si agregara el anfitrión, el core no podría verificarlas |
+
+| El cursor lo produce el core | Formato propio, con la clave de orden de la última fila; sin importes | El puerto pagina por asiento y el reporte pagina por fila, así que el cursor del puerto ataría la posición del llamador al tamaño de página del host. Y un cursor que llevara el saldo acumulado sería un dato que el llamador puede inventar: la única fuente admisible del saldo corriente es volver a derivarlo |
+| Continuidad entre páginas | Cada página alcanzada por un cursor vuelve a drenar el rango desde `from` | Es el precio de D1 sumado a «no confiar en el cursor». Cuesta trabajo lineal en las filas anteriores y está documentado como límite; un caché o un saldo materializado son otra decisión, no una optimización local |
+| `description` en la fila | Se toma la descripción del asiento | `JournalEntryLine.description` es opcional y `JournalEntry.description` siempre existe: elegir la de la línea obligaría a inventar un texto cuando falta |
 
 Pendientes que este incremento no cierra:
 
@@ -307,6 +322,12 @@ Pendientes que este incremento no cierra:
   página y página puede producir un resultado que nunca existió como foto. El core no bloquea nada: si el
   anfitrión necesita una foto consistente, se la tiene que dar su transacción o su aislamiento (Q09). Es
   el mismo límite que ya tienen las escrituras y se documenta para no prometer atomicidad de lectura.
+- **Costo de paginar el mayor:** cada página alcanzada por un cursor vuelve a drenar **el rango completo** desde
+  `from` —no sólo lo anterior al corte— y a ordenarlo, para derivar el saldo corriente. Recorrer todo el
+  reporte cuesta por lo tanto cuadrático en la cantidad de filas del rango, tanto en lecturas al puerto como
+  en comparaciones del ordenamiento. Se acepta porque el puerto filtra por cuenta y porque la alternativa es
+  confiar en un acumulado que el llamador puede fabricar. Si alguna vez duele, la salida es un saldo
+  materializado con fecha de corte, que es una decisión aparte y no una optimización local.
 - **Concurrencia:** los reportes son de sólo lectura; no serializan, no reclaman y no escriben. Dos
   reportes simultáneos no interfieren.
 - **Nada que migrar:** el incremento no escribe ni cambia datos. Los cambios de contrato son dos lecturas
@@ -316,15 +337,19 @@ Pendientes que este incremento no cierra:
 ## Verificación
 
 - Pruebas de saldos y balance en `tests/application/reports-balances.test.mjs` (AB01-AB05, TB00-TB11) y del
-  mayor en `tests/application/reports-account-movements.test.mjs` (GL01-GL08).
+  mayor en `tests/application/reports-account-movements.test.mjs` (GL01-GL11 más las reglas 1, 3, 9 y 14).
 - Cada criterio se prueba desde la fachada, no contra funciones internas, para que el contrato público sea
   lo que queda fijado.
-- TB09 necesita un puerto que mienta: se implementa un `PostedEntriesQuery` de prueba que devuelve una
-  línea en otra moneda, porque ningún camino legítimo del módulo puede producir ese estado.
+- TB09 y GL10 necesitan un puerto que mienta: se implementa un `PostedEntriesQuery` de prueba que devuelve
+  una línea en otra moneda, un borrador y un asiento de otro libro, porque ningún camino legítimo del módulo
+  puede producir esos estados.
+- GL09 es la prueba que justifica que el cursor no se confíe: un cursor bien formado que el reporte no produjo
+  tiene que fallar, porque aceptarlo saltearía filas en silencio y la primera verificación independiente del
+  incremento encontró exactamente eso en la primera implementación.
 - GL03 y GL04 comparten escenario: la misma cuenta, dos páginas encadenadas por el cursor, verificando que
   no falta ni sobra ninguna fila y que el saldo corriente continúa de una página a la otra.
 - `tests/public-api.test.mjs` pasa a fijar **dieciséis** métodos en la fachada.
 - Comandos: `pnpm check` — `check:project`, `typecheck`, `build` y `test` en ese orden. **`pnpm test` por sí
   solo corre contra `dist/` y no prueba el código actual**; sin `build` antes, su resultado no vale.
-- Estado hoy: **especificada, sin implementar**. No existen `accountBalances`, `trialBalance`,
-  `accountMovements` ni `PostedEntriesQuery`.
+- Estado hoy: **implementado y verificado**. `pnpm check` en verde con **293 pruebas** (eran 260 al abrir el
+  incremento): 18 de 008a y 14 de 008b, más la prueba del barrel que fija dieciséis métodos.
