@@ -4,7 +4,7 @@ import { Money, type Currency } from '../../../domain/shared/money/index.js';
 import type { AccountMovementRow } from '../../dto.js';
 import * as errors from '../../errors.js';
 import type { UnitOfWorkScope } from '../../ports.js';
-import type { ReportRange } from './rules.js';
+import { isReportEntry, type ReportRange } from './rules.js';
 
 /**
  * The account ledger: one account, its movements in chronological order and the balance after each one.
@@ -17,13 +17,12 @@ import type { ReportRange } from './rules.js';
  * ## Cost, and why the cursor carries no amount
  *
  * `runningBalance` is derived like every other figure of the module (D1): it is never stored and the cursor is
- * never believed. A page reached by a cursor re-drains the range from `from` and rebuilds the earlier running
- * balances, because a cursor that carried a balance would be an amount the caller could forge and the report
- * would state it as its own. The price is proportional to the rows already reported — a cursor does not make
- * a page cheaper, it only makes it bounded in output. Cutting a page also needs the whole range ordered, and
- * the port does not promise an order, so the range is drained and sorted before the window is taken. No
- * snapshot, cache or materialized balance exists to soften that: any of them would open the divergence
- * between the entry and the balance that D1 exists to close.
+ * never believed. A page reached by a cursor re-drains **the whole range** from `from` —not only the rows
+ * before the cut— and re-sorts it, because the running balance is a prefix sum of the range and the core owns
+ * the order. Walking the whole report is therefore quadratic in the rows of the range, both in port reads and
+ * in comparisons, and that is accepted: the port filters by account, and the alternative is a balance the
+ * caller could forge in the cursor or a materialized balance that can disagree with the entries. No snapshot,
+ * cache or materialized balance exists to soften it.
  */
 
 /** One drained page: small enough to keep the drain bounded, large enough not to round-trip per entry. */
@@ -148,33 +147,56 @@ export interface MovementPage {
   readonly nextCursor: string | null;
 }
 
+/** A cursor that passed the shape check, with the raw value kept for the error it may still deserve. */
+export interface MovementsCursor {
+  readonly position: MovementPosition;
+  readonly raw: string;
+}
+
 /**
  * The window after the cursor, its closing balance and the cursor of the row that ends it.
  *
  * `closingBalance` is the balance after the last row **returned** (rule 13), so on a page that is not the
- * last one it is not the balance at the end of the range. An empty page still closes at the position the
- * cursor points at: the rows before it were counted to get there.
+ * last one it is not the balance at the end of the range. A page without rows has no row to close on, so it
+ * closes where it opens: the opening balance, and no next cursor.
  */
 export function movementPage(
   rows: readonly MovementRow[],
   opening: Money,
   limit: number,
-  after: MovementPosition | undefined,
+  cursor: MovementsCursor | undefined,
 ): MovementPage {
-  const start = after === undefined ? 0 : rows.findIndex((candidate) => comparePosition(candidate.position, after) > 0);
-  const first = start === -1 ? rows.length : start;
+  const first = cursor === undefined ? 0 : positionAfter(rows, cursor);
   const window = rows.slice(first, first + limit);
-  const end = first + window.length;
 
-  const lastConsumed = rows[end - 1];
-  const closingBalance = lastConsumed === undefined ? opening : Money.fromJSON(lastConsumed.row.runningBalance);
+  if (window.length === 0) {
+    // Rule 13: no row follows, so there is nothing to close on and nothing to announce.
+    return { rows: [], closingBalance: opening, nextCursor: null };
+  }
+
+  const last = window[window.length - 1];
+  const end = first + window.length;
 
   return {
     rows: window.map((candidate) => candidate.row),
-    closingBalance,
-    nextCursor:
-      end < rows.length && lastConsumed !== undefined ? encodeCursor(lastConsumed.position) : null,
+    closingBalance: last === undefined ? opening : Money.fromJSON(last.row.runningBalance),
+    nextCursor: end < rows.length && last !== undefined ? encodeCursor(last.position) : null,
   };
+}
+
+/**
+ * The index of the first row after the cursor, proving that the cursor's position is one of the drained
+ * rows of this account and this range.
+ *
+ * This is the provenance check of rule 14. A cursor with a valid shape whose cut is not among these rows — a
+ * line or entry that does not exist, a date the requested range does not reach, or a cursor produced for
+ * another account or another range — would silently skip the rows in between, so it is refused instead of
+ * trusted. The check costs nothing extra: the page already needed the ordered rows to cut them.
+ */
+function positionAfter(rows: readonly MovementRow[], cursor: MovementsCursor): number {
+  const index = rows.findIndex((candidate) => comparePosition(candidate.position, cursor.position) === 0);
+  if (index === -1) throw errors.invalidApplicationInput('cursor', cursor.raw);
+  return index + 1;
 }
 
 /**
@@ -191,15 +213,18 @@ export function encodeCursor(position: MovementPosition): string {
 /**
  * Reads a cursor produced by `encodeCursor`. Anything else is `INVALID_APPLICATION_INPUT`: continuing from a
  * cursor nobody produced would either repeat rows or skip them, and neither is an answer worth returning.
+ *
+ * The check here is the shape only, because whether the position is one of the rows of the requested account
+ * and range is a fact this function cannot know; `positionAfter` proves that against the drained rows.
  */
-export function decodeCursor(cursor: string): MovementPosition {
+export function decodeCursor(raw: string): MovementsCursor {
   const refuse = (): never => {
-    throw errors.invalidApplicationInput('cursor', cursor);
+    throw errors.invalidApplicationInput('cursor', raw);
   };
 
   let parsed: unknown;
   try {
-    parsed = JSON.parse(cursor);
+    parsed = JSON.parse(raw);
   } catch {
     return refuse();
   }
@@ -215,7 +240,7 @@ export function decodeCursor(cursor: string): MovementPosition {
     return refuse();
   }
 
-  return { date, entryId, lineId };
+  return { position: { date, entryId, lineId }, raw };
 }
 
 /** The signed movement of one line: debit adds, credit subtracts, and the side is the only thing that decides. */
@@ -227,9 +252,9 @@ function signed(balance: Money, line: JournalEntryLine): Money {
  * Drains the posted entries of the criteria page by page and yields them one by one.
  *
  * The pages are forgotten as they are consumed, so what is held is the caller's accumulation and never the
- * ledger's history. Only `POSTED` entries are requested — a draft is not an accounting fact and does not
- * belong to a report (rule 1) — and the port's own cursor is used only to walk its pages, never to answer the
- * caller.
+ * ledger's history. The port's own cursor is used only to walk its pages, never to answer the caller, and an
+ * entry that is not `POSTED` or that belongs to another ledger is dropped here (rule 1): the report asks for
+ * the right entries and still discards what it did not ask for.
  */
 async function* postedEntries(
   scope: UnitOfWorkScope,
@@ -245,7 +270,9 @@ async function* postedEntries(
       { limit: PAGE_SIZE, ...(cursor === undefined ? {} : { cursor }) },
     );
 
-    for (const entry of page.entries) yield entry;
+    for (const entry of page.entries) {
+      if (isReportEntry(entry, ledgerId)) yield entry;
+    }
 
     if (page.nextCursor === null) return;
     cursor = page.nextCursor;

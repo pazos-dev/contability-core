@@ -94,10 +94,14 @@ export class Reports {
    * of the page continues from it. `closingBalance` is the balance after the last row returned (rule 13), not
    * the balance at the end of the range — which is why `nextCursor` is not decoration.
    *
-   * The cursor carries a position and never an amount: a page reached by a cursor re-drains the rows before it
-   * and rebuilds the running balance, so no caller can hand the report a balance it would state as its own. The
-   * cost of a cursor page is therefore proportional to the rows already reported, and it is accepted: a stored
-   * or cached balance is exactly the state that could disagree with the entries (D1). See `movements.ts`.
+   * The cursor carries a position and never an amount: a page reached by a cursor re-drains the whole range
+   * and rebuilds the running balance, so no caller can hand the report a balance it would state as its own.
+   * The cost of a cursor page is therefore the whole range again, and walking the report is quadratic in its
+   * rows; it is accepted because a stored or cached balance is exactly the state that could disagree with the
+   * entries (D1). See `movements.ts`.
+   *
+   * The cursor also has to prove it was produced here: its position must be one of the rows drained for this
+   * account and range, so a well-formed value cannot skip rows in silence (rule 14).
    */
   static async accountMovements(
     deps: ApplicationDeps,
@@ -109,11 +113,11 @@ export class Reports {
       // Rule 11: an account of another chart is reported as unavailable, exactly like a missing one.
       const account = await requireAccountOfPlan(scope, input.accountId, ledger.chartOfAccountsId);
       const limit = requireReportLimit(input.limit);
-      const after = input.cursor === undefined ? undefined : decodeCursor(input.cursor);
+      const cursor = input.cursor === undefined ? undefined : decodeCursor(input.cursor);
 
       const opening = await openingBalanceOf(scope, ledger.id, ledger.currency, account.id, range.from);
       const rows = await movementRows(scope, ledger.id, account.id, range, opening);
-      const page = movementPage(rows, opening, limit, after);
+      const page = movementPage(rows, opening, limit, cursor);
 
       return {
         ledgerId: ledger.id,

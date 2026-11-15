@@ -46,10 +46,17 @@ plan no tiene rango ni paginación.
 El mayor por cuenta (`accountMovements`) es el único reporte con cursor, y el cursor es suyo, no del puerto:
 `PostedEntriesQuery` pagina por asiento y el mayor por fila, así que el core drena, ordena por
 `(accountingDate, entryId, lineId)` y corta. El cursor guarda sólo la posición de la última fila devuelta —un
-marcador de versión y los tres valores de esa posición— y **ningún importe**. Una página alcanzada por cursor
-vuelve a drenar el rango desde `from` para reconstruir el saldo de apertura y el corriente: confiar en el
-cursor convertiría un dato del llamador en un saldo que el reporte afirma como propio. El costo es lineal en las
-filas ya informadas y no se esconde con una foto, caché o saldo materializado (D1, regla 17).
+marcador de versión y los tres valores de esa posición— y **ningún importe**. Su procedencia se valida contra las
+filas drenadas: una posición que no es una fila de esa cuenta y ese rango es `INVALID_APPLICATION_INPUT`, porque
+aceptarla saltearía filas en silencio. Una página alcanzada por cursor vuelve a drenar y ordenar el rango
+completo desde `from` para reconstruir el saldo corriente —no sólo lo anterior al corte—, así que recorrer el
+reporte cuesta cuadrático en las filas del rango; confiar en el cursor convertiría un dato del llamador en un
+saldo que el reporte afirma como propio, y una foto, caché o saldo materializado escondería la divergencia que
+D1 cierra. Una página sin filas no tiene fila sobre la cual cerrar: devuelve `closingBalance` igual a
+`openingBalance` y `nextCursor` en `null` (regla 13).
+
+La regla 1 también se aplica en el borde del puerto: `isReportEntry` descarta lo que no sea `POSTED` o no
+pertenezca al libro pedido, sin fallar por el exceso.
 
 Una regla vive al lado de las operaciones que la invocan, en `<área>/rules.ts`, porque es el área la que la
 decide. Sube a `shared/rules.ts` sólo cuando dos o más áreas la invocan: ahí están el libro y su plan, la

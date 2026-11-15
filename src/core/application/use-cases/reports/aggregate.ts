@@ -2,7 +2,7 @@ import type { Account } from '../../../domain/account/index.js';
 import { Money, type Currency } from '../../../domain/shared/money/index.js';
 import type { AccountBalanceRow } from '../../dto.js';
 import type { UnitOfWorkScope } from '../../ports.js';
-import type { ReportRange } from './rules.js';
+import { isReportEntry, type ReportRange } from './rules.js';
 
 /**
  * The single aggregation both balance reports share.
@@ -32,6 +32,10 @@ export type TotalsByAccount = ReadonlyMap<string, AccountTotals>;
  * posting side of every line — is verified by the core. A line in another currency makes `Money.add` throw
  * the domain `CURRENCY_MISMATCH`, and a report that cannot add must fail closed rather than return a sum
  * that silently mixed currencies (rule 3).
+ *
+ * What the port returns beyond what it was asked for — a draft, or an entry of another ledger — is discarded
+ * here rather than accumulated (rule 1): a report states its result as its own, and an excess is a host bug
+ * that is corrected by ignoring it, not by failing the read.
  */
 export async function totalsByAccount(
   scope: UnitOfWorkScope,
@@ -54,6 +58,8 @@ export async function totalsByAccount(
     );
 
     for (const entry of page.entries) {
+      if (!isReportEntry(entry, ledgerId)) continue;
+
       for (const line of entry.lines) {
         let totalsOfAccount = totals.get(line.accountId);
         if (totalsOfAccount === undefined) {
