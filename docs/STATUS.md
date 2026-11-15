@@ -1,9 +1,10 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 008a, saldos por cuenta y
-balance de comprobación (`docs/specs/reports.md`), la primera superficie de **lectura** del módulo; antes, 006f,
-la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08 como moneda única por libro); antes,
-006e, el libro contable como agregado (`docs/specs/ledger.md`); antes, una carpeta por área en
+Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 008, consultas e informes
+(`docs/specs/reports.md`): saldos por cuenta, balance de comprobación y mayor, la primera superficie de
+**lectura** del módulo; antes, 006f, la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08
+como moneda única por libro); antes, 006e, el libro contable como agregado (`docs/specs/ledger.md`); antes, una
+carpeta por área en
 `use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
 antes, nombres de módulo unificados
 en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
@@ -272,7 +273,7 @@ Resuelve Q08 con la opción A: **una moneda funcional por libro**, sin conversi�
   de `reverse`; L23 en `tests/application/entry-draft.test.mjs`. El arnés `tests/application/seed.mjs` siembra
   los libros en `TEST_CURRENCY` (`UYU`/2) y acepta otra moneda como tercer argumento.
 
-### 008a-consultas — `docs/specs/reports.md`, AB01-AB05 y TB00-TB11
+### 008-consultas — `docs/specs/reports.md`, AB01-AB05, TB00-TB11 y GL01-GL11
 
 Primera superficie de lectura: hasta acá los trece métodos de la fachada escribían y ninguno devolvía
 información de lo contabilizado.
@@ -297,9 +298,31 @@ información de lo contabilizado.
   el uso principal del reporte.
 - Fachada: de trece a **quince** métodos. `tests/public-api.test.mjs` lo fija y además comprueba los tipos
   nuevos contra `dist/core/application/index.d.ts`, porque los tipos se borran en runtime.
-- Pruebas: `tests/application/reports-balances.test.mjs`, una por criterio (17), escritas antes de implementar:
-  el rojo fue 17/17 por `app.accountBalances is not a function`. TB09 usa un `PostedEntriesQuery` de prueba que
-  miente, porque ningún camino legítimo puede devolver otra moneda.
+- Pruebas de 008a: `tests/application/reports-balances.test.mjs`, una por criterio (18), escritas antes de
+  implementar: el rojo fue 17/17 por `app.accountBalances is not a function`. TB09 usa un `PostedEntriesQuery`
+  de prueba que miente, porque ningún camino legítimo puede devolver otra moneda.
+- **008b — `Reports.accountMovements`**: mayor de una cuenta con `openingBalance` (neto de todo lo anterior a
+  `from`), saldo corriente por fila, `closingBalance` de la última fila devuelta y cursor. Orden
+  `accountingDate`, `entryId`, `lineId`; `limit` 100 por defecto, 1 a 1000; la cuenta tiene que ser del plan
+  del libro.
+- El cursor lo produce **el core** y lleva sólo la clave de orden de la última fila: el puerto pagina por
+  asiento y el reporte por fila, y un cursor con importe acumulado sería un dato que el llamador puede
+  fabricar. La primera implementación validaba forma y fecha, y la verificación independiente encontró que un
+  cursor bien formado pero inventado **salteaba filas en silencio**; ahora el corte se comprueba contra las
+  filas drenadas del rango y de la cuenta.
+- Las reglas 1 (sólo `POSTED`) y el alcance por libro **se aplican también en el core**, descartando lo que el
+  puerto devuelva de más: un borrador o un asiento de otro libro no ensucian el reporte, y el reporte no falla
+  por un exceso del anfitrión que puede ignorar.
+- Costo aceptado y documentado: cada página alcanzada por un cursor vuelve a drenar **el rango completo** y a
+  ordenarlo, así que recorrer todo el mayor es cuadrático en filas del rango. La alternativa sería confiar en
+  un acumulado del llamador; si duele, la salida es un saldo materializado con fecha de corte, que es otra
+  decisión.
+- Pruebas de 008b: `tests/application/reports-account-movements.test.mjs`, 14 pruebas, el rojo también
+  observado (`app.accountMovements is not a function`). GL09 fija la procedencia del cursor, GL10 el descarte de
+  borradores y asientos ajenos en los tres casos de uso, GL11 la página vacía.
+- Verificación independiente del incremento por riesgo de contrato (ítem 3): un bloqueante (procedencia del
+  cursor) y cinco advertencias, todas corregidas. También confirmó que el camino de escritura no cambió: el diff
+  de `fed6046..HEAD` no toca dominio, reglas compartidas ni ningún otro área de casos de uso.
 
 ### Contrato de la capa de aplicación — fachada `Accounting`
 

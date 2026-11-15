@@ -47,7 +47,7 @@ de `chartOfAccountsId`. Dos puertos sobre cuentas sería la duplicación que `le
 | ID | Specs | Qué | Commit |
 | --- | --- | --- | --- |
 | T1 | S1-S4, S6-S11 | 008a: puerto `PostedEntriesQuery`, `AccountRepository.findByChart`, `accountBalances` y `trialBalance`, adaptador en memoria, fachada a quince métodos y pruebas AB01-AB05 + TB00-TB11 | `96663e3` |
-| T2 | S1-S5, S8-S10 | 008b: `accountMovements` con saldo de apertura, saldo corriente y paginación; fachada a dieciséis métodos y pruebas GL01-GL08 | — |
+| T2 | S1-S5, S8-S10 | 008b: `accountMovements` con saldo de apertura, saldo corriente y paginación; fachada a dieciséis métodos y pruebas GL01-GL08 | `72ae14f` |
 
 ## Log
 
@@ -92,3 +92,23 @@ L9. La rama `feat/006f-ledger-currency` acumula ahora dos incrementos (006f y 00
 son limpios y separables — `d3ac19a`, `43f7090` y `fed6046` son 006f; `96663e3` y el commit de documentación de
 008a son 008a — así que se pueden revisar como dos PR encadenados si se prefiere. Supera la rebanada de ~400
 líneas por la regla del ítem 3: el cambio de contrato de 006f y el de 008a no compilan con medio cambio.
+
+L10. 008b implementado en `72ae14f`: 290 pruebas en verde y 12 pruebas nuevas. El cursor lo produce el core y
+lleva sólo la clave de orden de la última fila; cada página vuelve a drenar el rango para derivar el saldo
+corriente, que es el precio de no confiar en un acumulado del llamador.
+
+L11. Verificación independiente del incremento completo (`fed6046..HEAD`, 19 archivos), disparada por el ítem 3
+de riesgo: `AccountRepository` gana un método **obligatorio** y `UnitOfWorkScope` un miembro obligatorio, así
+que revienta la compilación de todo anfitrión. Reportó un bloqueante y cinco advertencias; `3346f9f` las
+corrige: (a) un cursor bien formado que el reporte no produjo se aceptaba y **salteaba filas en silencio**
+—ahora se comprueba contra las filas drenadas—; (b) las reglas 1 y el alcance por libro estaban delegadas al
+puerto y un borrador o un asiento ajeno cambiaban los totales, ahora el core descarta; (c) una página sin
+filas cerraba en el saldo del final del rango en vez de en el de apertura; (d) el costo documentado estaba mal
+en su forma —se re-drena el rango **completo** en cada página, no sólo lo ya reportado—; (e) varias
+aserciones eran más débiles de lo que la regla afirma (`stateOf` sin ledgers, diarios ni períodos; S7 sin
+prueba; límites no enteros; `to` imposible; `to` solo en el mayor).
+
+L12. La primera implementación de 008b también dejó la spec contradiciéndose a sí misma: el paso 8 del flujo
+decía que el cursor «viene del puerto» mientras la regla 14 decía que lo produce el core, y el estado seguía
+diciendo «especificada, sin implementar» después de estar implementado. Corregido junto con las cifras de
+pruebas (293).
