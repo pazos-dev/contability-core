@@ -44,3 +44,22 @@ export function requireReportRange(input: { readonly from?: string; readonly to?
 
   return { from, to };
 }
+
+/** Default and bounds of the account ledger's page (rule 14): absent means one page of 100 rows. */
+const DEFAULT_MOVEMENTS_LIMIT = 100;
+const MAX_MOVEMENTS_LIMIT = 1000;
+
+/**
+ * The page size of the account ledger: absent is the default, and anything outside 1..1000 is
+ * `INVALID_APPLICATION_INPUT`.
+ *
+ * It is not clamped. A limit the caller did not ask for is a result the caller cannot reproduce, and "give me
+ * everything" is expressed by walking the cursor, not by a number the report silently lowers.
+ */
+export function requireReportLimit(limit: number | undefined): number {
+  if (limit === undefined) return DEFAULT_MOVEMENTS_LIMIT;
+  if (!Number.isInteger(limit) || limit < 1 || limit > MAX_MOVEMENTS_LIMIT) {
+    throw errors.invalidApplicationInput('limit', limit);
+  }
+  return limit;
+}

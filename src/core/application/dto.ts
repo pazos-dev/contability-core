@@ -300,6 +300,59 @@ export interface TrialBalanceResult {
   readonly balanced: boolean;
 }
 
+/**
+ * Serializable input of the account ledger. It reports one account of the ledger's chart, so `accountId` is
+ * required, and it is paged from the first contract (D5): `limit` and `cursor` are part of the input.
+ *
+ * `limit` is optional and defaults to 100, with 1 as minimum and 1000 as maximum. `cursor` is opaque to the
+ * caller: it is produced by the report and handed back unchanged to continue from the next row.
+ */
+export interface AccountMovementsInput {
+  readonly ledgerId: string;
+  readonly accountId: string;
+  readonly from?: string;
+  readonly to?: string;
+  readonly limit?: number;
+  readonly cursor?: string;
+}
+
+/**
+ * One line of one entry that touched the account, with the balance after it.
+ *
+ * `runningBalance` is signed —debit minus credit— and continues across pages from `openingBalance`, so the
+ * consumer never has to add anything itself and never has to trust a total that came in the cursor.
+ * `description` is the entry's description: a line description is optional, and an optional field here would
+ * push that decision onto every caller. `reversalOfEntryId` is present only when the entry reverses another,
+ * because a reversal is one more entry and links to the one it reverses (rule 2).
+ */
+export interface AccountMovementRow {
+  readonly entryId: string;
+  readonly lineId: string;
+  readonly accountingDate: string;
+  readonly journalId: string;
+  readonly description: string;
+  readonly side: PostingSide;
+  readonly amount: MoneyJSON;
+  readonly runningBalance: MoneyJSON;
+  readonly reversalOfEntryId?: string;
+}
+
+/**
+ * One page of the account ledger. `openingBalance` is the net of everything before `from` for that account
+ * (rule 12) and `closingBalance` is the balance after the last row returned (rule 13), so on a page that is
+ * not the last one the closing balance is not the balance at the end of the range. `nextCursor` is `null`
+ * exactly when the page is the last one.
+ */
+export interface AccountMovementsResult {
+  readonly ledgerId: string;
+  readonly accountId: string;
+  readonly currency: CurrencyJSON;
+  readonly openingBalance: MoneyJSON;
+  readonly rows: readonly AccountMovementRow[];
+  readonly closingBalance: MoneyJSON;
+  readonly nextCursor: string | null;
+}
+
 // ── Idempotency ───────────────────────────────────────────────────────────────────────────────────────
 
 /**
