@@ -22,6 +22,8 @@ import type {
   SetAccountStatusResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
+  SetLedgerStatusInput,
+  SetLedgerStatusResult,
 } from '../dto.js';
 import { Accounts } from '../use-cases/accounts/accounts.js';
 import { Entries } from '../use-cases/entries/entries.js';
@@ -66,6 +68,10 @@ export class Accounting {
 
   setJournalStatus(input: SetJournalStatusInput): Promise<SetJournalStatusResult> {
     return Journals.setStatus(this.#deps, input);
+  }
+
+  setLedgerStatus(input: SetLedgerStatusInput): Promise<SetLedgerStatusResult> {
+    return Ledgers.setStatus(this.#deps, input);
   }
 
   registerPeriod(input: RegisterPeriodInput): Promise<RegisterPeriodResult> {

@@ -39,6 +39,8 @@ export type {
   SetAccountStatusResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
+  SetLedgerStatusInput,
+  SetLedgerStatusResult,
   StoredOperation,
 } from './dto.js';
 // The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees

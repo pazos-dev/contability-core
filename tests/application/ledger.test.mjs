@@ -168,3 +168,63 @@ test('an inherited property name is not a registered ledger', async () => {
     );
   }
 });
+
+test('L06: deactivating keeps identity, name and chart of accounts', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput });
+
+  const result = await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  assert.deepEqual(result, { ledgerId: 'ledger-1', status: 'INACTIVE' });
+  const [stored] = storedLedgers(memory);
+  assert.equal(stored.status, 'INACTIVE');
+  assert.equal(stored.id, 'ledger-1');
+  assert.equal(stored.name, 'Libro comercial');
+  assert.equal(stored.chartOfAccountsId, 'chart-1');
+});
+
+test('L07: an inactive ledger can be activated again', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput });
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  const result = await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'ACTIVE' });
+
+  assert.deepEqual(result, { ledgerId: 'ledger-1', status: 'ACTIVE' });
+  assert.equal(storedLedgers(memory)[0].status, 'ACTIVE');
+});
+
+test('L08: asking for the status the ledger already has is not an error and changes nothing', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput });
+
+  const result = await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'ACTIVE' });
+
+  assert.deepEqual(result, { ledgerId: 'ledger-1', status: 'ACTIVE' });
+  assert.equal(storedLedgers(memory).length, 1);
+  assert.equal(storedLedgers(memory)[0].status, 'ACTIVE');
+});
+
+test('L09: a status outside ACTIVE and INACTIVE is rejected instead of looking like an activation', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput });
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+
+  await assert.rejects(
+    app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'SUSPENDED' }),
+    assertCode('INVALID_APPLICATION_INPUT'),
+  );
+
+  assert.equal(storedLedgers(memory)[0].status, 'INACTIVE');
+});
+
+test('L10: an unregistered ledger is reported as not found and nothing is written', async () => {
+  const { memory, app } = harness();
+
+  await assert.rejects(
+    app.setLedgerStatus({ ledgerId: 'ledger-9', status: 'INACTIVE' }),
+    assertCode('LEDGER_NOT_FOUND'),
+  );
+
+  assert.deepEqual(storedLedgers(memory), []);
+});

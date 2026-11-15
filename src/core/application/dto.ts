@@ -37,6 +37,17 @@ export interface RegisterLedgerResult {
   readonly status: LedgerStatus;
 }
 
+/** No idempotency key on purpose: repeating the current status is a no-op by construction. */
+export interface SetLedgerStatusInput {
+  readonly ledgerId: string;
+  readonly status: LedgerStatus;
+}
+
+export interface SetLedgerStatusResult {
+  readonly ledgerId: string;
+  readonly status: LedgerStatus;
+}
+
 // ── Accounts ─────────────────────────────────────────────────────────────────────────────────────────
 
 /** Serializable input of `registerAccount`: text and booleans only, no domain instances. */

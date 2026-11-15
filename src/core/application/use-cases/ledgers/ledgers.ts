@@ -1,8 +1,14 @@
 import { Ledger } from '../../../domain/ledger/index.js';
-import type { RegisterLedgerInput, RegisterLedgerResult } from '../../dto.js';
+import type {
+  RegisterLedgerInput,
+  RegisterLedgerResult,
+  SetLedgerStatusInput,
+  SetLedgerStatusResult,
+} from '../../dto.js';
+import * as errors from '../../errors.js';
 import type { ApplicationDeps } from '../../ports.js';
 import { fingerprintOf, Idempotency } from '../shared/index.js';
-import { requireFreeLedgerId } from './rules.js';
+import { requireFreeLedgerId, requireLedger } from './rules.js';
 
 const REGISTER_OPERATION = 'registerLedger';
 
@@ -36,6 +42,28 @@ export class Ledgers {
 
         return result;
       });
+    });
+  }
+
+  /**
+   * Activates or deactivates a ledger. Deactivating keeps the ledger and its history (R5) and never touches
+   * the accounts, journals, periods or entries that reference it; activating returns it to ACTIVE (R7).
+   *
+   * Repeating the current status is a no-op, which is why this operation takes no idempotency key: there is
+   * no second effect to avoid.
+   */
+  static async setStatus(deps: ApplicationDeps, input: SetLedgerStatusInput): Promise<SetLedgerStatusResult> {
+    const { ledgerId, status } = input;
+    // Without this guard an unknown status would fall into the activation branch and look like a success.
+    if (status !== 'ACTIVE' && status !== 'INACTIVE') throw errors.invalidApplicationInput('status', status);
+
+    return deps.unitOfWork.run(async (scope) => {
+      const ledger = await requireLedger(scope, ledgerId);
+
+      const next = status === 'INACTIVE' ? ledger.deactivate() : ledger.activate();
+      await scope.ledgers.save(next);
+
+      return { ledgerId: next.id, status: next.status };
     });
   }
 }
