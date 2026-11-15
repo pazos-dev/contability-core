@@ -14,7 +14,7 @@ archivo de **guardas** con las precondiciones que comparten los casos de uso.
 | `journals.ts` | `RegisterJournal`, `SetJournalStatus` |
 | `periods.ts` | `RegisterPeriod`, `ClosePeriod` |
 | `entries.ts` | `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`, `ReversePostedEntry` y la serialización |
-| `contracts.ts` | Las 22 entradas/salidas serializables de la capa. Sin lógica: es el contrato con el anfitrión |
+| `../dto.ts` | Las 22 entradas/salidas serializables de la capa. No vive en esta carpeta: son datos, no casos de uso |
 | `guards.ts` | Precondiciones compartidas por dos o más casos de uso: libro, asiento, id libre, diario activo, período abierto que contiene la fecha, cuenta del plan y cuenta contabilizable |
 | `shared/` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
 

@@ -1,15 +1,19 @@
-import type { AccountStatus, AccountType } from '../../domain/account/index.js';
-import type { EntryStatus, PostingSide } from '../../domain/entries/index.js';
-import type { JournalStatus } from '../../domain/journal/index.js';
-import type { MoneyJSON } from '../../domain/shared/money/index.js';
-import type { PeriodStatus } from '../../domain/period/index.js';
+import type { AccountStatus, AccountType } from '../domain/account/index.js';
+import type { EntryStatus, PostingSide } from '../domain/entries/index.js';
+import type { JournalStatus } from '../domain/journal/index.js';
+import type { PeriodStatus } from '../domain/period/index.js';
+import type { MoneyJSON } from '../domain/shared/money/index.js';
 
 /**
- * Inputs and outputs of every use case of this layer, in one module.
+ * Data shapes of this layer: the inputs and outputs of every use case, plus the record the idempotency port
+ * stores.
  *
- * They are contracts, not implementation: serializable data that crosses the boundary with the host. Keeping
- * them here leaves each area file to be read as behaviour, and gives the barrel a single place to re-export
- * the surface from. Domain instances never appear in these shapes: `Money` travels as `MoneyJSON`.
+ * They are data, not implementation: serializable values that cross the boundary with the host. The module is
+ * named `dto` like every other data module of the project, and it holds no behaviour contracts — those live in
+ * `ports/`. That separation is why `StoredOperation` is here and not beside the idempotency registry interface.
+ * Keeping the shapes in one module leaves each area file to be read as behaviour, and gives the barrel a
+ * single place to re-export the surface from. Domain instances never appear in these shapes: `Money` travels
+ * as `MoneyJSON`.
  */
 
 // ── Accounts ─────────────────────────────────────────────────────────────────────────────────────────
@@ -200,4 +204,16 @@ export interface ReversePostedEntryInput {
 
 export interface ReversePostedEntryResult extends PostEntryResult {
   readonly reversalOfEntryId: string;
+}
+
+// ── Idempotency ───────────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * What a repeated request is matched against: a fingerprint of every field of the request except the key, plus
+ * the result that request produced. A fingerprint over the entity identity alone would make a changed payload
+ * look like a replay.
+ */
+export interface StoredOperation {
+  readonly fingerprint: string;
+  readonly result: unknown;
 }

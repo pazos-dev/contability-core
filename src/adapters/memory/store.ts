@@ -2,7 +2,7 @@ import type { Account } from '../../core/domain/account/index.js';
 import type { JournalEntry } from '../../core/domain/entries/index.js';
 import type { Journal } from '../../core/domain/journal/index.js';
 import type { AccountingPeriod } from '../../core/domain/period/index.js';
-import type { StoredOperation } from '../../core/application/ports/index.js';
+import type { StoredOperation } from '../../core/application/dto.js';
 
 /** Idempotency record as the snapshot exposes it: the fingerprint, never the stored result. */
 export interface InMemoryIdempotencyRecord {

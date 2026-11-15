@@ -20,7 +20,7 @@ import type {
   SetAccountStatusResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
-} from './use-cases/contracts.js';
+} from './dto.js';
 import { RegisterAccount, SetAccountStatus } from './use-cases/accounts.js';
 import { AddEntryLine, CreateEntryDraft, PostEntry, RemoveEntryLine, ReversePostedEntry } from './use-cases/entries.js';
 import { RegisterJournal, SetJournalStatus } from './use-cases/journals.js';

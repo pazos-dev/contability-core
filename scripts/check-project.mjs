@@ -28,7 +28,7 @@ for (const path of [
   'src/core/application/index.ts',
   'src/core/application/ports/index.ts',
   'src/core/application/use-cases/accounts.ts',
-  'src/core/application/use-cases/contracts.ts',
+  'src/core/application/dto.ts',
   'src/core/application/use-cases/guards.ts',
   'src/core/application/use-cases/journals.ts',
   'src/core/application/use-cases/periods.ts',

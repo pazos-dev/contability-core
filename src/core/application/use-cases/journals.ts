@@ -1,7 +1,7 @@
 import { Journal } from '../../domain/journal/index.js';
 import * as errors from '../errors.js';
 import type { ApplicationDeps } from '../ports/index.js';
-import type { RegisterJournalInput, RegisterJournalResult, SetJournalStatusInput, SetJournalStatusResult } from './contracts.js';
+import type { RegisterJournalInput, RegisterJournalResult, SetJournalStatusInput, SetJournalStatusResult } from '../dto.js';
 import { requireChartOfAccountsId } from './guards.js';
 import { fingerprintOf, Idempotency } from './shared/index.js';
 

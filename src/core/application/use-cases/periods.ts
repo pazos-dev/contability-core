@@ -1,7 +1,7 @@
 import { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
 import * as errors from '../errors.js';
 import type { ApplicationDeps } from '../ports/index.js';
-import type { ClosePeriodInput, ClosePeriodResult, RegisterPeriodInput, RegisterPeriodResult } from './contracts.js';
+import type { ClosePeriodInput, ClosePeriodResult, RegisterPeriodInput, RegisterPeriodResult } from '../dto.js';
 import { requireChartOfAccountsId } from './guards.js';
 import { fingerprintOf, Idempotency } from './shared/index.js';
 

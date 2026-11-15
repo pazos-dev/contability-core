@@ -14,7 +14,7 @@ import type {
   RemoveEntryLineInput,
   ReversePostedEntryInput,
   ReversePostedEntryResult,
-} from './contracts.js';
+} from '../dto.js';
 import {
   requireAccountOfPlan,
   requireActiveJournal,

@@ -2,6 +2,7 @@ import type { Account } from '../../domain/account/index.js';
 import type { JournalEntry } from '../../domain/entries/index.js';
 import type { Journal } from '../../domain/journal/index.js';
 import type { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
+import type { StoredOperation } from '../dto.js';
 
 /**
  * Relation between a ledger and its chart of accounts. The application layer never accepts a chart
@@ -48,16 +49,6 @@ export interface EntryRepository {
    */
   findReversalsOf(ledgerId: string, originalEntryId: string): Promise<readonly JournalEntry[]>;
   save(entry: JournalEntry): Promise<void>;
-}
-
-/**
- * What a repeated request is matched against: a fingerprint of every field of the request except the
- * key, plus the result that request produced. A fingerprint over the entity identity alone would make
- * a changed payload look like a replay.
- */
-export interface StoredOperation {
-  readonly fingerprint: string;
-  readonly result: unknown;
 }
 
 /**

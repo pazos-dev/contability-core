@@ -1,7 +1,7 @@
 import { Account } from '../../domain/account/index.js';
 import * as errors from '../errors.js';
 import type { ApplicationDeps, UnitOfWorkScope } from '../ports/index.js';
-import type { RegisterAccountInput, RegisterAccountResult, SetAccountStatusInput, SetAccountStatusResult } from './contracts.js';
+import type { RegisterAccountInput, RegisterAccountResult, SetAccountStatusInput, SetAccountStatusResult } from '../dto.js';
 import { requireAccountOfPlan, requireChartOfAccountsId } from './guards.js';
 import { fingerprintOf, Idempotency } from './shared/index.js';
 
