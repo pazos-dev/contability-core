@@ -24,31 +24,30 @@ export class RegisterJournal {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, REGISTER_OPERATION, ledgerId);
-      const stored = await idempotency.replay<RegisterJournalResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      await requireChartOfAccountsId(scope, ledgerId);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        await requireChartOfAccountsId(scope, ledgerId);
 
-      if ((await scope.journals.findById(ledgerId, journalId)) !== undefined) {
-        throw errors.journalAlreadyExists(journalId);
-      }
+        if ((await scope.journals.findById(ledgerId, journalId)) !== undefined) {
+          throw errors.journalAlreadyExists(journalId);
+        }
 
-      if ((await scope.journals.findByCode(ledgerId, code)) !== undefined) {
-        throw errors.journalCodeDuplicate(ledgerId, code);
-      }
+        if ((await scope.journals.findByCode(ledgerId, code)) !== undefined) {
+          throw errors.journalCodeDuplicate(ledgerId, code);
+        }
 
-      const journal = Journal.create({ id: journalId, ledgerId, code, name });
-      const result: RegisterJournalResult = {
-        ledgerId,
-        journalId: journal.id,
-        code: journal.code,
-        status: journal.status,
-      };
+        const journal = Journal.create({ id: journalId, ledgerId, code, name });
+        const result: RegisterJournalResult = {
+          ledgerId,
+          journalId: journal.id,
+          code: journal.code,
+          status: journal.status,
+        };
 
-      await scope.journals.save(journal);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
+        await scope.journals.save(journal);
 
-      return result;
+        return result;
+      });
     });
   }
 }

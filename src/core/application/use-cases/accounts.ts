@@ -28,36 +28,35 @@ export class RegisterAccount {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, REGISTER_OPERATION, ledgerId);
-      const stored = await idempotency.replay<RegisterAccountResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
-      await requireFreeAccountId(scope, accountId);
-      await requireFreeAccountCode(scope, chartOfAccountsId, code);
-      if (parentId !== undefined) await requireGroupingParent(scope, parentId, chartOfAccountsId);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        await requireFreeAccountId(scope, accountId);
+        await requireFreeAccountCode(scope, chartOfAccountsId, code);
+        if (parentId !== undefined) await requireGroupingParent(scope, parentId, chartOfAccountsId);
 
-      const account = Account.create({
-        id: accountId,
-        chartOfAccountsId,
-        code,
-        name,
-        type,
-        postingAllowed,
-        ...(parentId === undefined ? {} : { parentId }),
+        const account = Account.create({
+          id: accountId,
+          chartOfAccountsId,
+          code,
+          name,
+          type,
+          postingAllowed,
+          ...(parentId === undefined ? {} : { parentId }),
+        });
+
+        const result: RegisterAccountResult = {
+          ledgerId,
+          chartOfAccountsId,
+          accountId: account.id,
+          code: account.code.value,
+          status: account.status,
+        };
+
+        await scope.accounts.save(account);
+
+        return result;
       });
-
-      const result: RegisterAccountResult = {
-        ledgerId,
-        chartOfAccountsId,
-        accountId: account.id,
-        code: account.code.value,
-        status: account.status,
-      };
-
-      await scope.accounts.save(account);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
-
-      return result;
     });
   }
 }

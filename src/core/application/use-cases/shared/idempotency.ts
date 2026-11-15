@@ -21,17 +21,18 @@ export function fingerprintOf(request: { readonly [field: string]: unknown }): s
 }
 
 /**
- * Replay and remember for **one** operation of **one** ledger. Built inside the unit of work, from the
- * scope it writes through.
+ * The idempotent cycle of **one** operation of **one** ledger: replay, work, remember. Built inside the unit
+ * of work, from the scope it writes through.
  *
- * The three values that fix the identity of the operation are not parameters of `replay`/`remember`:
- * they are carried by the instance, so a use case cannot pass the key of one operation to another, and
- * `operation` and `ledgerId` — two plain strings that used to sit next to each other in every call —
- * are written exactly once. What a caller chooses per call is only what differs between calls: the key
- * the host supplied and the fingerprint of the request.
+ * The three values that fix the identity of the operation are not parameters: they are carried by the
+ * instance, so a use case cannot pass the key of one operation to another, and `operation` and `ledgerId` —
+ * two plain strings that used to sit next to each other in every call — are written exactly once.
  *
- * A registry that is asked nothing when the host sends no key at all is why both methods accept
- * `undefined` and return early: idempotency stays optional per request.
+ * `execute` is the only door on purpose. Replay and remember are private because using them in halves is not
+ * a stylistic slip but a defect: a use case that forgets `remember` does not fail — it silently re-executes
+ * the operation on the next retry, which is exactly what idempotency exists to prevent.
+ *
+ * A request without a key stays legal: both halves return early, so idempotency remains optional.
  */
 export class Idempotency {
   readonly #scope: UnitOfWorkScope;
@@ -49,10 +50,23 @@ export class Idempotency {
   }
 
   /**
-   * Returns the stored result when the key was already used by the same request, `undefined` when the
-   * key is new or absent, and fails with `IDEMPOTENCY_CONFLICT` when the key belongs to another request.
+   * Returns the result stored for this key without running `work`, or runs `work` once and remembers what it
+   * produced. Fails with `IDEMPOTENCY_CONFLICT` when the key already belongs to another request.
+   *
+   * `work` must save inside itself: the record is written after it returns, so a failed save leaves no replay
+   * behind.
    */
-  async replay<T>(key: string | undefined, fingerprint: string): Promise<T | undefined> {
+  async execute<T>(key: string | undefined, fingerprint: string, work: () => Promise<T>): Promise<T> {
+    const stored = await this.#replay<T>(key, fingerprint);
+    if (stored !== undefined) return stored;
+
+    const result = await work();
+    await this.#remember(key, fingerprint, result);
+
+    return result;
+  }
+
+  async #replay<T>(key: string | undefined, fingerprint: string): Promise<T | undefined> {
     if (key === undefined) return undefined;
 
     const stored = await this.#scope.idempotency.find(this.#ledgerId, this.#operation, key);
@@ -65,8 +79,7 @@ export class Idempotency {
     return stored.result as T;
   }
 
-  /** Remembers the result of the operation, if the caller asked for idempotency at all. */
-  async remember(key: string | undefined, fingerprint: string, result: unknown): Promise<void> {
+  async #remember(key: string | undefined, fingerprint: string, result: unknown): Promise<void> {
     if (key === undefined) return;
 
     await this.#scope.idempotency.record(this.#ledgerId, this.#operation, key, { fingerprint, result });

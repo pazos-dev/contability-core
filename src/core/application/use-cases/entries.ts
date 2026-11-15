@@ -61,33 +61,32 @@ export class CreateEntryDraft {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, CREATE_OPERATION, ledgerId);
-      const stored = await idempotency.replay<EntryDraftResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
-      await requireFreeEntryId(scope, ledgerId, entryId);
-      await requireJournalInLedger(scope, ledgerId, journalId);
-      await requirePeriodInLedger(scope, ledgerId, periodId);
-      for (const line of lines) await requireAccountOfPlan(scope, line.accountId, chartOfAccountsId);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        await requireFreeEntryId(scope, ledgerId, entryId);
+        await requireJournalInLedger(scope, ledgerId, journalId);
+        await requirePeriodInLedger(scope, ledgerId, periodId);
+        for (const line of lines) await requireAccountOfPlan(scope, line.accountId, chartOfAccountsId);
 
-      const draft = lines.reduce(
-        (entry, line) => entry.addLine(lineOf(line)),
-        JournalEntry.createDraft({
-          id: entryId,
-          ledgerId,
-          journalId,
-          periodId,
-          accountingDate: AccountingDate.create(accountingDate),
-          description,
-        }),
-      );
+        const draft = lines.reduce(
+          (entry, line) => entry.addLine(lineOf(line)),
+          JournalEntry.createDraft({
+            id: entryId,
+            ledgerId,
+            journalId,
+            periodId,
+            accountingDate: AccountingDate.create(accountingDate),
+            description,
+          }),
+        );
 
-      const result = draftResultOf(draft);
+        const result = draftResultOf(draft);
 
-      await scope.entries.save(draft);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
+        await scope.entries.save(draft);
 
-      return result;
+        return result;
+      });
     });
   }
 }
@@ -112,21 +111,20 @@ export class AddEntryLine {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, ADD_OPERATION, ledgerId);
-      const stored = await idempotency.replay<EntryDraftResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
-      const entry = await requireEntry(scope, ledgerId, entryId);
-      await requireAccountOfPlan(scope, line.accountId, chartOfAccountsId);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        const entry = await requireEntry(scope, ledgerId, entryId);
+        await requireAccountOfPlan(scope, line.accountId, chartOfAccountsId);
 
-      // The aggregate owns the state rules: a posted entry rejects new lines.
-      const updated = entry.addLine(lineOf(line));
+        // The aggregate owns the state rules: a posted entry rejects new lines.
+        const updated = entry.addLine(lineOf(line));
 
-      const result = draftResultOf(updated);
-      await scope.entries.save(updated);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
+        const result = draftResultOf(updated);
+        await scope.entries.save(updated);
 
-      return result;
+        return result;
+      });
     });
   }
 }
@@ -150,19 +148,18 @@ export class RemoveEntryLine {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, REMOVE_OPERATION, ledgerId);
-      const stored = await idempotency.replay<EntryDraftResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      await requireChartOfAccountsId(scope, ledgerId);
-      const entry = await requireEntry(scope, ledgerId, entryId);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        await requireChartOfAccountsId(scope, ledgerId);
+        const entry = await requireEntry(scope, ledgerId, entryId);
 
-      const updated = entry.removeLine(lineId);
+        const updated = entry.removeLine(lineId);
 
-      const result = draftResultOf(updated);
-      await scope.entries.save(updated);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
+        const result = draftResultOf(updated);
+        await scope.entries.save(updated);
 
-      return result;
+        return result;
+      });
     });
   }
 }
@@ -191,23 +188,22 @@ export class PostEntry {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, POST_OPERATION, ledgerId);
-      const stored = await idempotency.replay<PostEntryResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
-      const entry = await requireEntry(scope, ledgerId, entryId);
-      await requireActiveJournal(scope, ledgerId, entry.journalId);
-      await requireOpenPeriodContaining(scope, ledgerId, entry.periodId, entry.accountingDate);
-      for (const line of entry.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
-      await requireNoPostedReversal(scope, ledgerId, entry);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        const entry = await requireEntry(scope, ledgerId, entryId);
+        await requireActiveJournal(scope, ledgerId, entry.journalId);
+        await requireOpenPeriodContaining(scope, ledgerId, entry.periodId, entry.accountingDate);
+        for (const line of entry.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
+        await requireNoPostedReversal(scope, ledgerId, entry);
 
-      const posted = entry.post();
-      const result = postedResultOf(posted);
+        const posted = entry.post();
+        const result = postedResultOf(posted);
 
-      await scope.entries.save(posted);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
+        await scope.entries.save(posted);
 
-      return result;
+        return result;
+      });
     });
   }
 }
@@ -242,33 +238,32 @@ export class ReversePostedEntry {
 
     return this.#deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, REVERSE_OPERATION, ledgerId);
-      const stored = await idempotency.replay<ReversePostedEntryResult>(idempotencyKey, fingerprint);
-      if (stored !== undefined) return stored;
 
-      const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
-      const original = await requireEntry(scope, ledgerId, originalEntryId);
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        const original = await requireEntry(scope, ledgerId, originalEntryId);
 
-      // The aggregate refuses to reverse anything that is not POSTED, with its own ENTRY_STATE code.
-      const draft = original.createReversalDraft({
-        id: reversalEntryId,
-        periodId,
-        accountingDate: AccountingDate.create(accountingDate),
-        ...(description === undefined ? {} : { description }),
+        // The aggregate refuses to reverse anything that is not POSTED, with its own ENTRY_STATE code.
+        const draft = original.createReversalDraft({
+          id: reversalEntryId,
+          periodId,
+          accountingDate: AccountingDate.create(accountingDate),
+          ...(description === undefined ? {} : { description }),
+        });
+
+        await requireActiveJournal(scope, ledgerId, original.journalId);
+        await requireOpenPeriodContaining(scope, ledgerId, periodId, draft.accountingDate);
+        for (const line of draft.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
+        await requireFreeEntryId(scope, ledgerId, reversalEntryId);
+        await requireNoReversal(scope, ledgerId, originalEntryId);
+
+        const posted = draft.post();
+        const result: ReversePostedEntryResult = { ...postedResultOf(posted), reversalOfEntryId: originalEntryId };
+
+        await scope.entries.save(posted);
+
+        return result;
       });
-
-      await requireActiveJournal(scope, ledgerId, original.journalId);
-      await requireOpenPeriodContaining(scope, ledgerId, periodId, draft.accountingDate);
-      for (const line of draft.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
-      await requireFreeEntryId(scope, ledgerId, reversalEntryId);
-      await requireNoReversal(scope, ledgerId, originalEntryId);
-
-      const posted = draft.post();
-      const result: ReversePostedEntryResult = { ...postedResultOf(posted), reversalOfEntryId: originalEntryId };
-
-      await scope.entries.save(posted);
-      await idempotency.remember(idempotencyKey, fingerprint, result);
-
-      return result;
     });
   }
 }
