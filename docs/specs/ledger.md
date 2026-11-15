@@ -1,7 +1,8 @@
 # SPEC — Libro contable
 
-Estado: **implementado y verificado** en el incremento 006e. Este documento fija el comportamiento del libro
-contable; lo que describe existe y está probado en `tests/domain/ledger/ledger.test.mjs` y
+Estado: **implementado y verificado** hasta el incremento 006f. L01-L16 se implementaron en 006e y L17-L24 en
+006f, que resolvió Q08: el libro declara una moneda funcional única. Este documento fija el comportamiento del
+libro contable; lo que describe existe y está probado en `tests/domain/ledger/ledger.test.mjs` y
 `tests/application/ledger.test.mjs`, con L11 cubierto una prueba por área en `tests/application/registration.test.mjs`
 y `tests/application/entry-draft.test.mjs`, y L13 por la prueba de unicidad por plan que ya existía (R04).
 Ruta: dominio en `src/core/domain/ledger/`, casos de uso en
@@ -24,7 +25,7 @@ estado, y era el único concepto del módulo sin caso de uso. Ese es el problema
 
 Incluye:
 
-- `Ledger` en el dominio: `id`, `name`, `chartOfAccountsId` y estado `ACTIVE`/`INACTIVE`.
+- `Ledger` en el dominio: `id`, `name`, `chartOfAccountsId`, `currency` y estado `ACTIVE`/`INACTIVE`.
 - Puerto `LedgerRepository` en el alcance de la unidad de trabajo, en reemplazo de `LedgerDirectory`.
 - Casos de uso `registerLedger` y `setLedgerStatus`, expuestos por la fachada `Accounting`
   (que pasa de once a trece métodos).
@@ -41,7 +42,8 @@ Excluye, declarado para no prometerlo:
 - **Borrado de libros.** Se desactivan; el historial queda.
 - **Cambio de plan de un libro.** No hay operación; ver «Decisiones».
 - **Jerarquía entre libros, consolidación y reportes por libro.** Corresponde a 008.
-- **Moneda funcional del libro.** Depende de Q08, todavía abierta.
+- **Conversión de moneda.** El libro declara **una** moneda funcional y no convierte: sin tasas, sin importe
+  funcional por línea y sin cuentas de diferencia de cambio (Q08, resuelta como moneda única).
 - **Concurrencia y unicidad durable.** Del anfitrión (Q09): dos altas simultáneas del mismo id las separa su
   clave primaria, no este repositorio.
 
@@ -52,6 +54,7 @@ interface RegisterLedgerInput {
   readonly ledgerId: string;
   readonly name: string;
   readonly chartOfAccountsId: string;
+  readonly currency: CurrencyJSON; // { code: 'UYU', scale: 2 }
   readonly idempotencyKey?: string;
 }
 
@@ -59,6 +62,7 @@ interface RegisterLedgerResult {
   readonly ledgerId: string;
   readonly name: string;
   readonly chartOfAccountsId: string;
+  readonly currency: CurrencyJSON;
   readonly status: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -73,8 +77,12 @@ interface SetLedgerStatusResult {
 }
 ```
 
-La huella de idempotencia de `registerLedger` es `ledgerId` + `name` + `chartOfAccountsId`: todo el campo de
-la petición salvo la clave, como exige la regla 6 de `registration.md`. `setLedgerStatus` no lleva clave por
+La huella de idempotencia de `registerLedger` es `ledgerId` + `name` + `chartOfAccountsId` + `currency`: todo
+el campo de la petición salvo la clave, como exige la regla 6 de `registration.md`. Dejar la moneda afuera de
+la huella devolvería el resultado guardado ante una petición que cambia la moneda funcional del libro, que es
+exactamente el conflicto que la idempotencia tiene que detectar. La moneda entra en forma canónica `code/scale`
+y no como el objeto del llamador: el orden de las claves de un objeto no es parte de la petición, y
+`{ scale, code }` tiene que ser la misma petición que `{ code, scale }`. `setLedgerStatus` no lleva clave por
 la misma razón que `setAccountStatus`: repetir el mismo estado es un no-op.
 
 Las salidas son serializables y sin instancias de dominio, igual que el resto de la capa.
@@ -86,8 +94,9 @@ Las salidas son serializables y sin instancias de dominio, igual que el resto de
 1. **Idempotencia.** `find(ledgerId, 'registerLedger', key)`: huella igual devuelve el resultado guardado sin
    segundo efecto; huella distinta es `IDEMPOTENCY_CONFLICT`.
 2. **Id libre.** `ledgers.findById(ledgerId)` presente es `LEDGER_ALREADY_EXISTS`. Nunca se sobrescribe.
-3. **Validación local.** `Ledger.create({ id, name, chartOfAccountsId })`; sus errores burbujean
-   (`INVALID_LEDGER`).
+3. **Validación local.** El caso de uso hidrata `Currency.fromJSON(input.currency)` y llama a
+   `Ledger.create({ id, name, chartOfAccountsId, currency })`; sus errores burbujean sin envolver
+   (`INVALID_LEDGER`, `INVALID_CURRENCY`).
 4. **Escritura única.** `ledgers.save(ledger)` e `idempotency.record(...)` en la misma unidad de trabajo: si
    una falla, no queda la otra.
 5. **Resultado.** Se arma desde el libro creado.
@@ -124,13 +133,31 @@ sigue resolviendo antes que cualquier otra entidad, porque es el ámbito que da 
 10. El libro no guarda cuentas, diarios, períodos, asientos ni saldos: sólo los identifica.
 11. `registerAccount` y el resto derivan el plan del libro, así que dos libros con planes distintos siguen
     sin poder compartir cuentas.
+12. `currency` **no cambia**. Es la moneda funcional del libro, su unidad de cuenta: cambiarla dejaría
+    asientos contabilizados en una moneda que ya no es la del libro, sin operación que los migre. Mismo
+    criterio que la regla 2 aplica al plan.
+13. `currency` es obligatoria: un libro sin moneda funcional no existe y no se registra. El core no tiene una
+    moneda por defecto, porque suponer una contabilizaría mal en silencio.
+14. La moneda se valida con las reglas de `Currency`, no con reglas nuevas del libro: código de tres letras
+    mayúsculas, escala entera de 0 a 6 y escala oficial de la tabla ISO para los códigos catalogados.
+15. Contabilizar un asiento exige que su moneda —la única de sus líneas, ya exigida por el agregado— sea la
+    moneda funcional del libro. Vale para las dos vías que dejan un asiento en `POSTED`: `postEntry` y
+    `reversePostedEntry`.
+16. Los borradores **no** se validan por moneda, igual que no se validan por balance ni por período abierto:
+    el borrador admite lo que todavía no se contabilizó y `post` es el punto estricto.
+17. El libro no convierte. `Money` conserva `CURRENCY_MISMATCH` en las operaciones cruzadas y no existe
+    ninguna API de tasas: operar en más de una moneda es un libro por moneda, o conversión en el anfitrión.
+18. Varios libros pueden declarar la misma moneda funcional; una moneda por libro, no dos.
 
 ## Errores
 
-Propios de esta entrega: `LEDGER_ALREADY_EXISTS`, `LEDGER_INACTIVE`.
+Propios de esta entrega: `LEDGER_ALREADY_EXISTS`, `LEDGER_INACTIVE`, `LEDGER_CURRENCY_MISMATCH`.
 Ya existente y reutilizado, ahora originado en el repositorio: `LEDGER_NOT_FOUND`.
 Compartidos: `INVALID_APPLICATION_INPUT`, `IDEMPOTENCY_CONFLICT`.
-De dominio, burbujea sin envolver: `INVALID_LEDGER`.
+De dominio, burbujean sin envolver: `INVALID_LEDGER` y `INVALID_CURRENCY` (este último de `Money`).
+
+`LEDGER_CURRENCY_MISMATCH` pertenece a la aplicación y no al agregado porque la moneda del libro vive en otro
+agregado: `JournalEntry` conoce `ledgerId`, no el libro, y resolverlo exige una lectura que el dominio no hace.
 
 Todo error deja el estado como estaba: ni libro, ni registro de idempotencia parcial.
 
@@ -154,6 +181,14 @@ Todo error deja el estado como estaba: ni libro, ni registro de idempotencia par
 | L14 | 2 | Un `ledgerId` con espacios exteriores | `registerLedger` | `INVALID_LEDGER`, aunque después los casos de uso busquen el id tal cual |
 | L15 | 2 | Un libro guardado | `registerAccount` sin `chartOfAccountsId` en la entrada | Toma el plan del libro; el contrato de `registration.md` no cambia |
 | L16 | 10 | Un libro | Cualquier operación | El resultado no expone cuentas, asientos, períodos ni saldos del libro |
+| L17 | 12, 13 | Un id libre, nombre y plan válidos y `currency: { code: 'UYU', scale: 2 }` | `registerLedger` | Se registra y el resultado devuelve la misma moneda; el libro queda con ella |
+| L18 | 14 | Una moneda con código mal formado o con una escala que no es la oficial del código | `registerLedger` | `INVALID_CURRENCY`; no queda libro ni registro de idempotencia |
+| L19 | 13 | Un alta sin `currency` | `registerLedger` | Error de dominio por moneda ausente; nada guardado |
+| L20 | 12 | La misma clave y la misma petición salvo la moneda | Repetir `registerLedger` | `IDEMPOTENCY_CONFLICT`; el libro guardado conserva su moneda original |
+| L21 | 12 | Un libro registrado con moneda | `rename`, `setLedgerStatus` a `INACTIVE` y de vuelta a `ACTIVE` | La moneda es la misma en todas las copias |
+| L22 | 15 | Un libro `UYU` con un borrador balanceado en `USD` | `postEntry` | `LEDGER_CURRENCY_MISMATCH`; el asiento sigue `DRAFT` y no hay registro de idempotencia |
+| L23 | 16 | Un libro `UYU` | `createEntryDraft` y `addEntryLine` con líneas `USD` | El borrador se crea y se edita sin error; el rechazo aparece recién al contabilizar |
+| L24 | 15 | Un libro en un código propio `ABC` con escala 2 y un borrador `ABC` con escala 4 | `postEntry` | `LEDGER_CURRENCY_MISMATCH`: el mismo código con otra escala es otra moneda, y por eso el libro guarda el par |
 
 ## Decisiones
 
@@ -166,12 +201,18 @@ Resueltas en esta spec, con el motivo:
 | Un solo puerto | `LedgerRepository` reemplaza a `LedgerDirectory` | `chartOfAccountsIdOf` ya era la lectura del libro; el repositorio lleva la misma información más nombre y estado. Dos puertos para el mismo dato obligarían al anfitrión a mantener dos implementaciones coherentes |
 | `setLedgerStatus` sin clave de idempotencia | Igual que `setAccountStatus` | Repetir el estado es no-op por construcción, así que no hay segundo efecto que evitar |
 | El core no valida que el plan exista | Sin comprobación | No hay entidad de plan de cuentas: es un identificador del anfitrión. Inventar una tabla de planes acá sería decidir por el anfitrión |
+| Moneda única por libro | El asiento en otra moneda funcional se rechaza al contabilizar | Es la opción A de Q08. Un libro con asientos en dos monedas necesita importe funcional, tasa y fecha de tasa por línea, más cuentas de diferencia de cambio: eso es otro incremento con decisiones fiscales propias, no un campo más |
+| Moneda funcional inmutable | No hay `changeLedgerCurrency` | La moneda funcional es la unidad de cuenta del libro: cambiarla invalida todo asiento ya contabilizado, y ningún reporte histórico seguiría significando lo mismo. Un libro con otra moneda es otro libro |
+| La guarda de moneda vive en la aplicación | `LEDGER_CURRENCY_MISMATCH` en `postEntry` y `reversePostedEntry` | La moneda del libro está en el `Ledger` y el asiento sólo conoce `ledgerId`; mover ese dato al agregado duplicaría la fuente o rompería el límite entre agregados |
+| La guarda no está en los borradores | Sólo al contabilizar | `createEntryDraft` ya declara que valida lo que hace coherente el borrador y que `postEntry` revalida todo. Validar la moneda antes habría invertido ese reparto y duplicado la regla |
+| Sin conversión | `Money` no gana tasas | El core no tiene fuente de tasas ni fecha de aplicación; elegir una por defecto produciría importes funcionales falsos que nadie detectaría. Q08 queda cerrada como moneda única |
+| Sin moneda por defecto | `currency` obligatoria | Una moneda supuesta es peor que un alta fallida: contabiliza en silencio en la unidad equivocada |
 
 Pendientes, con lo que bloquean:
 
 | ID | Tema | Impacto |
 | --- | --- | --- |
-| Q08 | Moneda funcional del libro | Hoy el libro no declara moneda. Si se agrega, entra como dato del `Ledger` y como regla de compatibilidad de asientos; bloquea contabilidad multimoneda, no este incremento |
+| Q08 | Moneda funcional y conversión | **Resuelta como moneda única por libro** en el incremento 006f. Queda abierta sólo la conversión: si algún día hace falta multimoneda operativa en un mismo libro, necesita tasa, fecha de tasa, importe funcional por línea y cuentas de diferencia de cambio |
 | Q11 | Numeración de asientos y su ámbito | La numeración podría ser por libro; no cambia el alta de libro |
 | — | Ejercicio contable por libro | Agrupar períodos en ejercicios necesita su propia spec; no bloquea el libro |
 | — | Consolidación entre libros | Fuera de fase; exigiría una relación entre libros que hoy no existe |
@@ -179,9 +220,19 @@ Pendientes, con lo que bloquean:
 ## Integración y consistencia
 
 - **Lo que cambia para el anfitrión:** implementa `LedgerRepository` (`findById`, `save`) sobre su tabla de
-  libros en lugar de `LedgerDirectory`. En base durable eso es una tabla con `id`, `name`, `chart_id` y
-  `status`, con clave primaria sobre `id`; la restricción es lo que cierra la ventana entre la consulta de
-  unicidad y la escritura.
+  libros en lugar de `LedgerDirectory`. En base durable eso es una tabla con `id`, `name`, `chart_id`,
+  `currency_code`, `currency_scale` y `status`, con clave primaria sobre `id`; la restricción es lo que cierra
+  la ventana entre la consulta de unicidad y la escritura.
+- **Migración de libros ya persistidos:** el alta exige moneda desde 006f, así que un anfitrión con libros
+  anteriores tiene que rellenarla antes de reutilizarlos. El core no puede hacerlo: no persiste (Q09) y no
+  tiene criterio para elegir la moneda de un libro ajeno. `currency_code` y `currency_scale` nacen como
+  columnas obligatorias una vez migrado el parque.
+- **Migración del registro de idempotencia:** la huella de `registerLedger` cambia en 006f, así que los
+  registros guardados por un alta anterior ya no coinciden con ninguna petición nueva. Un anfitrión que
+  reintente un alta vieja con su clave va a recibir `IDEMPOTENCY_CONFLICT`, no el resultado guardado. La
+  decisión es suya: descartar esos registros al migrar, o conservarlos aceptando que un reintento con la
+  misma clave falle y haya que usar otra. Lo que el core garantiza es que no devuelve un resultado sin moneda
+  declarada: el alta la exige antes de mirar el registro.
 - **Adaptador en memoria:** `MemoryMaps` gana `ledgers` y la copia de respaldo de la unidad de trabajo lo
   incluye automáticamente. `options.chartOfAccountsByLedger` se elimina; los arneses de prueba siembran los
   libros que necesitan con `registerLedger`, que es lo que hace un anfitrión real. Un libro inexistente deja de
@@ -200,13 +251,17 @@ Pendientes, con lo que bloquean:
   inmutabilidad) y `tests/application/ledger.test.mjs` para L01-L10, L12, L15 y L16.
 - L11 se cubre una prueba por área, no once: `tests/application/registration.test.mjs` para cuentas, diarios y
   períodos, y `tests/application/entry-draft.test.mjs` para asientos.
+- Las pruebas del alta nombran la moneda explícitamente en cada caso, incluido el rechazo, para que una
+  moneda por defecto no pueda volver a entrar sin que una prueba lo detecte.
 - L13 se cubre con la prueba de unicidad por plan que ya existe en `tests/application/registration.test.mjs`
   (R04), alimentada ahora por dos libros registrados en lugar de por configuración.
 - `tests/public-api.test.mjs` fija la superficie de trece métodos y el barrel `core/domain/ledger`, y falla si
   `Ledger` se filtra al paquete fuera de él.
+- L17-L21 en `tests/application/ledger.test.mjs`; L22 y L23 en `tests/application/post-entry.test.mjs` y
+  `tests/application/entry-draft.test.mjs`; la inmutabilidad de L21 se cubre además en el agregado.
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
 - Estado hoy: **implementado y verificado**. Existen `Ledger`, `LedgerRepository`, `registerLedger` y
   `setLedgerStatus`; la fachada expone trece métodos; `chartOfAccountsByLedger` ya no existe en el adaptador
-  en memoria y los libros se siembran registrándolos. Siguen fuera de alcance: moneda funcional del libro
-  (Q08), cambio de plan de un libro (sin operación), borrado (se desactiva) y verificación de que el plan
-  exista (Q07, a cargo del anfitrión).
+  en memoria y los libros se siembran registrándolos. Siguen fuera de alcance: conversión de moneda (Q08
+  abierta sólo en esa parte), cambio de plan de un libro (sin operación), borrado (se desactiva) y
+  verificación de que el plan exista (Q07, a cargo del anfitrión).
