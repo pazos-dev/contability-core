@@ -258,6 +258,8 @@ mixto de monedas.
   `use-cases/contracts.ts` pasó a `application/dto.ts` —era lo mismo con otro nombre— y `StoredOperation` salió
   de `ports/` a ese módulo, porque es un dato y no un contrato de comportamiento. La regla y su tabla están en
   `ARCHITECTURE.md`, sección «Nombres de módulos».
+- `ports/` era una carpeta con un solo `index.ts`; por la regla de empaquetado es `ports.ts`, y su README se
+  integró al de la capa. Los README de la capa y de `use-cases/` ya no usan «contratos» para nombrar datos.
 
 ### API pública
 
@@ -271,7 +273,7 @@ solo agrega esos barrels.
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
-- `core/application/index.ts`: `Accounting`, `ApplicationError` y los tipos de contrato y de puerto. Las
+- `core/application/index.ts`: `Accounting`, `ApplicationError` y los tipos de dato (`dto`) y de puerto. Las
   once clases de caso de uso (`RegisterAccount`, `SetAccountStatus`, `RegisterJournal`, `SetJournalStatus`,
   `RegisterPeriod`, `ClosePeriod`, `CreateEntryDraft`, `AddEntryLine`, `RemoveEntryLine`, `PostEntry`,
   `ReversePostedEntry`) viven en `use-cases/` como implementación interna y no se exportan.

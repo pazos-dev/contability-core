@@ -80,6 +80,7 @@ ese módulo: `ports/` queda sólo con interfaces de comportamiento. La regla y s
 | T7 | S11, S12 | ADR 0003, nota en ADR 0002, `ARCHITECTURE.md`, `DOMAIN.md`, las dos specs, `STATUS.md` y este documento | `docs(domain): record money as the shared kernel` |
 | T8 | S13, S14 | Renombrar `contracts.ts` a `dto.ts` y sacar `StoredOperation` de `ports/`; imports, barrels y `check:project` | `refactor(application): name the data module dto and empty ports of data` |
 | T9 | S14 | Regla de nombres en `ARCHITECTURE.md`, README de `use-cases/`, `STATUS.md` y este documento | `docs: state one name per kind across layers` |
+| T10 | S14 | `ports/` (carpeta con un solo `index.ts`) pasa a `ports.ts`; imports, `check:project` y su README integrado al de la capa | `refactor(application): make ports a single module` |
 
 ## Log
 
@@ -167,3 +168,10 @@ existía en cinco carpetas; renombrar un archivo es más barato y no compite con
 `application/dto.ts` queda en la raíz de la capa y no dentro de `use-cases/` porque también contiene
 `StoredOperation`, que el puerto de idempotencia necesita: dejarlo en `use-cases/` obligaría a que `ports/`
 importara de `use-cases/`, es decir, a invertir la dependencia entre las dos carpetas.
+
+L14. Continuación pedida: «psi has lo de ports contratc y dto». `ports/` era una carpeta cuyo único contenido
+era `index.ts`, contra la regla de empaquetado de S14 —módulo único cuando la capa concentra una sola pieza—,
+así que pasa a `ports.ts` y su README se integra al de la capa. De paso se barrieron las últimas menciones a
+«contratos» que nombraban datos y no el contrato con el anfitrión: `use-cases/README.md` y la tabla de API
+pública. Las menciones que quedan son correctas: `contract` significa en este proyecto el contrato con el
+anfitrión, que son los puertos y las specs.

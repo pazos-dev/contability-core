@@ -20,7 +20,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/period/` | Raíz: `accounting-period.ts` (agregado). `value-objects/accounting-date.ts`; `types/period-status.ts`; `errors/period-errors.ts`; `dto/accounting-period-dto.ts`. |
 | `src/core/domain/shared/` | Kernel compartido del dominio: `describe-value.ts` y `money/`. |
 | `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
-| `src/core/application/ports/` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
+| `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
 | `src/core/application/dto.ts` | Las 22 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
 | `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso, más `guards.ts` y `shared/`. Internos: la superficie es `Accounting`. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
@@ -66,7 +66,7 @@ sola.
 | Nombre | Contenido | Dónde |
 | --- | --- | --- |
 | `dto` | Formas de datos sin comportamiento: entradas y salidas, representaciones serializadas y el estado validado que recibe un constructor privado. | `domain/<contexto>/dto/`, `domain/shared/money/dto/`, `application/dto.ts` |
-| `ports` | Contratos de comportamiento que el anfitrión implementa: repositorios, unidad de trabajo, dependencias. | `application/ports/` |
+| `ports` | Contratos de comportamiento que el anfitrión implementa: repositorios, unidad de trabajo, dependencias. | `application/ports.ts` |
 | `errors` | La clase de error, sus códigos estables y sus fábricas. | `domain/<contexto>/errors/`, `application/errors.ts` |
 | `types` | Uniones cerradas de las que está hecho el modelo: estados, lado de contabilización, tipo de cuenta. | `domain/<contexto>/types/` |
 | `value-objects` | Valores inmutables con invariantes propias. | `domain/<contexto>/value-objects/` |
@@ -89,7 +89,7 @@ cambiar sin romper el contrato público.
 | `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
 | `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
 | `src/core/domain/entries/index.ts` | `JournalEntry`, `JournalEntryLine`, `EntryError`, `EntryStatus`, `PostingSide`, `JournalEntryInput`, `JournalEntryReversalInput`, `JournalEntryLineInput` y `EntryErrorCode`. |
-| `src/core/application/index.ts` | `Accounting`, `ApplicationError` y los tipos de contrato y de puerto. Las clases de caso de uso son internas. |
+| `src/core/application/index.ts` | `Accounting`, `ApplicationError` y los tipos de dato (`dto`) y de puerto. Las clases de caso de uso son internas. |
 | `src/adapters/memory/index.ts` | `createInMemoryAccounting` y sus tipos. |
 
 `src/index.ts` solo re-exporta esos barrels, nunca archivos internos, y un tipo interno no se publica
