@@ -1,4 +1,4 @@
-import { describeValue } from '../../describe-value.js';
+import { describeValue } from '../../shared/describe-value.js';
 import { invalidDate } from '../errors/period-errors.js';
 
 const DATE_PATTERN = /^(\d{4})-(\d{2})-(\d{2})$/;

@@ -1,4 +1,4 @@
-import { describeValue } from '../../describe-value.js';
+import { describeValue } from '../../shared/describe-value.js';
 import { invalidAccountCode } from '../errors/account-errors.js';
 
 /**

@@ -1,4 +1,4 @@
-import { describeValue } from '../describe-value.js';
+import { describeValue } from '../shared/describe-value.js';
 import type { JournalFields, JournalInput } from './dto/journal-dto.js';
 import { invalidJournal } from './errors/journal-errors.js';
 import type { JournalStatus } from './types/journal-status.js';

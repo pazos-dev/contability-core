@@ -12,9 +12,17 @@ const required = [
 const skills = ['accounting-spec', 'accounting-implement', 'accounting-review',
   'typescript-best-practices', 'nodejs-best-practices', 'clean-code-architecture'];
 for (const name of skills) required.push(`.agents/skills/${name}/SKILL.md`);
-for (const name of ['money', 'account', 'journal', 'entries', 'period']) {
+// The four bounded contexts: one folder per aggregate, each with its own spec.
+for (const name of ['account', 'journal', 'entries', 'period']) {
   required.push(`src/core/domain/${name}/README.md`, `src/core/domain/${name}/index.ts`, `docs/specs/${name}.md`);
 }
+// money is the shared kernel of the domain, not a bounded context: same barrel and spec, other place.
+required.push(
+  'src/core/domain/shared/README.md',
+  'src/core/domain/shared/money/README.md',
+  'src/core/domain/shared/money/index.ts',
+  'docs/specs/money.md',
+);
 for (const path of [
   'src/core/application/README.md',
   'src/core/application/index.ts',

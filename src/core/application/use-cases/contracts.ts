@@ -1,7 +1,7 @@
 import type { AccountStatus, AccountType } from '../../domain/account/index.js';
 import type { EntryStatus, PostingSide } from '../../domain/entries/index.js';
 import type { JournalStatus } from '../../domain/journal/index.js';
-import type { MoneyJSON } from '../../domain/money/index.js';
+import type { MoneyJSON } from '../../domain/shared/money/index.js';
 import type { PeriodStatus } from '../../domain/period/index.js';
 
 /**

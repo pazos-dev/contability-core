@@ -1,4 +1,4 @@
-// Regenerates src/core/domain/money/currency-catalog.ts from the official ISO 4217 list.
+// Regenerates src/core/domain/shared/money/currency-catalog.ts from the official ISO 4217 list.
 // Usage:
 //   pnpm sync:iso4217                        download the current list from SIX Group
 //   pnpm sync:iso4217 --input <file.xml>     use a previously downloaded copy
@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 
 const SOURCE_URL =
   'https://www.six-group.com/dam/download/financial-information/data-center/iso-currrency/lists/list-one.xml';
-const OUTPUT = fileURLToPath(new URL('../src/core/domain/money/currency-catalog.ts', import.meta.url));
+const OUTPUT = fileURLToPath(new URL('../src/core/domain/shared/money/currency-catalog.ts', import.meta.url));
 const NO_MINOR_UNIT = 'N.A.';
 const NO_UNIVERSAL_CURRENCY = 'No universal currency';
 const UNITS_PATTERN = /^(?:N\.A\.|[0-6])$/;
@@ -113,7 +113,7 @@ function render({ published, scales, withoutMinorUnit }, sha256) {
 // Only codes with a decimal minor unit carry a scale. Codes whose official minor unit is not a
 // decimal scale (precious metals, SDR, testing and other non-decimal codes) are kept apart so the
 // error can say why. The SHA-256 above is provenance, not a runtime check: the tripwire against an
-// unintended table change is tests/domain/money/currency-catalog.test.mjs (IC11), which pins the non-2 scales and
+// unintended table change is tests/domain/shared/money/currency-catalog.test.mjs (IC11), which pins the non-2 scales and
 // the codes without a decimal minor unit. Changing them requires updating that test deliberately.
 
 /** Publication date of the incorporated ISO 4217 list, as declared by its source. */

@@ -1,5 +1,5 @@
 import { JournalEntry, JournalEntryLine, type PostingSide } from '../../domain/entries/index.js';
-import { Money } from '../../domain/money/index.js';
+import { Money } from '../../domain/shared/money/index.js';
 import { AccountingDate } from '../../domain/period/index.js';
 import * as errors from '../errors.js';
 import type { ApplicationDeps, UnitOfWorkScope } from '../ports/index.js';

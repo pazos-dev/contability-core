@@ -1,4 +1,4 @@
-import { describeValue } from '../describe-value.js';
+import { describeValue } from '../shared/describe-value.js';
 import { AccountCode } from './value-objects/account-code.js';
 import { accountSelfParent, invalidAccount } from './errors/account-errors.js';
 import type { AccountStatus } from './types/account-status.js';

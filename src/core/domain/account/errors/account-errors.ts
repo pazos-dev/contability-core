@@ -1,4 +1,4 @@
-import { describeValue } from '../../describe-value.js';
+import { describeValue } from '../../shared/describe-value.js';
 
 /** Stable error codes of the account domain. */
 export type AccountErrorCode = 'INVALID_ACCOUNT' | 'INVALID_ACCOUNT_CODE' | 'ACCOUNT_SELF_PARENT';

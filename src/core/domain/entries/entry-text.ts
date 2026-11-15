@@ -1,4 +1,4 @@
-import { describeValue } from '../describe-value.js';
+import { describeValue } from '../shared/describe-value.js';
 import type { EntryError } from './errors/entry-errors.js';
 
 type Failure = (reason: string) => EntryError;

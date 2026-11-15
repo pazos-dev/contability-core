@@ -1,4 +1,4 @@
-import { describeValue } from '../describe-value.js';
+import { describeValue } from '../shared/describe-value.js';
 import { AccountingDate } from './value-objects/accounting-date.js';
 import type { AccountingPeriodFields, AccountingPeriodInput } from './dto/accounting-period-dto.js';
 import { invalidPeriod, periodAlreadyClosed } from './errors/period-errors.js';

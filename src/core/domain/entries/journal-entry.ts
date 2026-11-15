@@ -1,5 +1,5 @@
-import { describeValue } from '../describe-value.js';
-import type { Currency } from '../money/index.js';
+import { describeValue } from '../shared/describe-value.js';
+import type { Currency } from '../shared/money/index.js';
 import { AccountingDate } from '../period/index.js';
 import type {
   JournalEntryChanges,

@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 // Public surface of each folder that publishes a barrel.
 // Types are erased at runtime, so only value exports appear here.
 const barrels = {
-  'core/domain/money': [
+  'core/domain/shared/money': [
     'Currency',
     'Money',
     'MoneyError',

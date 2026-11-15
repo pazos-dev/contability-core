@@ -1,5 +1,5 @@
-import { describeValue } from '../../describe-value.js';
-import { Money } from '../../money/index.js';
+import { describeValue } from '../../shared/describe-value.js';
+import { Money } from '../../shared/money/index.js';
 import type { JournalEntryLineFields, JournalEntryLineInput } from '../dto/journal-entry-line-dto.js';
 import { invalidEntryLine } from '../errors/entry-errors.js';
 import { requireOptionalText, requireText } from '../entry-text.js';
