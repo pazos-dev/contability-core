@@ -22,8 +22,13 @@ API orientativa del agregado: createDraft, addLine, removeLine, post y createRev
 5. La transición a POSTED es irreversible dentro del agregado.
 
 `post()` solo protege invariantes locales. Aplicación comprueba cuentas activas y contabilizables,
-plan/libro, diario y período abierto, permisos externos y consistencia transaccional.
+plan/libro, diario y período abierto, moneda funcional del libro, permisos externos y consistencia transaccional.
 El identificador periodId no demuestra por sí solo que la fecha pertenezca al período.
+
+La moneda funcional es del libro, no del asiento. La invariante 3 es intra-agregado: todas las líneas comparten
+una moneda. Que esa moneda sea la del libro es una regla cruzada —el asiento conoce `ledgerId`, no el libro— y
+por eso vive en la aplicación (`docs/specs/ledger.md`, regla 15): contabilizar en otra moneda es
+`LEDGER_CURRENCY_MISMATCH`. Los borradores no se validan por moneda, igual que no se validan por balance.
 
 ## Reversión
 
@@ -48,5 +53,6 @@ y carreras. Reversiones parciales y cancelar una reversión necesitan otra espec
 | E09 | Crear borrador de reversión | Lados intercambiados, importes intactos y enlace al original. |
 | E10 | Consumidor altera snapshot/array de líneas | El agregado no cambia. |
 | E11 | Intentar volver a contabilizar POSTED | Error de estado; el caso de uso maneja reintentos idempotentes. |
+| E12 | Un borrador balanceado cuya moneda no es la funcional del libro | `post` rechaza con `LEDGER_CURRENCY_MISMATCH`; el asiento sigue DRAFT. |
 
 No implementar borrado de asientos contabilizados ni un flag mutable que los convierta en borradores.
