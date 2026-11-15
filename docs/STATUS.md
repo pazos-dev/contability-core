@@ -1,8 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 006f, la moneda funcional del
-libro (`docs/specs/ledger.md`, L17-L24; cierra Q08 como moneda única por libro); antes, 006e, el libro contable
-como agregado (`docs/specs/ledger.md`); antes, una carpeta por área en
+Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 008a, saldos por cuenta y
+balance de comprobación (`docs/specs/reports.md`), la primera superficie de **lectura** del módulo; antes, 006f,
+la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08 como moneda única por libro); antes,
+006e, el libro contable como agregado (`docs/specs/ledger.md`); antes, una carpeta por área en
 `use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
 antes, nombres de módulo unificados
 en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
@@ -270,6 +271,35 @@ Resuelve Q08 con la opción A: **una moneda funcional por libro**, sin conversi�
   `tests/domain/ledger/ledger.test.mjs`; L22 y L24 en `tests/application/post-entry.test.mjs`, incluida la vía
   de `reverse`; L23 en `tests/application/entry-draft.test.mjs`. El arnés `tests/application/seed.mjs` siembra
   los libros en `TEST_CURRENCY` (`UYU`/2) y acepta otra moneda como tercer argumento.
+
+### 008a-consultas — `docs/specs/reports.md`, AB01-AB05 y TB00-TB11
+
+Primera superficie de lectura: hasta acá los trece métodos de la fachada escribían y ninguno devolvía
+información de lo contabilizado.
+
+- Puerto nuevo `PostedEntriesQuery` en el alcance de la unidad de trabajo (`postedEntries`): devuelve asientos
+  `POSTED` con sus líneas, por rango de fecha y con cursor. Entrega líneas y **no** agregados: sumar es del
+  core, porque el cuadre y la moneda única son invariantes del motor (regla 15). `PostedMovementsQuery` no se
+  tocó: ampliar un puerto que el anfitrión ya implementa rompería su contrato.
+- `AccountRepository.findByChart(chartOfAccountsId)` **nueva y obligatoria**: sin enumerar un plan no se pueden
+  listar las cuentas con saldo cero. Va en el repositorio y no en un puerto aparte por la forma de la lectura
+  —sin rango ni paginación— y porque `Account` ya es dueña de `chartOfAccountsId`. Es un cambio de contrato
+  para el anfitrión (ítem 3), del mismo tipo que el campo obligatorio de 006f.
+- `Reports.accountBalances` devuelve las filas; `Reports.trialBalance`, las mismas filas más `totals` y
+  `balanced`. Comparten `reports/aggregate.ts`: drena las páginas del puerto y acumula por cuenta, así que la
+  memoria depende de la cantidad de cuentas, no de la cantidad de asientos.
+- Reglas cubiertas: sólo `POSTED`; una reversión es un asiento más y el original nunca se excluye; todo importe
+  en la moneda funcional del libro o el cálculo falla cerrado con `CURRENCY_MISMATCH` de dominio, sin capturas;
+  `from`/`to` inclusivos sobre `accountingDate`; rango vacío válido; **todas** las cuentas del plan, incluidas
+  las de saldo cero; orden por `code` como texto con desempate por `accountId`; **leer no exige libro activo**;
+  sin acumulación en cuentas de grupo; sin efectos ni idempotencia.
+- Un balance que no cuadra no es error: devuelve `totals` y `balanced: false`, porque encontrar la diferencia es
+  el uso principal del reporte.
+- Fachada: de trece a **quince** métodos. `tests/public-api.test.mjs` lo fija y además comprueba los tipos
+  nuevos contra `dist/core/application/index.d.ts`, porque los tipos se borran en runtime.
+- Pruebas: `tests/application/reports-balances.test.mjs`, una por criterio (17), escritas antes de implementar:
+  el rojo fue 17/17 por `app.accountBalances is not a function`. TB09 usa un `PostedEntriesQuery` de prueba que
+  miente, porque ningún camino legítimo puede devolver otra moneda.
 
 ### Contrato de la capa de aplicación — fachada `Accounting`
 
