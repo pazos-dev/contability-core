@@ -22,10 +22,16 @@ aislamiento entre instancias; las dependencias viajan por parámetro, siempre.
 contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`.
 
 `UnitOfWork` es la única puerta: los repositorios salen de su alcance, así que ningún caso de uso abre una
-conexión independiente. `LedgerRepository` es la única fuente de la relación libro-plan (Q07), y el libro es
-una entidad con estado y nombre desde el incremento 006e: un libro inactivo se rechaza con `LEDGER_INACTIVE`
-antes que cualquier otra regla, así que el primer paso de los once casos de uso existentes es el mismo.
-`PostedMovementsQuery` evita que el registro de cuentas dependa del dominio de asientos.
+conexión independiente. `LedgerRepository` es la única fuente de la relación libro-plan (Q07) y de la moneda
+funcional del libro (Q08), y el libro es una entidad con estado y nombre desde el incremento 006e: un libro
+inactivo se rechaza con `LEDGER_INACTIVE` antes que cualquier otra regla, así que el primer paso de los once
+casos de uso existentes es el mismo. `PostedMovementsQuery` evita que el registro de cuentas dependa del
+dominio de asientos.
+
+La moneda funcional es una regla cruzada y por eso vive acá: el asiento conoce `ledgerId`, no el libro. `post` y
+`reverse` —las dos vías que dejan un asiento en `POSTED`— llaman a `requireLedgerCurrency`, que compara la
+moneda de cada línea con la del libro y falla con `LEDGER_CURRENCY_MISMATCH`. Los borradores no la validan,
+igual que no validan el balance ni el período abierto.
 
 Dos contratos del puerto que se leen mal si no están dichos: `EntryRepository.findReversalsOf` devuelve
 **todas** las reversiones de un original, para que ninguna tape a otra por el orden de la persistencia, y

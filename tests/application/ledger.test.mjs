@@ -1,9 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { Accounting, ApplicationError, createInMemoryAccounting, LedgerError } from '../../dist/index.js';
+import { Accounting, ApplicationError, createInMemoryAccounting, LedgerError, MoneyError } from '../../dist/index.js';
 
-const ledgerInput = { ledgerId: 'ledger-1', name: 'Libro comercial', chartOfAccountsId: 'chart-1' };
+const ledgerInput = {
+  ledgerId: 'ledger-1',
+  name: 'Libro comercial',
+  chartOfAccountsId: 'chart-1',
+  currency: { code: 'UYU', scale: 2 },
+};
 
 function harness(options = {}) {
   const memory = createInMemoryAccounting(options);
@@ -39,6 +44,7 @@ test('L01: registering a ledger stores it active with its chart of accounts', as
     ledgerId: 'ledger-1',
     name: 'Libro comercial',
     chartOfAccountsId: 'chart-1',
+    currency: { code: 'UYU', scale: 2 },
     status: 'ACTIVE',
   });
 
@@ -46,6 +52,8 @@ test('L01: registering a ledger stores it active with its chart of accounts', as
   assert.equal(stored.id, 'ledger-1');
   assert.equal(stored.name, 'Libro comercial');
   assert.equal(stored.chartOfAccountsId, 'chart-1');
+  assert.equal(stored.currency.code, 'UYU');
+  assert.equal(stored.currency.scale, 2);
   assert.equal(stored.status, 'ACTIVE');
 });
 
@@ -146,9 +154,14 @@ test('L16: the result never exposes the accounts, journals, periods or entries o
   const { app } = harness();
   await app.registerLedger({ ...ledgerInput });
 
-  const result = await app.registerLedger({ ledgerId: 'ledger-2', name: 'Libro fiscal', chartOfAccountsId: 'chart-2' });
+  const result = await app.registerLedger({
+    ledgerId: 'ledger-2',
+    name: 'Libro fiscal',
+    chartOfAccountsId: 'chart-2',
+    currency: { code: 'USD', scale: 2 },
+  });
 
-  assert.deepEqual(Object.keys(result).sort(), ['chartOfAccountsId', 'ledgerId', 'name', 'status']);
+  assert.deepEqual(Object.keys(result).sort(), ['chartOfAccountsId', 'currency', 'ledgerId', 'name', 'status']);
 });
 
 test('an inherited property name is not a registered ledger', async () => {
@@ -227,4 +240,159 @@ test('L10: an unregistered ledger is reported as not found and nothing is writte
   );
 
   assert.deepEqual(storedLedgers(memory), []);
+});
+
+test('L17: the registration echoes the functional currency it stored', async () => {
+  const { memory, app } = harness();
+
+  const result = await app.registerLedger({ ...ledgerInput, currency: { code: 'ABC', scale: 4 } });
+
+  assert.deepEqual(result.currency, { code: 'ABC', scale: 4 });
+  assert.equal(storedLedgers(memory)[0].currency.code, 'ABC');
+  assert.equal(storedLedgers(memory)[0].currency.scale, 4);
+});
+
+test('L18: an invalid currency is rejected instead of reinterpreting the amount scale', async () => {
+  const { memory, app } = harness();
+
+  function assertMoneyCode(code) {
+    return (error) => {
+      assert.ok(error instanceof MoneyError, `expected MoneyError, got ${error?.name}`);
+      assert.equal(error.code, code);
+      return true;
+    };
+  }
+
+  await assert.rejects(
+    app.registerLedger({ ...ledgerInput, currency: { code: 'uyu', scale: 2 } }),
+    assertMoneyCode('INVALID_CURRENCY'),
+  );
+  await assert.rejects(
+    app.registerLedger({ ...ledgerInput, currency: { code: 'UYU', scale: 4 } }),
+    assertMoneyCode('INVALID_CURRENCY'),
+  );
+
+  assert.deepEqual(storedLedgers(memory), []);
+  assert.deepEqual(memory.snapshot().idempotency, []);
+});
+
+test('L19: a registration without a currency is rejected and writes nothing', async () => {
+  const { memory, app } = harness();
+  const { currency, ...withoutCurrency } = ledgerInput;
+
+  await assert.rejects(
+    app.registerLedger(withoutCurrency),
+    (error) => {
+      assert.ok(error instanceof MoneyError, `expected MoneyError, got ${error?.name}`);
+      assert.equal(error.code, 'INVALID_CURRENCY');
+      return true;
+    },
+  );
+
+  assert.deepEqual(storedLedgers(memory), []);
+});
+
+test('L20: the same key with another currency is a conflict, not a replay of the stored ledger', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput, idempotencyKey: 'alta-1' });
+
+  await assert.rejects(
+    app.registerLedger({ ...ledgerInput, currency: { code: 'USD', scale: 2 }, idempotencyKey: 'alta-1' }),
+    assertCode('IDEMPOTENCY_CONFLICT'),
+  );
+
+  assert.equal(storedLedgers(memory).length, 1);
+  assert.equal(storedLedgers(memory)[0].currency.code, 'UYU');
+  assert.equal(storedLedgers(memory)[0].currency.scale, 2);
+});
+
+test('L21: changing the status keeps the functional currency of the ledger', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput });
+
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'INACTIVE' });
+  assert.equal(storedLedgers(memory)[0].currency.code, 'UYU');
+
+  await app.setLedgerStatus({ ledgerId: 'ledger-1', status: 'ACTIVE' });
+  assert.equal(storedLedgers(memory)[0].currency.code, 'UYU');
+  assert.equal(storedLedgers(memory)[0].currency.scale, 2);
+});
+
+test('L18: a scale outside 0-6 or fractional is rejected like a malformed code', async () => {
+  const { memory, app } = harness();
+
+  function assertMoneyCode(code) {
+    return (error) => {
+      assert.ok(error instanceof MoneyError, `expected MoneyError, got ${error?.name}`);
+      assert.equal(error.code, code, error.message);
+      return true;
+    };
+  }
+
+  const invalid = [
+    { code: 'uyu', scale: 2 },
+    { code: 'UY', scale: 2 },
+    { code: '123', scale: 2 },
+    { code: 'UYU', scale: 4 },
+    { code: 'ABC', scale: 7 },
+    { code: 'ABC', scale: 2.5 },
+    { code: 'ABC', scale: -1 },
+    { code: 'ABC' },
+  ];
+
+  for (const currency of invalid) {
+    await assert.rejects(
+      app.registerLedger({ ...ledgerInput, currency }),
+      assertMoneyCode('INVALID_CURRENCY'),
+      JSON.stringify(currency),
+    );
+  }
+
+  assert.deepEqual(storedLedgers(memory), []);
+  assert.deepEqual(memory.snapshot().idempotency, []);
+});
+
+test('L19: a registration without a currency leaves no idempotency record', async () => {
+  const { memory, app } = harness();
+  const { currency, ...withoutCurrency } = ledgerInput;
+
+  await assert.rejects(
+    app.registerLedger({ ...withoutCurrency, idempotencyKey: 'alta-sin-moneda' }),
+    (error) => {
+      assert.ok(error instanceof MoneyError, `expected MoneyError, got ${error?.name}`);
+      assert.equal(error.code, 'INVALID_CURRENCY');
+      return true;
+    },
+  );
+
+  assert.deepEqual(storedLedgers(memory), []);
+  assert.deepEqual(memory.snapshot().idempotency, []);
+});
+
+test('rule 18: two ledgers may declare the same functional currency', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput });
+  await app.registerLedger({ ...ledgerInput, ledgerId: 'ledger-2', chartOfAccountsId: 'chart-2' });
+
+  assert.deepEqual(
+    storedLedgers(memory).map((ledger) => [ledger.currency.code, ledger.currency.scale]),
+    [
+      ['UYU', 2],
+      ['UYU', 2],
+    ],
+  );
+});
+
+test('the currency key order is not part of the request: a reordered pair replays instead of conflicting', async () => {
+  const { memory, app } = harness();
+  await app.registerLedger({ ...ledgerInput, currency: { code: 'UYU', scale: 2 }, idempotencyKey: 'alta-1' });
+
+  const replayed = await app.registerLedger({
+    ...ledgerInput,
+    currency: { scale: 2, code: 'UYU' },
+    idempotencyKey: 'alta-1',
+  });
+
+  assert.deepEqual(replayed.currency, { code: 'UYU', scale: 2 });
+  assert.equal(storedLedgers(memory).length, 1);
 });

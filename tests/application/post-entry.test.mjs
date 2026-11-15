@@ -13,7 +13,7 @@ import {
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
-import { saveEntry, seedLedgers } from './seed.mjs';
+import { saveEntry, seedLedgers, TEST_CURRENCY } from './seed.mjs';
 
 const LEDGERS = { 'ledger-1': 'chart-1', 'ledger-2': 'chart-2' };
 const uyu = Currency.create('UYU', 2);
@@ -62,12 +62,12 @@ function balancedDraft(overrides = {}) {
     .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT' }));
 }
 
-async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {
+async function harness({ ledgers = LEDGERS, currency = TEST_CURRENCY, ...memoryOptions } = {}) {
   const memory = createInMemoryAccounting(memoryOptions);
   const deps = { unitOfWork: memory.unitOfWork };
   const app = new Accounting(deps);
 
-  await seedLedgers(app, ledgers);
+  await seedLedgers(app, ledgers, currency);
 
   await app.registerAccount({
     ledgerId: 'ledger-1',
@@ -138,6 +138,118 @@ test('U02: an unknown ledger leaves the draft untouched and writes nothing', asy
 
   assert.equal(storedEntry(memory).status, 'DRAFT');
   assert.equal(memory.snapshot().idempotency.length, 0);
+});
+
+test('L22: posting in a currency other than the ledger functional one is rejected', async () => {
+  const { memory, app } = await harness();
+  const usd = Currency.create('USD', 2);
+
+  const draft = JournalEntry.createDraft({
+    id: 'entry-1',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-03-15'),
+    description: 'Cobro en dolares',
+  })
+    .addLine(line({ amount: Money.fromDecimal('1000.00', usd) }))
+    .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('1000.00', usd) }));
+  await saveEntry(memory, draft);
+
+  await assert.rejects(
+    app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
+    (error) => {
+      assert.ok(error instanceof ApplicationError, `expected ApplicationError, got ${error?.name}`);
+      assert.equal(error.code, 'LEDGER_CURRENCY_MISMATCH', error.message);
+      assert.equal(error.details.ledgerCurrency, 'UYU/2');
+      assert.equal(error.details.entryCurrency, 'USD/2');
+      return true;
+    },
+  );
+
+  assert.equal(storedEntry(memory).status, 'DRAFT');
+  assert.equal(memory.snapshot().idempotency.length, 0);
+});
+
+test('L24: the same code with another scale is another currency, not the ledger one', async () => {
+  const { memory, app } = await harness({ currency: { code: 'ABC', scale: 2 } });
+  assert.equal(memory.snapshot().ledgers[0].currency.scale, 2);
+
+  const abc4 = Currency.create('ABC', 4);
+  const draft = JournalEntry.createDraft({
+    id: 'entry-1',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-03-15'),
+    description: 'Moneda propia con otra escala',
+  })
+    .addLine(line({ amount: Money.fromDecimal('1000.0000', abc4) }))
+    .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('1000.0000', abc4) }));
+  await saveEntry(memory, draft);
+
+  await assert.rejects(
+    app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
+    (error) => {
+      assert.ok(error instanceof ApplicationError, `expected ApplicationError, got ${error?.name}`);
+      assert.equal(error.code, 'LEDGER_CURRENCY_MISMATCH', error.message);
+      assert.equal(error.details.ledgerCurrency, 'ABC/2');
+      assert.equal(error.details.entryCurrency, 'ABC/4');
+      return true;
+    },
+  );
+
+  assert.equal(storedEntry(memory).status, 'DRAFT');
+  assert.deepEqual(memory.snapshot().idempotency, []);
+});
+
+test("L22: a stored entry in another currency cannot be reversed either", async () => {
+  const { memory, app } = await harness();
+  const usd = Currency.create('USD', 2);
+  const usdLine = (overrides = {}) =>
+    JournalEntryLine.create({
+      id: 'line-1',
+      accountId: 'acc-cash',
+      side: 'DEBIT',
+      amount: Money.fromDecimal('1000.00', usd),
+      ...overrides,
+    });
+
+  const original = JournalEntry.createDraft({
+    id: 'entry-1',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-03-15'),
+    description: 'Otra moneda funcional',
+  })
+    .addLine(usdLine())
+    .addLine(usdLine({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT' }))
+    .post();
+  await saveEntry(memory, original);
+  const entryCount = memory.snapshot().entries.length;
+
+  await assert.rejects(
+    app.reversePostedEntry({
+      ledgerId: 'ledger-1',
+      originalEntryId: 'entry-1',
+      reversalEntryId: 'entry-rev',
+      periodId: 'per-2026',
+      accountingDate: '2026-03-16',
+      idempotencyKey: 'rev-1',
+    }),
+    (error) => {
+      assert.ok(error instanceof ApplicationError, `expected ApplicationError, got ${error?.name}`);
+      assert.equal(error.code, 'LEDGER_CURRENCY_MISMATCH', error.message);
+      assert.equal(error.details.ledgerCurrency, 'UYU/2');
+      assert.equal(error.details.entryCurrency, 'USD/2');
+      return true;
+    },
+  );
+
+  assert.equal(memory.snapshot().entries.length, entryCount);
+  assert.equal(storedEntry(memory).status, 'POSTED');
+  assert.deepEqual(memory.snapshot().idempotency, []);
 });
 
 test('U02: an unknown entry is not found', async () => {

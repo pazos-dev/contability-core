@@ -318,3 +318,32 @@ test('L11: an inactive ledger rejects creating a draft, and nothing is written',
   assert.equal(stored(memory).length, 0);
   assert.deepEqual(memory.snapshot().idempotency, []);
 });
+
+test('L23: a draft in another currency is accepted; only posting rejects it', async () => {
+  const { memory, app } = await harness();
+  const input = draftInput({
+    lines: [
+      { lineId: 'line-1', accountId: 'acc-cash', side: 'DEBIT', amount: amount('100000', 'USD') },
+      { lineId: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: amount('100000', 'USD') },
+    ],
+  });
+
+  const draft = await app.createEntryDraft(input);
+  assert.equal(draft.status, 'DRAFT');
+
+  const edited = await app.addEntryLine({
+    ledgerId: 'ledger-1',
+    entryId: 'entry-1',
+    line: { lineId: 'line-3', accountId: 'acc-cash', side: 'DEBIT', amount: amount('25000', 'USD') },
+  });
+  assert.equal(edited.status, 'DRAFT');
+
+  assert.equal(stored(memory)[0].status, 'DRAFT');
+  assert.equal(stored(memory)[0].lines.length, 3);
+
+  await assert.rejects(
+    app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' }),
+    assertCode('LEDGER_CURRENCY_MISMATCH'),
+  );
+  assert.equal(stored(memory)[0].status, 'DRAFT');
+});

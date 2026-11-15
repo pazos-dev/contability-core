@@ -14,6 +14,7 @@ import type {
 import {
   requireAccountOfPlan,
   requireActiveJournal,
+  requireActiveLedger,
   requireChartOfAccountsId,
   requireEntry,
   requireFreeEntryId,
@@ -24,7 +25,7 @@ import {
 } from '../shared/rules.js';
 import { fingerprintOf, Idempotency } from '../shared/index.js';
 import { draftResultOf, lineOf, normalizedLine, postedResultOf } from './result.js';
-import { requireNoPostedReversal, requireNoReversal } from './rules.js';
+import { requireLedgerCurrency, requireNoPostedReversal, requireNoReversal } from './rules.js';
 
 const CREATE_OPERATION = 'createEntryDraft';
 const ADD_OPERATION = 'addEntryLine';
@@ -146,9 +147,10 @@ export class Entries {
    * Posts a persisted draft.
    *
    * It owns every rule the aggregate cannot decide alone: the ledger resolves the chart of accounts the
-   * lines must belong to (Q07), and the journal, the period and the accounts must still admit the
-   * posting. The draft's `periodId` is authoritative, but it does not prove the accounting date falls
-   * inside that period, so the two are checked together (P05, A06, J05).
+   * lines must belong to (Q07) and the functional currency they must be denominated in (Q08), and the
+   * journal, the period and the accounts must still admit the posting. The draft's `periodId` is
+   * authoritative, but it does not prove the accounting date falls inside that period, so the two are
+   * checked together (P05, A06, J05).
    *
    * The entry is never edited here: it is loaded, posted in memory and saved once, together with the
    * idempotency record, inside one unit of work.
@@ -161,8 +163,10 @@ export class Entries {
       const idempotency = Idempotency.of(scope, POST_OPERATION, ledgerId);
 
       return idempotency.execute(idempotencyKey, fingerprint, async () => {
-        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        const ledger = await requireActiveLedger(scope, ledgerId);
+        const chartOfAccountsId = ledger.chartOfAccountsId;
         const entry = await requireEntry(scope, ledgerId, entryId);
+        requireLedgerCurrency(ledger, entry);
         await requireActiveJournal(scope, ledgerId, entry.journalId);
         await requireOpenPeriodContaining(scope, ledgerId, entry.periodId, entry.accountingDate);
         for (const line of entry.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
@@ -186,7 +190,9 @@ export class Entries {
    * before the write so persistence can back it with a unique constraint in 007.
    *
    * The destination period must be open even when the original period is already closed, and the accounts
-   * of the original must still admit postings: reversing is not a way around a deactivated account.
+   * of the original must still admit postings: reversing is not a way around a deactivated account. The
+   * reversal is denominated in the currency of the original, so it must still be the ledger's functional
+   * currency (Q08): the guard is here too because this path also leaves an entry in POSTED.
    */
   static async reverse(deps: ApplicationDeps, input: ReversePostedEntryInput): Promise<ReversePostedEntryResult> {
     const { ledgerId, originalEntryId, reversalEntryId, periodId, accountingDate, description, idempotencyKey } = input;
@@ -203,7 +209,8 @@ export class Entries {
       const idempotency = Idempotency.of(scope, REVERSE_OPERATION, ledgerId);
 
       return idempotency.execute(idempotencyKey, fingerprint, async () => {
-        const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
+        const ledger = await requireActiveLedger(scope, ledgerId);
+        const chartOfAccountsId = ledger.chartOfAccountsId;
         const original = await requireEntry(scope, ledgerId, originalEntryId);
 
         // The aggregate refuses to reverse anything that is not POSTED, with its own ENTRY_STATE code.
@@ -213,6 +220,7 @@ export class Entries {
           accountingDate: AccountingDate.create(accountingDate),
           ...(description === undefined ? {} : { description }),
         });
+        requireLedgerCurrency(ledger, draft);
 
         await requireActiveJournal(scope, ledgerId, original.journalId);
         await requireOpenPeriodContaining(scope, ledgerId, periodId, draft.accountingDate);

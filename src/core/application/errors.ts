@@ -2,11 +2,14 @@
  * Stable error codes of the application layer.
  * Domain errors bubble up unchanged; these codes only cover rules that cross entities.
  */
+import type { CurrencyJSON } from '../domain/shared/money/index.js';
+
 export type ApplicationErrorCode =
   | 'INVALID_APPLICATION_INPUT'
   | 'LEDGER_NOT_FOUND'
   | 'LEDGER_ALREADY_EXISTS'
   | 'LEDGER_INACTIVE'
+  | 'LEDGER_CURRENCY_MISMATCH'
   | 'ACCOUNT_NOT_FOUND'
   | 'ACCOUNT_ALREADY_EXISTS'
   | 'ACCOUNT_CODE_DUPLICATE'
@@ -64,6 +67,30 @@ export function ledgerAlreadyExists(ledgerId: string): ApplicationError {
 
 export function ledgerInactive(ledgerId: string): ApplicationError {
   return new ApplicationError('LEDGER_INACTIVE', `Ledger ${JSON.stringify(ledgerId)} is inactive.`, { ledgerId });
+}
+
+/**
+ * The entry is not denominated in the ledger's functional currency (Q08, one currency per ledger).
+ *
+ * Each currency travels as `code/scale`, for example `UYU/2`, because `ApplicationError.details` is a string
+ * map by contract and the scale is part of currency identity: a code alone could not tell a ledger kept in
+ * `ABC/2` from an entry denominated in `ABC/4`. The code cannot contain `/` (three uppercase letters), so the
+ * encoding is unambiguous.
+ */
+export function ledgerCurrencyMismatch(
+  ledgerId: string,
+  ledgerCurrency: CurrencyJSON,
+  entryCurrency: CurrencyJSON,
+): ApplicationError {
+  return new ApplicationError(
+    'LEDGER_CURRENCY_MISMATCH',
+    `Ledger ${JSON.stringify(ledgerId)} keeps its books in ${ledgerCurrency.code} with scale ${ledgerCurrency.scale}; the entry is denominated in ${entryCurrency.code} with scale ${entryCurrency.scale}.`,
+    {
+      ledgerId,
+      ledgerCurrency: `${ledgerCurrency.code}/${ledgerCurrency.scale}`,
+      entryCurrency: `${entryCurrency.code}/${entryCurrency.scale}`,
+    },
+  );
 }
 
 export function accountNotFound(accountId: string): ApplicationError {
