@@ -7,10 +7,11 @@ Todos corren dentro de `UnitOfWork`, no aceptan un plan de cuentas del llamador 
 generan identificadores. Especificación: `docs/specs/registration.md`. Consultar docs/ARCHITECTURE.md
 desde la raíz.
 
-El anfitrión habla con un solo objeto: `Accounting` (`accounting.ts`) expone un método por caso de uso y es
-la única pieza pública de esta capa. Por dentro, cada área es un archivo con sus clases (`use-cases/`), cada
-una con `execute(input)` y `ApplicationDeps`; la fachada las compone y sólo delega: no valida, no guarda
-estado y no traduce errores. Las clases y los ayudantes puros son internos y el barrel no los exporta.
+El anfitrión habla con un solo objeto: `Accounting` (`facade/accounting.ts`) expone un método por caso de uso y
+es la única pieza pública de esta capa. Por dentro, cada área es una carpeta con un archivo por caso de uso
+(`use-cases/`), cada uno con `execute(input)` y `ApplicationDeps`; la fachada las compone y sólo delega: no
+valida, no guarda estado y no traduce errores. Las clases y los ayudantes puros son internos y el barrel no los
+exporta.
 
 ## Puertos
 

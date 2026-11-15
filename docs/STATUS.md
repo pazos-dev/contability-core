@@ -172,7 +172,7 @@ mixto de monedas.
 
 ### 006c-application — `docs/specs/entry-draft.md`, D01-D13
 
-- `createEntryDraft` en `src/core/application/use-cases/entries.ts`: alta de un borrador con cabecera y
+- `createEntryDraft` en `src/core/application/use-cases/entries/create-entry-draft.ts`: alta de un borrador con cabecera y
   líneas en una sola unidad de trabajo.
 - Cierra el circuito. Hasta 006b, `postEntry` exigía un borrador persistido y **ninguna operación del core
   lo producía**; el hueco quedó registrado como decisión pendiente y ahora está resuelto.
@@ -188,7 +188,7 @@ mixto de monedas.
 
 ### 006d-application — `docs/specs/entry-draft-edit.md`, L01-L13
 
-- `addEntryLine` y `removeEntryLine` en `src/core/application/use-cases/entries.ts`: corrigen un borrador
+- `addEntryLine` y `removeEntryLine` en `use-cases/entries/add-entry-line.ts` y `entries/remove-entry-line.ts`: corrigen un borrador
   entregado al puerto sin borrarlo y sin que el anfitrión toque el repositorio de asientos.
 - Son cálculo puro sobre el agregado: `addLine` y `removeLine` ya existían y son los que deciden. Una
   edición no agrega ningún puerto ni toca el adaptador.
@@ -206,7 +206,7 @@ mixto de monedas.
 
 ### Contrato de la capa de aplicación — fachada `Accounting`
 
-- `Accounting` (`src/core/application/accounting.ts`) es la **única** superficie pública de la capa: un
+- `Accounting` (`src/core/application/facade/accounting.ts`) es la **única** superficie pública de la capa: un
   objeto con un método por caso de uso (`app.postEntry(input)`). El barrel exporta `Accounting` y
   `ApplicationError`, nada más; las once clases no salen del paquete.
 - Por dentro, cada caso de uso es una clase con `execute(input)` que recibe `ApplicationDeps` (sólo
@@ -260,6 +260,12 @@ mixto de monedas.
   `ARCHITECTURE.md`, sección «Nombres de módulos».
 - `ports/` era una carpeta con un solo `index.ts`; por la regla de empaquetado es `ports.ts`, y su README se
   integró al de la capa. Los README de la capa y de `use-cases/` ya no usan «contratos» para nombrar datos.
+- `Idempotency` es dueña del ciclo completo (`execute`), con `replay` y `remember` privados: olvidar el
+  `remember` ya no compila en silencio. El total de líneas no bajó —728 → 719 en los casos de uso y la clase
+  74 → 87—, porque el callback cuesta lo que el esqueleto ahorra; la ganancia es el invariante.
+- Los casos de uso son un archivo por caso en `use-cases/<área>/`, con el `rules.ts` de cada área y el
+  `result.ts` de `entries/`; la fachada vive en `facade/accounting.ts` y **conserva su nombre**, porque lo
+  confuso era la ubicación y no la palabra. 719 → 773 líneas: la navegabilidad se paga con cabeceras de import.
 
 ### API pública
 

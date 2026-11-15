@@ -22,7 +22,8 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
 | `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
 | `src/core/application/dto.ts` | Las 22 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
-| `src/core/application/use-cases/` | Un archivo por área (`accounts.ts`, `journals.ts`, `periods.ts`, `entries.ts`) con las clases de cada caso de uso, más `guards.ts` y `shared/`. Internos: la superficie es `Accounting`. |
+| `src/core/application/facade/` | La puerta de entrada: `accounting.ts` con la clase `Accounting`, única superficie pública de la capa. |
+| `src/core/application/use-cases/` | Una carpeta por área (`accounts/`, `journals/`, `periods/`, `entries/`) con un archivo por caso de uso, más el `rules.ts` de cada área y el `result.ts` de `entries/`; además `guards.ts` y `shared/`. Internos. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
 | `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |

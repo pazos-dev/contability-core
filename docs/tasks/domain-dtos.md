@@ -67,6 +67,17 @@ implementa. Por eso `use-cases/contracts.ts` pasa a `application/dto.ts`, y `Sto
 ese módulo: `ports/` queda sólo con interfaces de comportamiento. La regla y su tabla viven en
 `ARCHITECTURE.md`, sección «Nombres de módulos».
 
+S15. Requerimiento posterior, textual (parte de L15): «veo que en los casos de uso co.o registeracount y otros
+se repite el mismo pateon de validaciones casi siempre antes de pasar hacer lo qu3 deberia sinya tenemosnguard
+se puede pasar esa logica a un objeto o una clase estatica para no repetir tanto el cosigo ?». Se extrae el
+ciclo de idempotencia —`Idempotency.execute`, con `replay` y `remember` privados— y las secuencias de guardas
+quedan intactas, por las razones de L16.
+
+S16. Requerimiento posterior, textual (resto de L15): la puerta de entrada no debe confundirse con el dominio y
+`application` debe estar por carpetas como `domain`. Decisión: el nombre `Accounting` se conserva y la fachada
+pasa a `facade/accounting.ts`; los casos de uso van uno por archivo en `use-cases/<área>/`, con un `rules.ts`
+por área y un `result.ts` en `entries/`. Sin cambio de superficie pública.
+
 ## Tasks
 
 | ID | Spec | Tarea | Commit |
@@ -81,6 +92,9 @@ ese módulo: `ports/` queda sólo con interfaces de comportamiento. La regla y s
 | T8 | S13, S14 | Renombrar `contracts.ts` a `dto.ts` y sacar `StoredOperation` de `ports/`; imports, barrels y `check:project` | `refactor(application): name the data module dto and empty ports of data` |
 | T9 | S14 | Regla de nombres en `ARCHITECTURE.md`, README de `use-cases/`, `STATUS.md` y este documento | `docs: state one name per kind across layers` |
 | T10 | S14 | `ports/` (carpeta con un solo `index.ts`) pasa a `ports.ts`; imports, `check:project` y su README integrado al de la capa | `refactor(application): make ports a single module` |
+| T11 | S15 | `Idempotency.execute` con mitades privadas; 9 call sites | `refactor(application): make Idempotency own the whole cycle` |
+| T12 | S16 | Fachada a `facade/` y casos de uso uno por archivo en `use-cases/<área>/` | `refactor(application): one file per use case in area folders` |
+| T13 | S16 | Documentar la estructura nueva en `ARCHITECTURE.md`, los dos README de la capa y `STATUS.md` | `docs(application): document the per-use-case layout` |
 
 ## Log
 
@@ -175,3 +189,25 @@ así que pasa a `ports.ts` y su README se integra al de la capa. De paso se barr
 «contratos» que nombraban datos y no el contrato con el anfitrión: `use-cases/README.md` y la tabla de API
 pública. Las menciones que quedan son correctas: `contract` significa en este proyecto el contrato con el
 anfitrión, que son los puertos y las specs.
+
+L15. «te hago caso y no los centralizamos. vaos hacer un ultimo refactor ahora a palicacion te digo. primeor la
+puerta de entrada acounting debe de ser core o contability o aplication no acounting puede confundir. y ahora
+aplication deberia de estar por carpetas como domian pra tener una estructura pero antes de hacerlo veo que en
+los casos de uso co.o registeracount y otros se repite el mismo pateon de validaciones casi siempre antes de
+pasar hacer lo qu3 deberia sinya tenemosnguard se puede pasar esa logica a un objeto o una clase estatica para no
+repetir tanto el cosigo ?»
+
+L16. Diagnóstico de la repetición, medido: 11 casos de uso, 9 con idempotencia, y son **dos** repeticiones
+distintas. El esqueleto `of` → `replay` → salida temprana → `remember` se repetía 9 veces y su uso por mitades
+era un defecto silencioso: sin `remember` el reintento con la misma clave reejecuta la operación. La secuencia
+de guardas se repite en los 11 pero **difiere en cada uno**, su orden es contractual y cada guarda devuelve un
+valor que la siguiente consume, así que no se puede extraer sin perder el orden y los payloads; ya se había
+evaluado y descartado en `guards.ts`. Una clase estática se descartó además porque no puede llevar el `scope`
+de la unidad de trabajo y sería estado global encubierto.
+
+L17. Decisiones del usuario entre opciones: la puerta de entrada **conserva el nombre `Accounting`** y gana
+carpeta propia (`facade/`), porque `Core` no dice nada, `Application` choca con `ApplicationDeps`,
+`ApplicationError` y `ApplicationErrorCode`, y `Contability` no es palabra en ningún idioma; y los casos de uso
+van **uno por archivo** en carpetas por área, no sólo `entries/`. Las clases se extrajeron por rangos de línea,
+no se retipearon: el comportamiento dentro de cada clase es idéntico byte a byte. Lo que sí cambió es la
+visibilidad de los helpers compartidos, que ahora se exportan desde su módulo interno.
