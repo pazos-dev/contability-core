@@ -1,7 +1,7 @@
 # SPEC — Editar las líneas de un borrador
 
 Estado: lista para implementar (incremento 006d).
-Ruta: `src/core/application/use-cases/entries.ts`.
+Ruta: `src/core/application/use-cases/entries/entries.ts`.
 Depende de: `entries.md` (E06, E07), `entry-draft.md` (D01-D13) y el contrato general de `registration.md`.
 
 ## Objetivo

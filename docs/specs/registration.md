@@ -1,7 +1,8 @@
 # SPEC — Registro de cuentas, diarios y períodos
 
 Estado: lista para implementar (incremento 006a).
-Ruta: `src/core/application/use-cases/`.
+Ruta: `src/core/application/use-cases/accounts/`, `src/core/application/use-cases/journals/` y
+`src/core/application/use-cases/periods/`.
 Depende de: `account.md` (A04, A05, A07, A09), `journal.md` (J03), `period.md` (P07).
 Ver `docs/tasks/006-application.md` para el orden de entrega.
 

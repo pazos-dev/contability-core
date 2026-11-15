@@ -1,21 +1,25 @@
-import type { Account } from '../../domain/account/index.js';
-import type { JournalEntry } from '../../domain/entries/index.js';
-import type { Journal } from '../../domain/journal/index.js';
-import type { AccountingDate, AccountingPeriod } from '../../domain/period/index.js';
-import * as errors from '../errors.js';
-import type { UnitOfWorkScope } from '../ports.js';
+import type { Account } from '../../../domain/account/index.js';
+import type { JournalEntry } from '../../../domain/entries/index.js';
+import type { Journal } from '../../../domain/journal/index.js';
+import type { AccountingDate, AccountingPeriod } from '../../../domain/period/index.js';
+import * as errors from '../../errors.js';
+import type { UnitOfWorkScope } from '../../ports.js';
 
 /**
  * Preconditions shared by the use cases of this layer.
  *
- * Each guard either returns the value the next rule needs or throws the error of that rule, so a use case
- * reads like its specification: the guards appear in the order the spec numbers its rules, and that order is
- * part of the contract — with two invalid conditions at once, the lower-numbered rule wins.
+ * A rule lives in `use-cases/<area>/rules.ts` — the area that decides it — and moves here only when two or
+ * more areas invoke it. The name is the same in both places because the nature is the same: `rules`, like
+ * `dto` or `result`, never `guards` for one and `rules` for the other.
+ *
+ * Each rule either returns the value the next rule needs or throws the error of that rule, so a use case
+ * reads like its specification: the rules appear in the order the spec numbers them, and that order is part
+ * of the contract — with two invalid conditions at once, the lower-numbered rule wins.
  *
  * A declarative table of rules was considered and rejected. These rules are heterogeneous: some need a value
  * computed by an earlier rule, some await two reads, and each throws a different error with a different
  * payload. An array of predicates would hide the order and the payloads behind closures, and the lightest
- * thing that removes the repetition is one named guard per rule.
+ * thing that removes the repetition is one named function per rule.
  */
 
 /** The ledger resolves its chart of accounts (Q07). Absent ledger is `LEDGER_NOT_FOUND`. */
@@ -45,16 +49,43 @@ export async function requireFreeEntryId(
   if ((await scope.entries.findById(ledgerId, entryId)) !== undefined) throw errors.entryAlreadyExists(entryId);
 }
 
-/** The journal exists in this ledger and is active: deactivated journals reject postings (J05). */
-export async function requireActiveJournal(
+/**
+ * The journal exists in this ledger, whatever its status: a draft may point to a journal that is not active
+ * yet, and only posting requires the active one.
+ */
+export async function requireJournal(
   scope: UnitOfWorkScope,
   ledgerId: string,
   journalId: string,
 ): Promise<Journal> {
   const journal = await scope.journals.findById(ledgerId, journalId);
   if (journal === undefined) throw errors.journalNotFound(journalId);
+  return journal;
+}
+
+/** The journal exists in this ledger and is active: deactivated journals reject postings (J05). */
+export async function requireActiveJournal(
+  scope: UnitOfWorkScope,
+  ledgerId: string,
+  journalId: string,
+): Promise<Journal> {
+  const journal = await requireJournal(scope, ledgerId, journalId);
   if (journal.status !== 'ACTIVE') throw errors.journalInactive(journalId);
   return journal;
+}
+
+/**
+ * The period exists in this ledger, whatever its status: a draft may point to a period that is not open yet,
+ * and only posting requires the open one.
+ */
+export async function requirePeriod(
+  scope: UnitOfWorkScope,
+  ledgerId: string,
+  periodId: string,
+): Promise<AccountingPeriod> {
+  const period = await scope.periods.findById(ledgerId, periodId);
+  if (period === undefined) throw errors.periodNotFound(periodId);
+  return period;
 }
 
 /**
@@ -67,8 +98,7 @@ export async function requireOpenPeriodContaining(
   periodId: string,
   accountingDate: AccountingDate,
 ): Promise<AccountingPeriod> {
-  const period = await scope.periods.findById(ledgerId, periodId);
-  if (period === undefined) throw errors.periodNotFound(periodId);
+  const period = await requirePeriod(scope, ledgerId, periodId);
   if (period.status !== 'OPEN') throw errors.periodClosed(periodId);
   if (!period.contains(accountingDate)) throw errors.periodDateOutside(periodId, accountingDate.value);
   return period;

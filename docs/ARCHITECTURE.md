@@ -23,7 +23,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
 | `src/core/application/dto.ts` | Las 22 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
 | `src/core/application/facade/` | La puerta de entrada: `accounting.ts` con la clase `Accounting`, única superficie pública de la capa. |
-| `src/core/application/use-cases/` | Una clase por área (`accounts.ts`, `journals.ts`, `periods.ts`) con una operación estática por caso de uso; `entries/` como carpeta porque tiene tres piezas (`entries.ts`, `rules.ts`, `result.ts`); más `guards.ts` y `shared/`. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
+| `src/core/application/use-cases/` | Una carpeta por área con la clase de operaciones estáticas y su `rules.ts`: `accounts/`, `journals/`, `periods/`, `entries/` (esta suma `result.ts`); más `shared/` con las reglas que invocan dos o más áreas y la idempotencia. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
 | `src/composition/` | Ejemplo de consumo una vez que existan capacidades funcionales. |
 | `src/index.ts` | Agrega los barrels de dominio; no exporta archivos internos. |
@@ -62,7 +62,8 @@ que conservan la ubicación donde los escribe su generador (`shared/money/curren
 
 El mismo nombre se usa en todas las capas para la misma naturaleza, y el empaquetado sigue la convención de su
 capa: carpeta con un archivo por concepto cuando hay varias piezas, módulo único cuando la capa concentra una
-sola.
+sola. Los casos de uso son la excepción declarada: una carpeta por área aunque el área tenga una sola pieza,
+porque la carpeta agrupa la clase con las reglas que esa clase invoca y así las cuatro áreas se leen igual.
 
 | Nombre | Contenido | Dónde |
 | --- | --- | --- |
@@ -70,6 +71,7 @@ sola.
 | `ports` | Contratos de comportamiento que el anfitrión implementa: repositorios, unidad de trabajo, dependencias. | `application/ports.ts` |
 | `errors` | La clase de error, sus códigos estables y sus fábricas. | `domain/<contexto>/errors/`, `application/errors.ts` |
 | `types` | Uniones cerradas de las que está hecho el modelo: estados, lado de contabilización, tipo de cuenta. | `domain/<contexto>/types/` |
+| `rules` | Precondiciones con nombre: cada una devuelve el valor que necesita la regla siguiente o lanza el error de la suya. Vive en el área que la decide y sube a `shared/` sólo si dos o más la invocan. | `application/use-cases/<área>/rules.ts`, `application/use-cases/shared/rules.ts` |
 | `value-objects` | Valores inmutables con invariantes propias. | `domain/<contexto>/value-objects/` |
 | `shared` | Kernel compartido dentro de su capa. | `domain/shared/`, `application/use-cases/shared/` |
 

@@ -2,23 +2,16 @@ import type { JournalEntry } from '../../../domain/entries/index.js';
 import * as errors from '../../errors.js';
 import type { UnitOfWorkScope } from '../../ports.js';
 
-/** A draft may point to any journal of the ledger; it does not have to be active yet. */
-export async function requireJournalInLedger(
-  scope: UnitOfWorkScope,
-  ledgerId: string,
-  journalId: string,
-): Promise<void> {
-  if ((await scope.journals.findById(ledgerId, journalId)) === undefined) throw errors.journalNotFound(journalId);
-}
-
-/** A draft may point to any period of the ledger; it does not have to be open yet. */
-export async function requirePeriodInLedger(
-  scope: UnitOfWorkScope,
-  ledgerId: string,
-  periodId: string,
-): Promise<void> {
-  if ((await scope.periods.findById(ledgerId, periodId)) === undefined) throw errors.periodNotFound(periodId);
-}
+/**
+ * Preconditions of the entries area.
+ *
+ * They live next to the operations that invoke them, not in `shared/`: a rule belongs to the area that
+ * decides it, and only the rules two or more areas invoke are shared. Each one either returns the value
+ * the next rule needs or throws the error of that rule.
+ *
+ * Journal and period existence are not here: drafts and other areas both need them, so they live in
+ * `../shared/rules.ts` as `requireJournal` and `requirePeriod`.
+ */
 
 /**
  * Posting a stored reversal draft cannot create a second *posted* reversal of the same original. Every
@@ -51,4 +44,3 @@ export async function requireNoReversal(
     throw errors.entryAlreadyReversed(originalEntryId);
   }
 }
-

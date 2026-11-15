@@ -12,29 +12,37 @@ fachada es la única que las ata una vez. Las entradas y salidas serializables n
 
 | Ruta | Responsabilidad |
 | --- | --- |
-| `accounts.ts` | `Accounts.register`, `Accounts.setStatus`, más las reglas propias del área: código único por plan (A05) y reglas del padre (A04, A06) |
-| `journals.ts` | `Journals.register`, `Journals.setStatus` |
-| `periods.ts` | `Periods.register`, `Periods.close` |
-| `entries.ts` | `Entries.createDraft`, `Entries.addLine`, `Entries.removeLine`, `Entries.post`, `Entries.reverse` |
+| `accounts/accounts.ts` | `Accounts.register`, `Accounts.setStatus` |
+| `accounts/rules.ts` | Precondiciones del área: id libre, código único por plan (A05) y reglas del padre (A04, A06) |
+| `journals/journals.ts` | `Journals.register`, `Journals.setStatus` |
+| `journals/rules.ts` | Precondiciones del área: id libre y código único por diario (J03) |
+| `periods/periods.ts` | `Periods.register`, `Periods.close` |
+| `periods/rules.ts` | Precondiciones del área: id libre y ningún día compartido entre períodos (P07) |
 | `entries/entries.ts` | `Entries.createDraft`, `Entries.addLine`, `Entries.removeLine`, `Entries.post`, `Entries.reverse` |
-| `entries/rules.ts` | Precondiciones propias del área: diario y período del borrador, reversión previa |
+| `entries/rules.ts` | Precondiciones del área: reversión previa, en cualquier estado (al revertir) o ya contabilizada (al contabilizar) |
 | `entries/result.ts` | Serialización de líneas, borradores y asientos; `lineOf` y `normalizedLine` |
 | `../dto.ts` | Las 22 entradas/salidas serializables de la capa. No vive en esta carpeta: son datos, no casos de uso |
-| `guards.ts` | Precondiciones compartidas por dos o más áreas: libro, asiento, id libre, diario activo, período abierto que contiene la fecha, cuenta del plan y cuenta contabilizable |
-| `shared/` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
+| `shared/rules.ts` | Precondiciones compartidas por dos o más áreas: libro, asiento, id libre de asiento, diario, período, cuenta del plan y cuenta contabilizable |
+| `shared/idempotency.ts` | Idempotencia (`fingerprintOf`, `Idempotency`). No es API pública |
 
 El nombre de la clase da el sustantivo y el método el verbo: `Entries.post(deps, input)` se lee mejor que
 `Entries.postEntry(deps, input)` y que el antiguo `PostEntry.execute(input)`.
 
-`entries/` es carpeta porque tiene tres piezas; las otras tres áreas tienen una sola y quedan como archivo. Es
-la regla de empaquetado aplicada sin excepciones: la carpeta aparece cuando agrupa algo, no para decorar. Por eso
-los módulos de apoyo se llaman `rules` y `result` —naturaleza, como `dto` o `errors`— y no `entries-rules`.
+`entries/` no es la excepción: **cada área tiene su carpeta** con la clase de operaciones y su `rules.ts`. La
+carpeta no decora nada —agrupa la clase y las precondiciones que esa clase invoca— y es la misma forma en las
+cuatro áreas, así que no hay que recordar cuál quedó como archivo y cuál como carpeta.
+
+Una regla vive al lado de las operaciones que la invocan, en `<área>/rules.ts`, porque es el área la que la
+decide. Sube a `shared/rules.ts` sólo cuando dos o más áreas la invocan: ahí están el libro y su plan, la
+existencia de asiento, diario y período, y las condiciones de la cuenta. Por eso no hay un `guards` para lo
+compartido y un `rules` para lo local: es la misma naturaleza y lleva el mismo nombre. Igual que `result` o
+`dto`, el nombre dice qué es la pieza, no de dónde cuelga.
 
 **Prohibido un campo estático en estas cuatro clases.** Un `static #deps` convertiría el diseño en estado global
 mutable: dos mundos aislados en el mismo proceso se pisarían y los tests pasarían a depender del orden. Las
 dependencias viajan por parámetro, siempre.
 
-Por qué las guardas: un caso de uso se lee como su especificación. Cada `requireX` devuelve el valor que
+Por qué las reglas: un caso de uso se lee como su especificación. Cada `requireX` devuelve el valor que
 necesita la regla siguiente o lanza el error de esa regla, y el orden en que se invocan es el orden numerado
 de la spec — con dos condiciones inválidas a la vez gana la de menor número. Eso reemplaza las cadenas de
 `if` repetidas sin esconder el orden.

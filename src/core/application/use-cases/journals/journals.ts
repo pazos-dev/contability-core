@@ -1,14 +1,15 @@
-import { Journal } from '../../domain/journal/index.js';
-import * as errors from '../errors.js';
-import type { ApplicationDeps } from '../ports.js';
+import { Journal } from '../../../domain/journal/index.js';
+import * as errors from '../../errors.js';
+import type { ApplicationDeps } from '../../ports.js';
 import type {
   RegisterJournalInput,
   RegisterJournalResult,
   SetJournalStatusInput,
   SetJournalStatusResult,
-} from '../dto.js';
-import { requireChartOfAccountsId } from './guards.js';
-import { fingerprintOf, Idempotency } from './shared/index.js';
+} from '../../dto.js';
+import { requireChartOfAccountsId, requireJournal } from '../shared/rules.js';
+import { fingerprintOf, Idempotency } from '../shared/index.js';
+import { requireFreeJournalCode, requireFreeJournalId } from './rules.js';
 
 const REGISTER_OPERATION = 'registerJournal';
 
@@ -27,14 +28,8 @@ export class Journals {
 
       return idempotency.execute(idempotencyKey, fingerprint, async () => {
         await requireChartOfAccountsId(scope, ledgerId);
-
-        if ((await scope.journals.findById(ledgerId, journalId)) !== undefined) {
-          throw errors.journalAlreadyExists(journalId);
-        }
-
-        if ((await scope.journals.findByCode(ledgerId, code)) !== undefined) {
-          throw errors.journalCodeDuplicate(ledgerId, code);
-        }
+        await requireFreeJournalId(scope, ledgerId, journalId);
+        await requireFreeJournalCode(scope, ledgerId, code);
 
         const journal = Journal.create({ id: journalId, ledgerId, code, name });
         const result: RegisterJournalResult = {
@@ -62,8 +57,7 @@ export class Journals {
     return deps.unitOfWork.run(async (scope) => {
       await requireChartOfAccountsId(scope, ledgerId);
 
-      const journal = await scope.journals.findById(ledgerId, journalId);
-      if (journal === undefined) throw errors.journalNotFound(journalId);
+      const journal = await requireJournal(scope, ledgerId, journalId);
 
       const next = status === 'INACTIVE' ? journal.deactivate() : journal.activate();
       await scope.journals.save(next);

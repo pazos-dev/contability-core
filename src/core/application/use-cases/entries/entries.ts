@@ -17,17 +17,14 @@ import {
   requireChartOfAccountsId,
   requireEntry,
   requireFreeEntryId,
+  requireJournal,
   requireOpenPeriodContaining,
+  requirePeriod,
   requirePostableAccount,
-} from '../guards.js';
+} from '../shared/rules.js';
 import { fingerprintOf, Idempotency } from '../shared/index.js';
 import { draftResultOf, lineOf, normalizedLine, postedResultOf } from './result.js';
-import {
-  requireJournalInLedger,
-  requireNoPostedReversal,
-  requireNoReversal,
-  requirePeriodInLedger,
-} from './rules.js';
+import { requireNoPostedReversal, requireNoReversal } from './rules.js';
 
 const CREATE_OPERATION = 'createEntryDraft';
 const ADD_OPERATION = 'addEntryLine';
@@ -63,8 +60,8 @@ export class Entries {
       return idempotency.execute(idempotencyKey, fingerprint, async () => {
         const chartOfAccountsId = await requireChartOfAccountsId(scope, ledgerId);
         await requireFreeEntryId(scope, ledgerId, entryId);
-        await requireJournalInLedger(scope, ledgerId, journalId);
-        await requirePeriodInLedger(scope, ledgerId, periodId);
+        await requireJournal(scope, ledgerId, journalId);
+        await requirePeriod(scope, ledgerId, periodId);
         for (const line of lines) await requireAccountOfPlan(scope, line.accountId, chartOfAccountsId);
 
         const draft = lines.reduce(

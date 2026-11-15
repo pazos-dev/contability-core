@@ -1,7 +1,7 @@
 # SPEC — Revertir un asiento contabilizado
 
 Estado: lista para implementar (incremento 006b).
-Ruta: `src/core/application/use-cases/`.
+Ruta: `src/core/application/use-cases/entries/`.
 Depende de: `entries.md` (E09), `post-entry.md` (invariantes de contabilización reutilizadas).
 Contrato general de casos de uso y puertos: `registration.md`.
 

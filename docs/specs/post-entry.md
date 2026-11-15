@@ -2,7 +2,7 @@
 
 Estado: implementada (incremento 006b). U03b, U06 y U07 no son de este repositorio: son contrato del
 anfitrión (ver `../INTEGRATION.md`, frontera core/anfitrión).
-Ruta: `src/core/application/use-cases/`.
+Ruta: `src/core/application/use-cases/entries/`.
 Depende de: `entries.md` (E01-E11), `account.md` (A06), `journal.md` (J05), `period.md` (P05).
 Contrato general de casos de uso, puertos y errores: `registration.md`, que fija las convenciones que
 este documento no repite.

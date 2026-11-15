@@ -1,6 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-14. Entrega: preparación 2.0. Último incremento verificado: nombres de módulo unificados
+Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: una carpeta por área en
+`use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
+antes, nombres de módulo unificados
 en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
 `domain/shared/money/` (ADR 0003), el DTO por dominio y las pruebas en espejo de `src/`, el refactor de la
 idempotencia (`Idempotency`), el contrato de clases y la fachada `Accounting`, 006d-application (edición de las
@@ -271,6 +273,20 @@ mixto de monedas.
   del mundo compartido vive en `Accounting`, que sigue instanciable y con `#deps` privado. **940 → 759 líneas
   (−19%) y 15 → 7 archivos.** Esto revierte en parte el split anterior, que es el precio de comparar en serio.
   Un campo estático en esas clases queda prohibido y escrito: sería estado global mutable.
+- Una carpeta por área en `use-cases/` —`accounts/`, `journals/`, `periods/`, `entries/`—, cada una con la
+  clase de operaciones y su propio `rules.ts`. `entries/` dejó de ser la excepción: la carpeta agrupa la clase
+  y las reglas que esa clase invoca, y las cuatro áreas se leen igual.
+- Las precondiciones tienen un solo nombre: `guards` y `rules` describían la misma naturaleza, así que el
+  antiguo `guards.ts` es `shared/rules.ts`. Una regla vive en el área que la decide y sube a `shared/` sólo
+  cuando dos o más áreas la invocan.
+- `requireJournalInLedger` y `requirePeriodInLedger` de `entries/rules.ts` eran las mismas reglas que
+  `Journals.setStatus` y `Periods.close` ya repetían en línea: ahora son `requireJournal` y `requirePeriod`
+  compartidas, y `requireActiveJournal` y `requireOpenPeriodContaining` se apoyan en ellas en vez de releer.
+  Las demás reglas locales —id libre y código único por plan y por diario, solapamiento de períodos— salieron de
+  las clases a su `rules.ts`, así que la clase quedó sólo con el caso de uso.
+- **856 → 936 líneas y 9 → 11 archivos**, casi todo cabeceras de módulo y la deduplicación de los dos
+  `require` repetidos. Sin cambio de comportamiento ni de orden de reglas: 217 pruebas y `pnpm check` en verde,
+  sin una expectativa editada, más `scripts/check-project.mjs` al día con las rutas nuevas.
 
 ### API pública
 

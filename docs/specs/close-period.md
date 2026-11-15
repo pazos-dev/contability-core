@@ -1,7 +1,7 @@
 # SPEC — Cerrar un período
 
 Estado: implementada (incremento 006b). C05 y P08 son contrato del anfitrión (ver `../INTEGRATION.md`).
-Ruta: `src/core/application/use-cases/`.
+Ruta: `src/core/application/use-cases/periods/`.
 Depende de: `period.md` (P06, P08). Contrato general de casos de uso y puertos: `registration.md`.
 
 ## Objetivo

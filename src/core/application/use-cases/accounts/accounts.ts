@@ -1,14 +1,15 @@
-import { Account } from '../../domain/account/index.js';
-import * as errors from '../errors.js';
-import type { ApplicationDeps, UnitOfWorkScope } from '../ports.js';
+import { Account } from '../../../domain/account/index.js';
+import * as errors from '../../errors.js';
+import type { ApplicationDeps } from '../../ports.js';
 import type {
   RegisterAccountInput,
   RegisterAccountResult,
   SetAccountStatusInput,
   SetAccountStatusResult,
-} from '../dto.js';
-import { requireAccountOfPlan, requireChartOfAccountsId } from './guards.js';
-import { fingerprintOf, Idempotency } from './shared/index.js';
+} from '../../dto.js';
+import { requireAccountOfPlan, requireChartOfAccountsId } from '../shared/rules.js';
+import { fingerprintOf, Idempotency } from '../shared/index.js';
+import { requireFreeAccountCode, requireFreeAccountId, requireGroupingParent } from './rules.js';
 
 const REGISTER_OPERATION = 'registerAccount';
 
@@ -82,34 +83,4 @@ export class Accounts {
       return { ledgerId, accountId: next.id, status: next.status };
     });
   }
-}
-
-/** An id already taken is rejected: registering never overwrites a stored account. */
-async function requireFreeAccountId(scope: UnitOfWorkScope, accountId: string): Promise<void> {
-  if ((await scope.accounts.findById(accountId)) !== undefined) throw errors.accountAlreadyExists(accountId);
-}
-
-/** Code uniqueness is scoped by chart of accounts (A05): the same code in another plan is another account. */
-async function requireFreeAccountCode(
-  scope: UnitOfWorkScope,
-  chartOfAccountsId: string,
-  code: string,
-): Promise<void> {
-  if ((await scope.accounts.findByCode(chartOfAccountsId, code)) !== undefined) {
-    throw errors.accountCodeDuplicate(chartOfAccountsId, code);
-  }
-}
-
-async function requireGroupingParent(
-  scope: UnitOfWorkScope,
-  parentId: string,
-  chartOfAccountsId: string,
-): Promise<void> {
-  const parent = await requireAccountOfPlan(scope, parentId, chartOfAccountsId);
-
-  // Order matters. A postable account is rejected as a parent before the movements query runs, and only a
-  // postable account can receive postings, so ACCOUNT_HAS_MOVEMENTS cannot fire through this API: it is a
-  // defence-in-depth guard against a store where a grouping account already carries posted lines.
-  if (parent.postingAllowed) throw errors.accountParentNotGrouping(parentId);
-  if (await scope.postedMovements.hasPostedLines(parentId)) throw errors.accountHasMovements(parentId);
 }

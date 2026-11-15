@@ -21,10 +21,10 @@ import type {
   SetJournalStatusInput,
   SetJournalStatusResult,
 } from '../dto.js';
-import { Accounts } from '../use-cases/accounts.js';
+import { Accounts } from '../use-cases/accounts/accounts.js';
 import { Entries } from '../use-cases/entries/entries.js';
-import { Journals } from '../use-cases/journals.js';
-import { Periods } from '../use-cases/periods.js';
+import { Journals } from '../use-cases/journals/journals.js';
+import { Periods } from '../use-cases/periods/periods.js';
 
 /**
  * Every use case of the module behind one object: the only public entry point of this layer.
