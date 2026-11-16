@@ -636,7 +636,7 @@ test('report rule 3: a line in another currency fails closed with CURRENCY_MISMA
     .addLine(
       JournalEntryLine.create({ id: 'l2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('10.00', usd) }),
     )
-    .post();
+    .post(1);
 
   const { memory, app } = await harness({
     chart: [CASH, REVENUE],
@@ -811,7 +811,7 @@ test('GL10: a port that returns a draft and an entry of another ledger is discar
         amount: Money.fromDecimal('3000.00', uyu),
       }),
     )
-    .post();
+    .post(1);
 
   const { memory, app } = await harness({
     chart: { 'ledger-1': [CASH, REVENUE], 'ledger-2': [BANK] },

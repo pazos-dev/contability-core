@@ -58,6 +58,12 @@ export function sumSide(lines: readonly JournalEntryLine[], side: PostingSide): 
 
 /** Serializes a posted entry for the host: domain values never leave the module raw. */
 export function postedResultOf(entry: JournalEntry): PostEntryResult {
+  // Only a posted entry reaches here, and the aggregate refuses to build one without a number, so an
+  // absent number is an invariant violation, not a user-facing condition.
+  const number = entry.number;
+  if (number === undefined) {
+    throw new Error('Invariant violated: a posted entry must have a number.');
+  }
   return {
     ledgerId: entry.ledgerId,
     entryId: entry.id,
@@ -65,6 +71,7 @@ export function postedResultOf(entry: JournalEntry): PostEntryResult {
     periodId: entry.periodId,
     // `post()` is the only path here, so the status is POSTED by construction.
     status: 'POSTED',
+    number,
     accountingDate: entry.accountingDate.value,
     lines: entry.lines.map(serializeLine),
     totalDebit: sumSide(entry.lines, 'DEBIT').toJSON(),
@@ -75,6 +82,7 @@ export function postedResultOf(entry: JournalEntry): PostEntryResult {
 /**
  * Serializes a draft. The status is always DRAFT here: every draft operation starts from a draft and the
  * aggregate refuses to change a posted entry, so no other status can reach this function.
+ * A draft has no number and will not get one: the number is assigned when the entry is posted (spec rule 1).
  */
 export function draftResultOf(entry: JournalEntry): EntryDraftResult {
   return {
@@ -83,6 +91,7 @@ export function draftResultOf(entry: JournalEntry): EntryDraftResult {
     journalId: entry.journalId,
     periodId: entry.periodId,
     status: 'DRAFT',
+    number: null,
     accountingDate: entry.accountingDate.value,
     description: entry.description,
     lines: entry.lines.map(serializeLine),

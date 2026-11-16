@@ -2,6 +2,7 @@ import type { Account } from '../../core/domain/account/index.js';
 import type { JournalEntry } from '../../core/domain/entries/index.js';
 import type {
   AccountRepository,
+  EntryNumberSequence,
   EntryRepository,
   IdempotencyRegistry,
   JournalRepository,
@@ -123,6 +124,20 @@ export function createPorts(store: StoreHolder) {
     },
   };
 
+  /**
+   * Hands out the next number of a ledger: one more than the last one given. It is not "the highest number
+   * stored" on purpose — a stored entry cannot be read back here without walking the map, and a counter is
+   * what a host would keep. Gaps are allowed; repeats are not, and the durable adapter closes that with a
+   * unique constraint.
+   */
+  const entryNumbers: EntryNumberSequence = {
+    async nextNumber(ledgerId) {
+      const next = (store.maps.entryNumbers.get(ledgerId) ?? 0) + 1;
+      store.maps.entryNumbers.set(ledgerId, next);
+      return next;
+    },
+  };
+
   const postedMovements: PostedMovementsQuery = {
     async hasPostedLines(accountId) {
       for (const entry of store.maps.entries.values()) {
@@ -172,7 +187,7 @@ export function createPorts(store: StoreHolder) {
     },
   };
 
-  return { ledgers, accounts, journals, periods, entries, idempotency, postedMovements, postedEntries };
+  return { ledgers, accounts, journals, periods, entries, idempotency, entryNumbers, postedMovements, postedEntries };
 }
 
 /** A cursor this adapter did not produce starts at the beginning instead of throwing at the caller. */

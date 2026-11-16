@@ -172,7 +172,9 @@ export class Entries {
         for (const line of entry.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
         await requireNoPostedReversal(scope, ledgerId, entry);
 
-        const posted = entry.post();
+        // Asked as late as possible, in the same step as the write, so a rejected request never consumes a
+        // number; a number that is asked and not saved leaves a gap, and gaps are allowed (spec rules 7, 8).
+        const posted = entry.post(await scope.entryNumbers.nextNumber(ledgerId));
         const result = postedResultOf(posted);
 
         await scope.entries.save(posted);
@@ -228,7 +230,9 @@ export class Entries {
         await requireFreeEntryId(scope, ledgerId, reversalEntryId);
         await requireNoReversal(scope, ledgerId, originalEntryId);
 
-        const posted = draft.post();
+        // Asked as late as possible, in the same step as the write, so a rejected request never consumes a
+        // number; a number that is asked and not saved leaves a gap, and gaps are allowed (spec rules 7, 8).
+        const posted = draft.post(await scope.entryNumbers.nextNumber(ledgerId));
         const result: ReversePostedEntryResult = { ...postedResultOf(posted), reversalOfEntryId: originalEntryId };
 
         await scope.entries.save(posted);

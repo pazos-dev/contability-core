@@ -469,7 +469,7 @@ test('TB09: a line in another currency fails closed with CURRENCY_MISMATCH and r
   })
     .addLine(JournalEntryLine.create({ id: 'l1', accountId: 'acc-cash', side: 'DEBIT', amount: Money.fromDecimal('10.00', usd) }))
     .addLine(JournalEntryLine.create({ id: 'l2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('10.00', usd) }))
-    .post();
+    .post(1);
 
   const { memory, app } = await harness({
     memoryOptions: {
@@ -571,7 +571,7 @@ test('S7: a trial balance that does not agree reports the totals and balanced fa
         amount: Money.fromDecimal('100.00', uyu),
       }),
     )
-    .post();
+    .post(1);
 
   const { memory, app } = await harness({
     memoryOptions: {

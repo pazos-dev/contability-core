@@ -198,6 +198,7 @@ export interface RemoveEntryLineInput {
 /**
  * A draft reports no totals: it may be empty or unbalanced, so a total is a posting notion.
  * It is also the result of every draft edit: the draft as it stands after the operation.
+ * A draft never carries a number — the field is `null` so the four entry operations keep one shape.
  */
 export interface EntryDraftResult {
   readonly ledgerId: string;
@@ -205,6 +206,7 @@ export interface EntryDraftResult {
   readonly journalId: string;
   readonly periodId: string;
   readonly status: 'DRAFT';
+  readonly number: number | null;
   readonly accountingDate: string;
   readonly description: string;
   readonly lines: readonly PostedLineResult[];
@@ -222,6 +224,7 @@ export interface PostEntryResult {
   readonly journalId: string;
   readonly periodId: string;
   readonly status: EntryStatus;
+  readonly number: number;
   readonly accountingDate: string;
   readonly lines: readonly PostedLineResult[];
   readonly totalDebit: MoneyJSON;
