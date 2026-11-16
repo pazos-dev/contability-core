@@ -1,8 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento verificado: 008, consultas e informes
-(`docs/specs/reports.md`): saldos por cuenta, balance de comprobación y mayor, la primera superficie de
-**lectura** del módulo; antes, 006f, la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08
+Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento: 007, el contrato escrito del adaptador
+del anfitrión (`docs/INTEGRATION.md`), que audita garantía por garantía contra el código; antes, 008, consultas
+e informes (`docs/specs/reports.md`): saldos por cuenta, balance de comprobación y mayor, la primera superficie
+de **lectura** del módulo; antes, 006f, la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08
 como moneda única por libro); antes, 006e, el libro contable como agregado (`docs/specs/ledger.md`); antes, una
 carpeta por área en
 `use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
@@ -324,6 +325,36 @@ información de lo contabilizado.
   cursor) y cinco advertencias, todas corregidas. También confirmó que el camino de escritura no cambió: el diff
   de `236e7cb..HEAD` no toca dominio, reglas compartidas ni ningún otro área de casos de uso.
 
+### 007 — contrato del adaptador del anfitrión — `docs/INTEGRATION.md`
+
+Incremento de documentación: no agrega código ni pruebas. Escribe, para quien implemente un adaptador durable,
+qué garantiza el core y qué debe garantizar él, con **42 obligaciones numeradas `HA01`-`HA42`** agrupadas por
+puerto, para que se puedan verificar una por una.
+
+- **Auditoría previa, no redacción a ciegas.** Cada garantía que la tabla ya atribuía al core se contrastó con el
+  código. Cuatro se sostienen; dos prometían de más y quedaron corregidas: la huella de idempotencia sólo es
+  canónica **en el primer nivel** (lo anidado lo normaliza cada DTO; una `description` ausente viaja como
+  `null`, no omitida) y el solapamiento de períodos **no se puede expresar con un `UNIQUE`**, porque es una
+  pregunta sobre un rango de fechas y el error informa todos los períodos que se cruzan.
+- **Lo que faltaba era el otro lado.** De nueve puertos, el documento mencionaba dos de pasada. Ahora cada uno
+  tiene sus obligaciones: alcance de cada `find`, qué columnas persistir, qué índices hacen falta, y las
+  semánticas que la firma no dice —`findReversalsOf` devuelve **todas** las reversiones en cualquier estado y
+  como lista, `findByChart` es completa y sin paginar (media respuesta hace que un balance pierda filas en
+  silencio), `hasPostedLines` no recibe libro, y `findOverlapping` recibe un rango inclusivo.
+- Grietas del core declaradas en lugar de tapadas: el anfitrión recibe **dos familias** de error
+  (`ApplicationError` y dominio, sin envolver), `ACCOUNT_HAS_MOVEMENTS` **no es alcanzable** por la API pública,
+  y un camino de invariante lanza un `Error` sin código (`use-cases/entries/result.ts`).
+- Cinco secciones además de la frontera: la unidad de trabajo (transacción real, lectura de lo propio escrito,
+  un `run` por operación, alcance no cacheado), idempotencia (tripleta, registro en la misma transacción, copia
+  al entrar y salir, huellas viejas al cambiar un DTO), el lado de lectura (`POSTED` y líneas, nunca agregados;
+  rango inclusivo; cursor que termina; devolver de más no corrompe pero devolver de menos sí), migraciones que
+  debe el anfitrión (moneda funcional de 006f, huellas obsoletas) y lo que el contrato no promete.
+- La sección de persistencia y escala se conserva como estaba; sólo se retiró de las interrogantes abiertas la
+  relación empresa/libro/plan, resuelta en 006e (Q07).
+
+Comprobación: `pnpm check:project` en verde. `pnpm typecheck`, `build` y `test` no se re-ejecutan porque el diff
+no toca `src/` ni `tests/`.
+
 ### Contrato de la capa de aplicación — fachada `Accounting`
 
 - `Accounting` (`src/core/application/facade/accounting.ts`) es la **única** superficie pública de la capa: un
@@ -516,8 +547,6 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 
 ## Pendiente de implementar
 
-**007: contrato del adaptador del anfitrión** — el documento que fija las garantías que hoy no vienen del core
-(transacción, aislamiento, unicidad durable de la reversión, claves primarias y detección de conflicto) y
 **009: extensiones** según necesidad demostrada. Sin ORM, HTTP ni interfaz visual en este repositorio.
 
 ## Siguiente tarea
@@ -525,10 +554,9 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir), la
 superficie de lectura (saldos por cuenta, balance de comprobación y mayor) y el libro como agregado con su plan
 y su moneda funcional, así que ya no hay conceptos del módulo que sólo existan por configuración del adaptador.
-El siguiente incremento es **007: contrato del adaptador del anfitrión**, que documenta las garantías que hoy
-no vienen del core —transacción, aislamiento, unicidad durable de la reversión, claves primarias y detección de
-conflicto— porque un anfitrión que las ignore obtiene un motor que parece correcto y no lo es. Después,
-**009: extensiones** según necesidad demostrada.
+El contrato del adaptador ya está escrito (007): un anfitrión que ignora esas garantías obtiene un motor que
+parece correcto y no lo es, y ahora puede verificarlo obligación por obligación. El siguiente incremento es
+**009: extensiones** según necesidad demostrada, sin prometer nada de lo que la sección 7 del contrato excluye.
 
 Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
 una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
