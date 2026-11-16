@@ -12,6 +12,7 @@ import {
   entryCurrencyMismatch,
   entryIncomplete,
   entryLineNotFound,
+  entryNumberInvalid,
   entryState,
   entryUnbalanced,
   invalidEntry,
@@ -34,7 +35,9 @@ const CONSTRUCTION_TOKEN = Symbol('JournalEntry');
  * the previous state intact by construction.
  *
  * Posting protects only local invariants: at least two lines, one currency definition, equal debits
- * and credits, and a DRAFT starting state. Application decides whether accounts may receive postings,
+ * and credits, a DRAFT starting state and a positive integer number, which the application obtains from
+ * the host's counter. The number is the only field the caller does not choose: it is a sequence of the
+ * ledger, never an id. Application decides whether accounts may receive postings,
  * whether the journal belongs to the ledger and whether the period that contains the date is open.
  * A periodId alone proves nothing about the date it holds.
  */
@@ -46,6 +49,7 @@ export class JournalEntry {
   readonly #accountingDate: AccountingDate;
   readonly #description: string;
   readonly #status: EntryStatus;
+  readonly #number: number | undefined;
   readonly #lines: readonly JournalEntryLine[];
   readonly #reversalOfEntryId: string | undefined;
 
@@ -61,6 +65,8 @@ export class JournalEntry {
     this.#accountingDate = fields.accountingDate;
     this.#description = fields.description;
     this.#status = fields.status;
+    requireNumberPair(fields.status, fields.number);
+    this.#number = fields.number;
     // Copied and frozen: a caller never keeps a handle that could add or remove lines later.
     this.#lines = Object.freeze([...fields.lines]);
     this.#reversalOfEntryId = fields.reversalOfEntryId;
@@ -80,6 +86,7 @@ export class JournalEntry {
       accountingDate: requireAccountingDate(input.accountingDate),
       description: requireText(input.description, 'description', invalidEntry),
       status: 'DRAFT',
+      number: undefined,
       lines: [],
       reversalOfEntryId: undefined,
     }, CONSTRUCTION_TOKEN);
@@ -111,6 +118,15 @@ export class JournalEntry {
 
   get status(): EntryStatus {
     return this.#status;
+  }
+
+  /**
+   * Sequential number inside the ledger, present only on a posted entry. `undefined` is the honest
+   * answer for a draft: it has no number to give, and inventing one would consume the ledger's sequence
+   * for something that is not an accounting fact yet.
+   */
+  get number(): number | undefined {
+    return this.#number;
   }
 
   get reversalOfEntryId(): string | undefined {
@@ -149,18 +165,23 @@ export class JournalEntry {
   }
 
   /**
-   * Returns a posted copy. Debits must equal credits exactly, every line must share one currency
-   * definition, and at least two lines are required. A rejected post returns nothing and leaves the
-   * receiver as a DRAFT.
+   * Returns a posted copy carrying the number it is given. Debits must equal credits exactly, every line
+   * must share one currency definition, at least two lines are required and the number must be a positive
+   * integer. A rejected post returns nothing and leaves the receiver as a DRAFT.
+   *
+   * The number comes from the application, which asks the ledger's counter (Q11): the aggregate checks
+   * that it is a number, not that it is free — uniqueness is the host's constraint, the same division as
+   * with entry ids and with the single-reversal rule.
    */
-  post(): JournalEntry {
+  post(number: number): JournalEntry {
     if (this.#status === 'POSTED') {
       throw entryState('the entry is already posted');
     }
 
+    requireSequentialNumber(number);
     this.#assertReadyToPost();
 
-    return this.#copyWith({ status: 'POSTED' });
+    return this.#copyWith({ status: 'POSTED', number });
   }
 
   /**
@@ -192,6 +213,7 @@ export class JournalEntry {
           ? this.#description
           : requireText(input.description, 'description', invalidEntry),
       status: 'DRAFT',
+      number: undefined,
       lines: this.#lines.map((line) =>
         JournalEntryLine.create({
           id: line.id,
@@ -252,6 +274,7 @@ export class JournalEntry {
       accountingDate: this.#accountingDate,
       description: this.#description,
       status: changes.status ?? this.#status,
+      number: changes.number ?? this.#number,
       lines: changes.lines ?? this.#lines,
       reversalOfEntryId: this.#reversalOfEntryId,
     }, CONSTRUCTION_TOKEN);
@@ -263,4 +286,25 @@ function requireAccountingDate(value: unknown): AccountingDate {
     throw invalidEntry(`accountingDate must be an AccountingDate, received ${describeValue(value)}`);
   }
   return value;
+}
+
+/** The number is a positive integer or it is not a number: no zero, no negatives, no fractions. */
+function requireSequentialNumber(number: unknown): number {
+  if (typeof number !== 'number' || !Number.isInteger(number) || number <= 0) {
+    throw entryNumberInvalid(`expected a positive integer, received ${describeValue(number)}`);
+  }
+  return number;
+}
+
+/**
+ * The status and the number are decided together: a draft has none and a posted entry has one, so the
+ * pair is validated once, where both are known, instead of trusting callers to keep it consistent.
+ */
+function requireNumberPair(status: EntryStatus, number: number | undefined): void {
+  if (status === 'DRAFT' && number !== undefined) {
+    throw entryNumberInvalid(`a draft has no number, received ${describeValue(number)}`);
+  }
+  if (status === 'POSTED') {
+    requireSequentialNumber(number);
+  }
 }
