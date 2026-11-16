@@ -86,7 +86,8 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
    contabilizarse después lo decide `postEntry`, que contabiliza ese mismo borrador y no otro asiento. La
    comprobación va inmediatamente antes de escribir, dentro de la unidad de trabajo, para que un adaptador
    durable pueda sustituirla por una restricción única sin moverla.
-10. **Contabilizar.** `reversalDraft.post()`: sus errores burbujean (en la práctica no debería fallar,
+10. **Contabilizar.** `reversalDraft.post(number)`, con el número que se pide al contador del libro: sus
+   errores burbujean (en la práctica no debería fallar,
    porque las líneas espejadas conservan equilibrio y moneda del original).
 11. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
     trabajo. El original nunca se guarda: no se toca.
