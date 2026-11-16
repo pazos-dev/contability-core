@@ -35,6 +35,7 @@ export interface JournalEntryFields {
   readonly accountingDate: AccountingDate;
   readonly description: string;
   readonly status: EntryStatus;
+  readonly number: number | undefined;
   readonly lines: readonly JournalEntryLine[];
   readonly reversalOfEntryId: string | undefined;
 }
@@ -42,5 +43,6 @@ export interface JournalEntryFields {
 /** The fields a mutation may replace; everything else is preserved by the aggregate. */
 export interface JournalEntryChanges {
   readonly status?: EntryStatus;
+  readonly number?: number;
   readonly lines?: readonly JournalEntryLine[];
 }

@@ -50,7 +50,7 @@ test('E01: a balanced two-line draft becomes POSTED without altering the draft',
   assert.equal(draft.status, 'DRAFT');
   assert.equal(draft.lines.length, 2);
 
-  const posted = draft.post();
+  const posted = draft.post(1);
 
   assert.equal(posted.status, 'POSTED');
   assert.equal(posted.lines.length, 2);
@@ -69,12 +69,12 @@ test('E01: a balanced two-line draft becomes POSTED without altering the draft',
 test('E02: posting needs at least two lines', () => {
   const empty = JournalEntry.createDraft({ ...draftInput });
 
-  assert.throws(() => empty.post(), assertEntryError('ENTRY_INCOMPLETE'));
+  assert.throws(() => empty.post(1), assertEntryError('ENTRY_INCOMPLETE'));
   assert.equal(empty.status, 'DRAFT');
 
   const single = JournalEntry.createDraft({ ...draftInput }).addLine(line());
 
-  assert.throws(() => single.post(), assertEntryError('ENTRY_INCOMPLETE'));
+  assert.throws(() => single.post(1), assertEntryError('ENTRY_INCOMPLETE'));
   assert.equal(single.status, 'DRAFT');
 });
 
@@ -83,7 +83,7 @@ test('E03: unequal totals are rejected exactly, even by one minor unit', () => {
     .addLine(line())
     .addLine(line({ id: 'line-2', side: 'CREDIT', amount: money('999.99') }));
 
-  assert.throws(() => offByOneCent.post(), assertEntryError('ENTRY_UNBALANCED'));
+  assert.throws(() => offByOneCent.post(1), assertEntryError('ENTRY_UNBALANCED'));
   assert.equal(offByOneCent.status, 'DRAFT');
 
   // The smallest possible difference: 0,01 against 0,02. No tolerance is applied.
@@ -91,7 +91,7 @@ test('E03: unequal totals are rejected exactly, even by one minor unit', () => {
     .addLine(line({ amount: money('0.01') }))
     .addLine(line({ id: 'line-2', side: 'CREDIT', amount: money('0.02') }));
 
-  assert.throws(() => oneMinorUnitApart.post(), assertEntryError('ENTRY_UNBALANCED'));
+  assert.throws(() => oneMinorUnitApart.post(1), assertEntryError('ENTRY_UNBALANCED'));
   assert.equal(oneMinorUnitApart.status, 'DRAFT');
 });
 
@@ -125,7 +125,7 @@ test('E05: all lines must share one currency definition, code and scale included
     .addLine(line())
     .addLine(line({ id: 'line-2', side: 'CREDIT', amount: money('1000.00', usd) }));
 
-  assert.throws(() => mixedCurrency.post(), assertEntryError('ENTRY_CURRENCY_MISMATCH'));
+  assert.throws(() => mixedCurrency.post(1), assertEntryError('ENTRY_CURRENCY_MISMATCH'));
   assert.equal(mixedCurrency.status, 'DRAFT');
 
   // Own currencies carry their scale: the same code with another scale is another currency.
@@ -135,11 +135,11 @@ test('E05: all lines must share one currency definition, code and scale included
     .addLine(line({ amount: money('1000', whole) }))
     .addLine(line({ id: 'line-2', side: 'CREDIT', amount: money('1000.000', thirds) }));
 
-  assert.throws(() => mixedScale.post(), assertEntryError('ENTRY_CURRENCY_MISMATCH'));
+  assert.throws(() => mixedScale.post(1), assertEntryError('ENTRY_CURRENCY_MISMATCH'));
 });
 
 test('E06: a POSTED entry rejects addLine and removeLine and keeps its content', () => {
-  const posted = balanced().post();
+  const posted = balanced().post(1);
 
   assert.throws(() => posted.addLine(line({ id: 'line-3' })), assertEntryError('ENTRY_STATE'));
   assert.throws(() => posted.removeLine('line-1'), assertEntryError('ENTRY_STATE'));
@@ -164,7 +164,7 @@ test('E08: a rejected post leaves the draft exactly as it was and it can still b
     .addLine(line())
     .addLine(line({ id: 'line-2', side: 'CREDIT', amount: money('1.00') }));
 
-  assert.throws(() => draft.post(), assertEntryError('ENTRY_UNBALANCED'));
+  assert.throws(() => draft.post(1), assertEntryError('ENTRY_UNBALANCED'));
 
   assert.equal(draft.status, 'DRAFT');
   assert.equal(draft.lines.length, 2);
@@ -178,11 +178,11 @@ test('E08: a rejected post leaves the draft exactly as it was and it can still b
 
   const fixed = draft.removeLine('line-2').addLine(line({ id: 'line-3', side: 'CREDIT' }));
 
-  assert.equal(fixed.post().status, 'POSTED');
+  assert.equal(fixed.post(1).status, 'POSTED');
 });
 
 test('E09: a reversal draft swaps sides, keeps amounts and links the original', () => {
-  const posted = balanced().post();
+  const posted = balanced().post(1);
   const reversal = posted.createReversalDraft({
     id: 'entry-2',
     periodId: 'period-2',
@@ -213,7 +213,7 @@ test('E09: a reversal draft swaps sides, keeps amounts and links the original', 
   );
 
   // The reversal is a normal draft: it posts, and the original stays POSTED and unchanged.
-  assert.equal(reversal.post().status, 'POSTED');
+  assert.equal(reversal.post(2).status, 'POSTED');
   assert.equal(posted.status, 'POSTED');
   assert.equal(posted.reversalOfEntryId, undefined);
 });
@@ -226,7 +226,7 @@ test('E09: only a POSTED entry can be reversed and the reversal needs its own id
     assertEntryError('ENTRY_STATE'),
   );
 
-  const posted = draft.post();
+  const posted = draft.post(1);
 
   assert.throws(
     () => posted.createReversalDraft({ id: 'entry-1', periodId: 'period-2', accountingDate: AccountingDate.create('2026-04-01') }),
@@ -257,9 +257,9 @@ test('E10: the lines snapshot cannot be used to change the entry', () => {
 });
 
 test('E11: posting a POSTED entry again is a state error', () => {
-  const posted = balanced().post();
+  const posted = balanced().post(1);
 
-  assert.throws(() => posted.post(), assertEntryError('ENTRY_STATE'));
+  assert.throws(() => posted.post(2), assertEntryError('ENTRY_STATE'));
   assert.equal(posted.status, 'POSTED');
   assert.equal(posted.lines.length, 2);
 });
