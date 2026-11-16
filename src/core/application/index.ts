@@ -5,6 +5,7 @@ export type { ApplicationErrorCode } from './errors.js';
 export type {
   AccountRepository,
   ApplicationDeps,
+  EntryNumberSequence,
   EntryRepository,
   IdempotencyRegistry,
   JournalRepository,

@@ -81,3 +81,14 @@ test('N06: a reversal draft has no number and receives its own when posted', () 
   assert.equal(postedReversal.reversalOfEntryId, 'entry-1');
   assert.equal(posted.number, 3);
 });
+
+test('N10: a rejected number leaves the draft exactly as it was', () => {
+  const draft = balanced();
+
+  for (const received of [0, -1, 1.5, Number.NaN]) {
+    assert.throws(() => draft.post(received), assertEntryError('ENTRY_NUMBER_INVALID'));
+    assert.equal(draft.status, 'DRAFT');
+    assert.equal(draft.number, undefined);
+    assert.equal(draft.lines.length, 2);
+  }
+});
