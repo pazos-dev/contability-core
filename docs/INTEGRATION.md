@@ -131,6 +131,14 @@ Los contratos son las interfaces de `src/core/application/ports.ts`. Aquí está
 - **`HA20`** — `save` es un *upsert* por `(ledgerId, entryId)`, y la clave primaria sobre ese par es la
   garantía durable de que un id de asiento no se reutiliza.
 
+### `EntryNumberSequence`
+
+- **`HA43`** — `nextNumber(ledgerId)` devuelve el siguiente entero positivo libre del libro (Q11), dentro de la
+  misma transacción, y el esquema lleva una restricción única sobre `(ledgerId, number)`. Los **huecos** son
+  aceptables: un número pedido y no guardado porque la operación falló deja un salto. Los **repetidos**, no:
+  si la restricción rechaza el número, reintentar pidiendo otro o propagar es decisión del adaptador. El core
+  nunca consulta el contador para validar y nunca guarda números usados.
+
 ### `PostedMovementsQuery`
 
 - **`HA21`** — `hasPostedLines(accountId)` **no** recibe libro: tiene que responder sobre todos los libros y
@@ -197,8 +205,13 @@ Tienen su propia sección, porque el detalle es el que se olvida: 4 y 5.
   inventa una por defecto: agregar la columna y decidir el valor de cada libro existente es tu migración.
 - **`HA41`** — **Huellas de idempotencia anteriores a un cambio de DTO.** No coinciden con la huella nueva.
   Migrar o invalidar es tu decisión, y conviene tomarla antes de que un reintento la tome por vos.
-- **`HA42`** — **Nada más.** 008 no escribe ni cambia datos: sumó dos lecturas, `PostedEntriesQuery` y
+- **`HA42`** — **008 tampoco escribe ni cambia datos.** Sumó dos lecturas, `PostedEntriesQuery` y
   `AccountRepository.findByChart`, que tu compilador te va a reclamar.
+- **`HA44`** — **Numeración (009a).** `JournalEntry.post` ahora exige el número, así que un anfitrión que arme
+  asientos con el dominio deja de compilar hasta que lo pase. Además, la huella de idempotencia de `postEntry`
+  no cambió: un resultado guardado antes de numerar se devuelve **sin** `number`. Migrarlos o invalidarlos es
+  tu decisión, igual que con la moneda de 006f. Los asientos ya persistidos sin número no se renumeran: el core
+  no completa huecos ni adivina el orden histórico.
 
 ## 7. Lo que este contrato no promete
 
@@ -207,8 +220,8 @@ Tienen su propia sección, porque el detalle es el que se olvida: 4 y 5.
 - **Consolidación entre libros.**
 - **El plan de cuentas como entidad del core.** Es un identificador del anfitrión que el libro guarda sin
   verificar (Q07).
-- **Numeración de asientos.** Los identificadores son explícitos; la numeración secuencial y su ámbito siguen
-  abiertas (Q11).
+- **Formato de la numeración.** El número es un entero pelado del libro (Q11): sin prefijos, sin año y sin
+  ceros a la izquierda. Presentarlo es del anfitrión.
 - **Atomicidad ni aislamiento de lectura.** Vienen de tu motor, no del core.
 - **Serialización de carreras.** Ninguna.
 
