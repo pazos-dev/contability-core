@@ -2,13 +2,24 @@
 
 ## Como módulo importable
 
-La aplicación anfitriona crea adaptadores y los inyecta en los casos de uso exportados por el core.
+La aplicación anfitriona crea adaptadores y los inyecta en la fachada `Accounting`, el único punto de entrada del
+core: los casos de uso son implementación interna y no se exportan.
 Puede ser NestJS, Express, otra aplicación Node o una herramienta sin servidor HTTP.
-No existen todavía funciones exportadas: el ejemplo siguiente describe el contrato futuro, no código ejecutable.
+
+```ts
+import { Accounting, createInMemoryAccounting } from '@pazos-dev/contability-core';
+
+const adapter = createInMemoryAccounting();
+const accounting = new Accounting({ unitOfWork: adapter.unitOfWork });
+```
+
+`createInMemoryAccounting` es para desarrollo y pruebas; el anfitrión sustituye ese `UnitOfWork` por una
+transacción real de su motor. La fachada importa compilada, así que el paquete necesita `pnpm build` antes de
+consumirse.
 
 1. Inventario registra una compra en su propio dominio.
 2. Un coordinador traduce el hecho a una petición contable con cuentas e importes explícitos.
-3. El caso de uso crea y contabiliza el asiento dentro del libro correspondiente.
+3. `createEntryDraft` guarda el borrador y `postEntry` lo contabiliza dentro del libro correspondiente.
 4. Un adaptador guarda el asiento y devuelve un resultado serializable.
 
 La UI consume la API del anfitrión. Un navegador no se conecta directamente a un repositorio PostgreSQL del core.
@@ -65,4 +76,5 @@ No añadir infraestructura distribuida en esta fase.
 - Clave de idempotencia para operaciones repetibles, aislada por libro y operación.
 - Códigos de error estables; traducción a HTTP en el adaptador de entrada.
 
-Antes de persistencia real, especificar relación empresa/libro/plan, numeración e invariantes transaccionales.
+Antes de persistencia real queda por cerrar la numeración de asientos y su ámbito (Q11); la relación
+empresa/libro/plan ya está resuelta y el libro la guarda como identificador opaco del plan (Q07).
