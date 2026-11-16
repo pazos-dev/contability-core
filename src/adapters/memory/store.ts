@@ -37,6 +37,11 @@ export interface MemoryMaps {
   readonly periods: Map<string, AccountingPeriod>;
   readonly entries: Map<string, JournalEntry>;
   readonly idempotency: Map<string, StoredIdempotency>;
+  /**
+   * Last entry number handed out per ledger (Q11). A counter is a value, not an entity, so it is copied
+   * with the maps and restored by a failed unit of work like any other write.
+   */
+  readonly entryNumbers: Map<string, number>;
 }
 
 // `structuredClone` is a JavaScript platform built-in (Node 17+), not a Node API, so an adapter may rely
@@ -75,6 +80,7 @@ export function emptyMaps(): MemoryMaps {
     periods: new Map(),
     entries: new Map(),
     idempotency: new Map(),
+    entryNumbers: new Map(),
   };
 }
 
@@ -86,6 +92,7 @@ export function copyMaps(maps: MemoryMaps): MemoryMaps {
     periods: new Map(maps.periods),
     entries: new Map(maps.entries),
     idempotency: new Map(maps.idempotency),
+    entryNumbers: new Map(maps.entryNumbers),
   };
 }
 

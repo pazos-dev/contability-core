@@ -64,6 +64,21 @@ export interface EntryRepository {
 }
 
 /**
+ * Sequential entry numbers, per ledger (Q11).
+ *
+ * The scope is the ledger: two ledgers may both have entry number 1, because a number identifies an entry
+ * inside its book and nothing else. The counter lives on the host's side because a sequence is storage:
+ * this repository asks for the next number and never keeps one.
+ *
+ * Gaps are allowed — a number asked for and not saved because the operation failed leaves a hole — and
+ * duplicates are not: the host closes that window with a unique constraint over `(ledgerId, number)`, the
+ * same division as with entry ids and with the single-reversal rule.
+ */
+export interface EntryNumberSequence {
+  nextNumber(ledgerId: string): Promise<number>;
+}
+
+/**
  * Idempotency is isolated by ledger and by operation, never by key alone.
  *
  * `record` and `find` copy the result in and out, as a durable registry that serializes it to a row
@@ -118,6 +133,7 @@ export interface UnitOfWorkScope {
   readonly periods: PeriodRepository;
   readonly entries: EntryRepository;
   readonly idempotency: IdempotencyRegistry;
+  readonly entryNumbers: EntryNumberSequence;
   readonly postedMovements: PostedMovementsQuery;
   readonly postedEntries: PostedEntriesQuery;
 }
