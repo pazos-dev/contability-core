@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-15. Entrega: preparación 2.0. Último incremento verificado: 008, consultas e informes
+Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento verificado: 008, consultas e informes
 (`docs/specs/reports.md`): saldos por cuenta, balance de comprobación y mayor, la primera superficie de
 **lectura** del módulo; antes, 006f, la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08
 como moneda única por libro); antes, 006e, el libro contable como agregado (`docs/specs/ledger.md`); antes, una
@@ -421,7 +421,7 @@ solo agrega esos barrels.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 - `core/application/index.ts`: `Accounting`, `ApplicationError` y los tipos de dato (`dto`) y de puerto. Las
-  trece operaciones de caso de uso viven en `use-cases/` como implementación interna y no se exportan.
+  dieciséis operaciones de caso de uso viven en `use-cases/` como implementación interna y no se exportan.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos (`entries`) como costura de composición: es el único adaptador que existe en esta fase y un
   anfitrión que arme asientos con el dominio necesita poder guardarlos. Crear y editar borradores por caso
@@ -516,20 +516,19 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 
 ## Pendiente de implementar
 
-**008: consultas e informes** — saldos por cuenta, mayor y balance de comprobación, con especificaciones
-propias: no hay spec escrita ni código. Después, el **contrato escrito del adaptador del anfitrión (007)**, que
-documenta las garantías que hoy no vienen del core (transacción, aislamiento, unicidad durable, claves
-primarias), y **009: extensiones** según necesidad demostrada. Sin ORM, HTTP ni interfaz visual en este
-repositorio.
+**007: contrato del adaptador del anfitrión** — el documento que fija las garantías que hoy no vienen del core
+(transacción, aislamiento, unicidad durable de la reversión, claves primarias y detección de conflicto) y
+**009: extensiones** según necesidad demostrada. Sin ORM, HTTP ni interfaz visual en este repositorio.
 
 ## Siguiente tarea
 
-El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir),
-consulta de referencias y el libro como agregado con su plan y su estado, así que ya no hay conceptos del
-módulo que sólo existan por configuración del adaptador.
-El siguiente incremento es **008: consultas e informes** — saldos por cuenta, mayor y balance de comprobación,
-con especificaciones propias, donde el libro es el sujeto natural: es el ámbito de aislamiento y el dueño del
-plan de cuentas. Alternativa posterior: el contrato escrito del adaptador del anfitrión (007).
+El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir), la
+superficie de lectura (saldos por cuenta, balance de comprobación y mayor) y el libro como agregado con su plan
+y su moneda funcional, así que ya no hay conceptos del módulo que sólo existan por configuración del adaptador.
+El siguiente incremento es **007: contrato del adaptador del anfitrión**, que documenta las garantías que hoy
+no vienen del core —transacción, aislamiento, unicidad durable de la reversión, claves primarias y detección de
+conflicto— porque un anfitrión que las ignore obtiene un motor que parece correcto y no lo es. Después,
+**009: extensiones** según necesidad demostrada.
 
 Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
 una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
