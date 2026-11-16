@@ -7,7 +7,8 @@ export type EntryErrorCode =
   | 'ENTRY_STATE'
   | 'ENTRY_INCOMPLETE'
   | 'ENTRY_UNBALANCED'
-  | 'ENTRY_CURRENCY_MISMATCH';
+  | 'ENTRY_CURRENCY_MISMATCH'
+  | 'ENTRY_NUMBER_INVALID';
 
 /** Domain exception with a stable code; adapters translate it to their own error model. */
 export class EntryError extends Error {
@@ -52,4 +53,9 @@ export function entryUnbalanced(reason: string): EntryError {
 
 export function entryCurrencyMismatch(reason: string): EntryError {
   return new EntryError('ENTRY_CURRENCY_MISMATCH', `Entry currency mismatch: ${reason}.`);
+}
+
+/** The sequential number an entry only has once it is posted: a positive integer, never invented by the caller. */
+export function entryNumberInvalid(reason: string): EntryError {
+  return new EntryError('ENTRY_NUMBER_INVALID', `Entry number: ${reason}.`);
 }
