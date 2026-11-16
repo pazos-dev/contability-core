@@ -46,8 +46,8 @@ de `chartOfAccountsId`. Dos puertos sobre cuentas sería la duplicación que `le
 
 | ID | Specs | Qué | Commit |
 | --- | --- | --- | --- |
-| T1 | S1-S4, S6-S11 | 008a: puerto `PostedEntriesQuery`, `AccountRepository.findByChart`, `accountBalances` y `trialBalance`, adaptador en memoria, fachada a quince métodos y pruebas AB01-AB05 + TB00-TB11 | `96663e3` |
-| T2 | S1-S5, S8-S10 | 008b: `accountMovements` con saldo de apertura, saldo corriente y paginación; fachada a dieciséis métodos y pruebas GL01-GL08 | `72ae14f` |
+| T1 | S1-S4, S6-S11 | 008a: puerto `PostedEntriesQuery`, `AccountRepository.findByChart`, `accountBalances` y `trialBalance`, adaptador en memoria, fachada a quince métodos y pruebas AB01-AB05 + TB00-TB11 | `f27efd4` |
+| T2 | S1-S5, S8-S10 | 008b: `accountMovements` con saldo de apertura, saldo corriente y paginación; fachada a dieciséis métodos y pruebas GL01-GL08 | `b3c57ec` |
 
 ## Log
 
@@ -79,7 +79,7 @@ que `ledger.md` ya rechazó para libros. Consecuencia registrada: es un método 
 anfitrión ya implementa, así que rompe su compilación y el incremento vuelve a tener riesgo de contrato
 (ítem 3) y verificación independiente al cerrar.
 
-L8. 008a implementado en `96663e3`. Test-first real: las 17 pruebas se escribieron antes de tocar `src/` y el
+L8. 008a implementado en `f27efd4`. Test-first real: las 17 pruebas se escribieron antes de tocar `src/` y el
 rojo fue 17/17 con `app.accountBalances is not a function`. Después, `pnpm check` en verde con **278 pruebas**
 (eran 260): 17 del reporte más la prueba nueva del barrel. Interpretaciones aceptadas del implementador: el
 cursor en memoria es un desplazamiento sobre el orden total `(accountingDate, entryId)`; el tamaño de página del
@@ -88,19 +88,21 @@ comprobar el estado del asiento, para no duplicar el filtro; `from > to` reutili
 con `field: 'from'` porque `errors.ts` quedó fuera de las superficies permitidas; los `totals` son la suma de
 las columnas, así que una reversión sube las dos columnas por igual mientras los saldos netean a cero.
 
-L9. Las dos entregas se separaron en dos ramas para revisión encadenada, sin reescribir historial ni perder
-commits: `feat/006f-ledger-currency` termina en `fed6046` (006f), `feat/008-reports` termina en `4c24355` y su
-base es la anterior (008). `stack/006f+008` conserva el estado apilado original como ref de respaldo. Cada punta
-se verificó verde por separado: **260** pruebas en el tip de 006f y **293** en el de 008. En el camino se
-renombró la rama original en vez de resetearla, así que ningún commit dejó de ser alcanzable.
+L9. Revisión y entrega. Las dos entregas viajaron como PRs encadenados: **#11** (006f → `main`) y **#13** (008 →
+`main`), mergeados por rebase porque la historia del repositorio es lineal y sin un solo merge commit. #12 fue
+el PR original de 008, con base en la rama de 006f; al mergear #11 por rebase sus commits cambiaron de sha, y el
+force-push que habría reescrito #12 está bloqueado en este entorno, así que la rama se reconstruyó sobre el
+`main` nuevo —`git rebase` descartó los tres commits de 006f por patch-id— y se reabrió como #13, cerrando #12
+con el puntero y sin reescribir ninguna ref. Cada punta se verificó verde antes de mergear: **260** pruebas en
+006f y **293** en 008.
 
-L10. 008b implementado en `72ae14f`: 290 pruebas en verde y 12 pruebas nuevas. El cursor lo produce el core y
+L10. 008b implementado en `b3c57ec`: 290 pruebas en verde y 12 pruebas nuevas. El cursor lo produce el core y
 lleva sólo la clave de orden de la última fila; cada página vuelve a drenar el rango para derivar el saldo
 corriente, que es el precio de no confiar en un acumulado del llamador.
 
-L11. Verificación independiente del incremento completo (`fed6046..HEAD`, 19 archivos), disparada por el ítem 3
+L11. Verificación independiente del incremento completo (`236e7cb..HEAD`, 19 archivos), disparada por el ítem 3
 de riesgo: `AccountRepository` gana un método **obligatorio** y `UnitOfWorkScope` un miembro obligatorio, así
-que revienta la compilación de todo anfitrión. Reportó un bloqueante y cinco advertencias; `3346f9f` las
+que revienta la compilación de todo anfitrión. Reportó un bloqueante y cinco advertencias; `defafe6` las
 corrige: (a) un cursor bien formado que el reporte no produjo se aceptaba y **salteaba filas en silencio**
 —ahora se comprueba contra las filas drenadas—; (b) las reglas 1 y el alcance por libro estaban delegadas al
 puerto y un borrador o un asiento ajeno cambiaban los totales, ahora el core descarta; (c) una página sin
@@ -113,3 +115,8 @@ L12. La primera implementación de 008b también dejó la spec contradiciéndose
 decía que el cursor «viene del puerto» mientras la regla 14 decía que lo produce el core, y el estado seguía
 diciendo «especificada, sin implementar» después de estar implementado. Corregido junto con las cifras de
 pruebas (293).
+
+L13. Los shas que este documento registraba como evidencia apuntaban a commits previos al merge: el rebase los
+reescribió y ninguno resolvía desde `main`. Se corrigieron a los shas mergeados. La lección queda escrita para
+el próximo incremento: **un sha anotado antes de mergear es una promesa que cualquier rebase o squash rompe**;
+lo correcto es anotarlo después del merge sobre `main`.

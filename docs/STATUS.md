@@ -322,7 +322,7 @@ información de lo contabilizado.
   borradores y asientos ajenos en los tres casos de uso, GL11 la página vacía.
 - Verificación independiente del incremento por riesgo de contrato (ítem 3): un bloqueante (procedencia del
   cursor) y cinco advertencias, todas corregidas. También confirmó que el camino de escritura no cambió: el diff
-  de `fed6046..HEAD` no toca dominio, reglas compartidas ni ningún otro área de casos de uso.
+  de `236e7cb..HEAD` no toca dominio, reglas compartidas ni ningún otro área de casos de uso.
 
 ### Contrato de la capa de aplicación — fachada `Accounting`
 

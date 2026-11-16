@@ -49,10 +49,10 @@ moneda supuesta contabilizaría mal en silencio.
 
 | ID | Specs | Qué | Commit |
 | --- | --- | --- | --- |
-| T1 | S1, S2, S3, S9 | `Ledger` exige `currency: Currency` en `create`; inmutable en `#copyWith`; `INVALID_LEDGER` si no es una instancia de `Currency`; barrel y README del área | `43f7090` |
-| T2 | S4, S8 | `RegisterLedgerInput.currency: CurrencyJSON`, hidratación con `Currency.fromJSON`, moneda en la huella y en `RegisterLedgerResult` | `43f7090` |
-| T3 | S5, S6, S7 | `requireLedgerCurrency` en `use-cases/entries/rules.ts`; `LEDGER_CURRENCY_MISMATCH` en el catálogo de errores; guarda en `post` y `reverse` | `43f7090` |
-| T4 | S10 | Adaptar los call sites de prueba y el seed, escribir las pruebas nuevas y actualizar `STATUS.md`, `OPEN-QUESTIONS.md` y los README de área | `43f7090` + este commit |
+| T1 | S1, S2, S3, S9 | `Ledger` exige `currency: Currency` en `create`; inmutable en `#copyWith`; `INVALID_LEDGER` si no es una instancia de `Currency`; barrel y README del área | `b559c0d` |
+| T2 | S4, S8 | `RegisterLedgerInput.currency: CurrencyJSON`, hidratación con `Currency.fromJSON`, moneda en la huella y en `RegisterLedgerResult` | `b559c0d` |
+| T3 | S5, S6, S7 | `requireLedgerCurrency` en `use-cases/entries/rules.ts`; `LEDGER_CURRENCY_MISMATCH` en el catálogo de errores; guarda en `post` y `reverse` | `b559c0d` |
+| T4 | S10 | Adaptar los call sites de prueba y el seed, escribir las pruebas nuevas y actualizar `STATUS.md`, `OPEN-QUESTIONS.md` y los README de área | `b559c0d` + este commit |
 
 ## Log
 
@@ -92,6 +92,10 @@ L8. Las pruebas nuevas no son vacuas: se rompieron las dos guardas a propósito 
 `requireCurrency` y las dos llamadas a `requireLedgerCurrency`) y fallaron exactamente L19, L22, L23 y L24.
 Después se restauró el código y la suite volvió a verde.
 
-L9. Rebanadas: `d3ac19a` (especificación y decisiones) y `43f7090` (dominio, aplicación, pruebas y README) suman
+L9. Rebanadas: `c8c1c97` (especificación y decisiones) y `b559c0d` (dominio, aplicación, pruebas y README) suman
 756 líneas, más de las ~400 de una rebanada. El corte no se forzó más porque el campo nuevo no compila con la
 mitad del cambio: dominio, DTO, caso de uso y las 23 llamadas de prueba van juntos o no van.
+
+L10. Entrega: PR #11 mergeado a `main` por rebase. Los shas de este documento se corrigieron **después** del
+merge, porque el rebase reescribió los commits y los que estaban anotados como evidencia dejaron de resolver.
+Lección para el próximo incremento: el sha de evidencia se anota después del merge, no antes.
