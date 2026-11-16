@@ -1,7 +1,6 @@
 # SPEC — Numeración de asientos
 
-Estado: **borrador — propuesta para revisión del humano**. Nada de este documento está implementado y ningún
-archivo de `src/` se tocó.
+Estado: **implementada y verificada** (incremento 009a, rama `feat/009a-entry-numbering`).
 Decisión de origen: Q11, respondida por el humano el 2026-11-16 (ver `## Decisiones pendientes`).
 Ruta prevista: dominio en `src/core/domain/entries/`, regla en
 `src/core/application/use-cases/entries/`, puerto en `src/core/application/ports.ts`.
@@ -89,8 +88,10 @@ borrador no tiene número. Se declara para que el contrato de las cuatro operaci
    faltar en la secuencia. Lo que no se permite es repetir un número o reutilizar el de un asiento revertido.
    El core no rellena huecos.
 8. **La asignación va lo más tarde posible.** Después de todas las lecturas y validaciones, en el mismo paso
-   que la escritura. Así un rechazo no consume números, y un contador dentro de la transacción del anfitrión
-   no deja huecos sin que el core lo exija.
+   que la escritura. Así un rechazo de una validación previa no consume números, y un contador dentro de la
+   transacción del anfitrión no deja huecos sin que el core lo exija. Un rechazo **del agregado** después de
+   pedir el número —un asiento ya contabilizado que llega otra vez— sí puede dejarlo sin usar: es un hueco,
+   permitido por la regla 7.
 9. **Un replay no asigna número.** La idempotencia se resuelve antes: misma clave y misma petición devuelven
    el resultado guardado, con su número, sin segunda escritura ni segundo incremento del contador.
 10. **El core no verifica unicidad.** No consulta el contador para saber si un número existe ni lleva registro
@@ -170,6 +171,9 @@ Siguen abiertas y no bloquean esta entrega:
 - **Atomicidad.** Pedir el número, guardar el asiento y registrar la idempotencia ocurren en la misma unidad de
   trabajo. Si el registro falla, la unidad revierte y el número no se consumió.
 - **Nada que autorizar.** La numeración no abre permisos ni accesos nuevos.
+- **Entrega.** Una sola rebanada revisable, en tres commits sobre `feat/009a-entry-numbering`: el contrato del
+  agregado, el contador más las dos vías de contabilización, y la documentación. Aproximadamente 450 líneas
+  entre código y pruebas.
 
 ## Verificación
 
@@ -185,4 +189,12 @@ Prevista, con test-first por criterio:
 
 Comandos reales del repositorio: `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm check:project`.
 
-No hay evidencia todavía: este documento es una propuesta, no una implementación.
+Evidencia de la implementación:
+
+- `tests/domain/entries/entry-numbering.test.mjs` (5 pruebas): N01, N05, N06, N09 y N10 en el agregado.
+- `tests/application/entry-numbering.test.mjs` (8 pruebas): N01, N02, N03, N06, N07, N08, N11 y N12 contra el
+  adaptador en memoria, con un contador real por libro. N07 y N11 usan una unidad de trabajo cuyo contador
+  lanza: N07 comprueba que no se escribe nada, y N11 que el período cerrado se reporta **antes** de pedir el
+  número.
+- Rojo observado antes de implementar: 10 de las 13 pruebas fallaban (N09, N11 y N12 pasaban por ausencia).
+- `pnpm typecheck`, `pnpm build`, `pnpm test` (306 pruebas, 306 correctas) y `pnpm check:project` en verde.

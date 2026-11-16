@@ -1,6 +1,8 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento: 007, el contrato escrito del adaptador
+Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento: 009a, numeración de asientos
+(`docs/specs/entry-numbering.md`): cada asiento contabilizado recibe un entero secuencial por libro, con
+contador del anfitrión (Q11 cerrada en su ámbito y su formato); antes, 007, el contrato escrito del adaptador
 del anfitrión (`docs/INTEGRATION.md`), que audita garantía por garantía contra el código; antes, 008, consultas
 e informes (`docs/specs/reports.md`): saldos por cuenta, balance de comprobación y mayor, la primera superficie
 de **lectura** del módulo; antes, 006f, la moneda funcional del libro (`docs/specs/ledger.md`, L17-L24; cierra Q08
@@ -325,6 +327,31 @@ información de lo contabilizado.
   cursor) y cinco advertencias, todas corregidas. También confirmó que el camino de escritura no cambió: el diff
   de `236e7cb..HEAD` no toca dominio, reglas compartidas ni ningún otro área de casos de uso.
 
+### 009a — numeración de asientos — `docs/specs/entry-numbering.md`
+
+Cierra Q11 en lo que el core puede decidir: **ámbito por libro, entero pelado, sin renumeración y con huecos
+permitidos**. El formato (prefijos, año, ceros) y la unicidad durable quedan del anfitrión.
+
+- `JournalEntry` gana `number` y `post(number)`: un `DRAFT` no tiene número y un `POSTED` lo tiene, y el par
+  estado/número se valida en el constructor privado, no confiando en quien llama. `ENTRY_NUMBER_INVALID` es el
+  código nuevo; no hay código nuevo en la aplicación.
+- Puerto nuevo `EntryNumberSequence` en el alcance de la unidad de trabajo. El contador es del anfitrión porque
+  una secuencia es almacenamiento; el adaptador en memoria lo guarda en `MemoryMaps.entryNumbers`, así que la
+  unidad de trabajo lo revierte como cualquier otra escritura.
+- La asignación va **después de todas las guardas** y justo antes del guardado, en las dos vías que dejan un
+  asiento en `POSTED`: `post` y `reverse`. Un período cerrado se reporta sin haber pedido número (`N11`), y un
+  contador que falla no escribe asiento ni registro de idempotencia (`N07`).
+- La reversión recibe su propio número del mismo contador: son dos hechos contables y los dos tienen que poder
+  citarse. El original conserva el suyo.
+- Los reportes no cambian: el número no entra en ninguna fila (`N12`). Un replay devuelve el número guardado sin
+  consumir otro (`N08`).
+- Cambio de contrato de dominio (ítem 3): `post()` pasa a `post(number)`. El paquete es `private` en 0.0.0 y no
+  hay consumidores registrados, pero un anfitrión que arme asientos con el dominio deja de compilar.
+- `docs/INTEGRATION.md` suma `HA43` (el contador que debe el anfitrión, con su restricción única) y `HA44`
+  (migraciones: firma de `post`, resultados de idempotencia sin número y asientos ya persistidos).
+- Pruebas: 13 nuevas, escritas antes de implementar, con rojo observado en 10. `pnpm typecheck`, `pnpm build`,
+  `pnpm test` (306 pruebas, 306 correctas) y `pnpm check:project` en verde.
+
 ### 007 — contrato del adaptador del anfitrión — `docs/INTEGRATION.md`
 
 Incremento de documentación: no agrega código ni pruebas. Escribe, para quien implemente un adaptador durable,
@@ -547,16 +574,21 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 
 ## Pendiente de implementar
 
-**009: extensiones** según necesidad demostrada. Sin ORM, HTTP ni interfaz visual en este repositorio.
+**009: extensiones** según necesidad demostrada —multimoneda operativa, ejercicio contable, país, impuestos o
+integraciones—, de la que 009a ya tomó la numeración de asientos. Sin ORM, HTTP ni interfaz visual en este
+repositorio.
 
 ## Siguiente tarea
 
 El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir), la
 superficie de lectura (saldos por cuenta, balance de comprobación y mayor) y el libro como agregado con su plan
 y su moneda funcional, así que ya no hay conceptos del módulo que sólo existan por configuración del adaptador.
-El contrato del adaptador ya está escrito (007): un anfitrión que ignora esas garantías obtiene un motor que
-parece correcto y no lo es, y ahora puede verificarlo obligación por obligación. El siguiente incremento es
-**009: extensiones** según necesidad demostrada, sin prometer nada de lo que la sección 7 del contrato excluye.
+El contrato del adaptador ya está escrito (007) y la numeración de asientos ya existe (009a), así que un
+anfitrión durable puede emitir asientos numerados y verificar obligación por obligación lo que le toca.
+Queda **009: extensiones** según necesidad demostrada. Los candidatos, en el orden en que un anfitrión real los
+va a pedir: **redondeo** (Q05, hoy `Money` no multiplica ni divide, así que no hay impuestos ni repartos),
+**conversión de moneda** (la mitad abierta de Q08), **cambiar la cabecera de un borrador** y **reversión
+parcial o cancelación de una reversión**. Sin prometer nada de lo que la sección 7 del contrato excluye.
 
 Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
 una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
