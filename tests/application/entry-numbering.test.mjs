@@ -233,3 +233,66 @@ test('N12: the number does not leak into the reports', async () => {
     'side',
   ]);
 });
+
+test('N04: every draft operation reports number null', async () => {
+  const { app } = await harness();
+  const created = await app.createEntryDraft(draftOf({ entryId: 'entry-1' }));
+  const added = await app.addEntryLine({
+    ledgerId: 'ledger-1', entryId: 'entry-1',
+    line: { lineId: 'line-3', accountId: 'acc-cash', side: 'DEBIT', amount: amount('10.00') },
+    idempotencyKey: 'key-add',
+  });
+  const removed = await app.removeEntryLine({
+    ledgerId: 'ledger-1', entryId: 'entry-1', lineId: 'line-3', idempotencyKey: 'key-remove',
+  });
+
+  assert.equal(created.number, null);
+  assert.equal(added.number, null);
+  assert.equal(removed.number, null);
+});
+
+test('rule 7: a rejected post does not leave the ledger counter advanced', async () => {
+  const { memory, app } = await harness();
+  await app.createEntryDraft({
+    ...draftOf({ entryId: 'entry-unbalanced' }),
+    lines: [
+      { lineId: 'line-1', accountId: 'acc-cash', side: 'DEBIT', amount: amount('1000.00') },
+      { lineId: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: amount('999.00') },
+    ],
+  });
+
+  await assert.rejects(postEntry(app, 'entry-unbalanced'), (error) => error.code === 'ENTRY_UNBALANCED');
+  assert.equal(storedEntry(memory, 'entry-unbalanced').status, 'DRAFT');
+
+  await app.createEntryDraft(draftOf({ entryId: 'entry-2' }));
+  assert.equal((await postEntry(app, 'entry-2')).number, 1);
+});
+
+test('rule 10: the core does not police a counter that repeats a number', async () => {
+  const { memory, app } = await harness((memory) => ({
+    async run(work) {
+      return memory.unitOfWork.run((scope) =>
+        work({ ...scope, entryNumbers: { async nextNumber() { return 1; } } }),
+      );
+    },
+  }));
+  await app.createEntryDraft(draftOf({ entryId: 'entry-1' }));
+  await app.createEntryDraft(draftOf({ entryId: 'entry-2' }));
+
+  assert.equal((await postEntry(app, 'entry-1')).number, 1);
+  assert.equal((await postEntry(app, 'entry-2')).number, 1);
+  assert.equal(storedEntry(memory, 'entry-2').number, 1);
+});
+
+test('N12: trialBalance rows carry no number either', async () => {
+  const { app } = await harness();
+  await app.createEntryDraft(draftOf({ entryId: 'entry-1' }));
+  await postEntry(app, 'entry-1');
+
+  const trial = await app.trialBalance({ ledgerId: 'ledger-1' });
+
+  assert.deepEqual(Object.keys(trial.rows[0]).sort(), [
+    'accountId', 'balance', 'code', 'credit', 'debit', 'name', 'side', 'type',
+  ]);
+  assert.deepEqual(Object.keys(trial).sort(), ['balanced', 'currency', 'from', 'ledgerId', 'rows', 'to', 'totals']);
+});
