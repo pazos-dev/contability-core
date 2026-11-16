@@ -225,7 +225,7 @@ test("L22: a stored entry in another currency cannot be reversed either", async 
   })
     .addLine(usdLine())
     .addLine(usdLine({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT' }))
-    .post();
+    .post(1);
   await saveEntry(memory, original);
   const entryCount = memory.snapshot().entries.length;
 
