@@ -21,7 +21,8 @@ API orientativa del agregado: createDraft, addLine, removeLine, post y createRev
 4. Suma de débitos exactamente igual a suma de créditos, sin tolerancias flotantes.
 5. La transición a POSTED es irreversible dentro del agregado.
 
-`post()` solo protege invariantes locales. Aplicación comprueba cuentas activas y contabilizables,
+`post(number)` solo protege invariantes locales; el número lo pide la aplicación al contador del libro.
+Aplicación comprueba cuentas activas y contabilizables,
 plan/libro, diario y período abierto, moneda funcional del libro, permisos externos y consistencia transaccional.
 El identificador periodId no demuestra por sí solo que la fecha pertenezca al período.
 

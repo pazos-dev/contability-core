@@ -105,7 +105,8 @@ regla de menor número. Todas las lecturas y la escritura viven en una sola llam
      contabilizada.
    Contabilizar por acá no puede producir una segunda reversión completa que `reversePostedEntry` habría
    rechazado.
-8. **Invariantes del agregado.** `entry.post()`: sus errores burbujean tal cual
+8. **Invariantes del agregado.** `entry.post(number)`, con el número que se pide al contador del libro: sus
+   errores burbujean tal cual
    (`ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED`, `ENTRY_CURRENCY_MISMATCH`). Un asiento ya
    `POSTED` sin coincidencia de idempotencia llega acá y recibe `ENTRY_STATE` (E11).
 9. **Escritura única.** Dentro de la misma unidad de trabajo: `entries.save(posted)` y

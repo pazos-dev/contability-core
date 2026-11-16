@@ -169,7 +169,9 @@ Siguen abiertas y no bloquean esta entrega:
   serializa. El core no lo evita: la restricción única convierte la carrera en un error visible, que es mejor
   que un duplicado silencioso.
 - **Atomicidad.** Pedir el número, guardar el asiento y registrar la idempotencia ocurren en la misma unidad de
-  trabajo. Si el registro falla, la unidad revierte y el número no se consumió.
+  trabajo. Con un contador dentro de la transacción, el fallo devuelve el número; con una secuencia del motor,
+  no lo devuelve y queda un hueco. En cualquier caso, el asiento y el registro de idempotencia se escriben
+  juntos o no se escribe ninguno.
 - **Nada que autorizar.** La numeración no abre permisos ni accesos nuevos.
 - **Entrega.** Una sola rebanada revisable, en tres commits sobre `feat/009a-entry-numbering`: el contrato del
   agregado, el contador más las dos vías de contabilización, y la documentación. Aproximadamente 450 líneas
@@ -191,10 +193,13 @@ Comandos reales del repositorio: `pnpm typecheck`, `pnpm build`, `pnpm test`, `p
 
 Evidencia de la implementación:
 
-- `tests/domain/entries/entry-numbering.test.mjs` (5 pruebas): N01, N05, N06, N09 y N10 en el agregado.
-- `tests/application/entry-numbering.test.mjs` (8 pruebas): N01, N02, N03, N06, N07, N08, N11 y N12 contra el
-  adaptador en memoria, con un contador real por libro. N07 y N11 usan una unidad de trabajo cuyo contador
-  lanza: N07 comprueba que no se escribe nada, y N11 que el período cerrado se reporta **antes** de pedir el
-  número.
+- `tests/domain/entries/entry-numbering.test.mjs` (6 pruebas): N01, N05, N06 y N10 en el agregado. N09 queda
+  cubierto **por construcción**, no por una prueba: el constructor rechaza el par estado/número y ninguna
+  factoría puede producir un borrador con número, así que la rama DRAFT del chequeo es inalcanzable desde la
+  interfaz pública.
+- `tests/application/entry-numbering.test.mjs` (12 pruebas): N01, N02, N03, N04, N06, N07, N08, N11 y N12
+  contra el adaptador en memoria, con un contador real por libro, más las reglas 7 y 10. N07 y N11 usan una
+  unidad de trabajo cuyo contador lanza: N07 comprueba que no se escribe nada, y N11 que el período cerrado se
+  reporta **antes** de pedir el número.
 - Rojo observado antes de implementar: 10 de las 13 pruebas fallaban (N09, N11 y N12 pasaban por ausencia).
-- `pnpm typecheck`, `pnpm build`, `pnpm test` (306 pruebas, 306 correctas) y `pnpm check:project` en verde.
+- `pnpm typecheck`, `pnpm build`, `pnpm test` (311 pruebas, 311 correctas) y `pnpm check:project` en verde.
