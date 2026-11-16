@@ -350,7 +350,7 @@ permitidos**. El formato (prefijos, año, ceros) y la unicidad durable quedan de
 - `docs/INTEGRATION.md` suma `HA43` (el contador que debe el anfitrión, con su restricción única) y `HA44`
   (migraciones: firma de `post`, resultados de idempotencia sin número y asientos ya persistidos).
 - Pruebas: 13 nuevas, escritas antes de implementar, con rojo observado en 10. `pnpm typecheck`, `pnpm build`,
-  `pnpm test` (306 pruebas, 306 correctas) y `pnpm check:project` en verde.
+  `pnpm test` (311 pruebas, 311 correctas) y `pnpm check:project` en verde.
 
 ### 007 — contrato del adaptador del anfitrión — `docs/INTEGRATION.md`
 
@@ -549,10 +549,11 @@ negativos; la restricción a importes positivos vive en `JournalEntryLine`. `Acc
 padre ni tipo: quedan fuera hasta definir reglas de historial. No hay saldo editable ni serialización
 JSON de cuentas.
 `Journal` no guarda asientos, no numera asientos y no valida pertenencia de asientos al libro;
-la numeración secuencial y su ámbito siguen pendientes del contrato de aplicación.
+la numeración secuencial existe desde 009a con ámbito por libro, pero el contador es de la aplicación, no del
+diario.
 `AccountingPeriod` no verifica solapamientos, no serializa el cierre y no reabre períodos: el cierre
 no altera asientos ni borradores, no genera asientos de resultados y no equivale a un cierre fiscal.
-`JournalEntry.post()` no verifica cuentas activas ni contabilizables, pertenencia al diario o al libro,
+`JournalEntry.post(number)` no verifica cuentas activas ni contabilizables, pertenencia al diario o al libro,
 ni la apertura del período: `periodId` no demuestra que la fecha caiga dentro de ese período. No impide
 una segunda reversión del mismo asiento ni serializa carreras. No hay edición directa de líneas (se
 quita y se añade sobre un borrador), no hay borrado de asientos contabilizados y no hay serialización
