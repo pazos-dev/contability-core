@@ -319,7 +319,7 @@ test('L11: an inactive ledger rejects creating a draft, and nothing is written',
   assert.deepEqual(memory.snapshot().idempotency, []);
 });
 
-test('L23: a draft in another currency is accepted; only posting rejects it', async () => {
+test('L23: a draft in another currency is accepted; only posting asks for its rate', async () => {
   const { memory, app } = await harness();
   const input = draftInput({
     lines: [
@@ -341,9 +341,16 @@ test('L23: a draft in another currency is accepted; only posting rejects it', as
   assert.equal(stored(memory)[0].status, 'DRAFT');
   assert.equal(stored(memory)[0].lines.length, 3);
 
+  // 009d: the rejection is the missing rate of the foreign lines, not the foreign currency itself, and the
+  // draft still stays a draft with nothing written after it.
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' }),
-    assertCode('LEDGER_CURRENCY_MISMATCH'),
+    (error) => {
+      assert.ok(error instanceof EntryError, `expected EntryError, got ${error?.name}`);
+      assert.equal(error.code, 'ENTRY_RATE_MISSING', error.message);
+      return true;
+    },
   );
   assert.equal(stored(memory)[0].status, 'DRAFT');
+  assert.deepEqual(memory.snapshot().idempotency, []);
 });

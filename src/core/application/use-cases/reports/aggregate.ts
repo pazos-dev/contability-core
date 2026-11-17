@@ -1,5 +1,6 @@
 import type { Account } from '../../../domain/account/index.js';
-import { Money, type Currency } from '../../../domain/shared/money/index.js';
+import type { JournalEntryLine } from '../../../domain/entries/index.js';
+import { Money, MoneyError, type Currency } from '../../../domain/shared/money/index.js';
 import type { AccountBalanceRow } from '../../dto.js';
 import type { UnitOfWorkScope } from '../../ports.js';
 import { isReportEntry, type ReportRange } from './rules.js';
@@ -26,12 +27,35 @@ export interface AccountTotals {
 export type TotalsByAccount = ReadonlyMap<string, AccountTotals>;
 
 /**
+ * The amount of a reported line, in the ledger's functional currency.
+ *
+ * A report is of the book, not of the transaction: the original stays on the line, and what a report sums and
+ * shows is what the line is worth in the only currency the book has (`foreign-currency.md`, rule 11).
+ *
+ * A posted line without a functional amount is host data written before 009d. The core does not invent a
+ * historical conversion, so the report fails closed with the domain's `CURRENCY_MISMATCH` instead of returning
+ * a sum of two currencies. It is a guard and not a reachable path: posting always attaches the functional
+ * amount, and the aggregate cannot be built without going through it.
+ */
+export function functionalAmountOf(line: JournalEntryLine): Money {
+  const amount = line.functionalAmount;
+  if (amount === undefined) {
+    throw new MoneyError(
+      'CURRENCY_MISMATCH',
+      `Currency mismatch: posted line ${JSON.stringify(line.id)} carries no functional amount, so it cannot be reported.`,
+    );
+  }
+  return amount;
+}
+
+/**
  * Drains the posted entries of the range page by page and accumulates debit and credit per account.
  *
- * The port returns entries with their lines and no totals, so what is verified here — one currency and the
- * posting side of every line — is verified by the core. A line in another currency makes `Money.add` throw
- * the domain `CURRENCY_MISMATCH`, and a report that cannot add must fail closed rather than return a sum
- * that silently mixed currencies (rule 3).
+ * The port returns entries with their lines and no totals, so what is verified here — one functional currency
+ * and the posting side of every line — is verified by the core. A line without a functional amount is the
+ * domain `CURRENCY_MISMATCH` from `functionalAmountOf`, and a functional amount in another currency makes
+ * `Money.add` throw the same code: a report that cannot add must fail closed rather than return a sum that
+ * silently mixed currencies (rule 3).
  *
  * What the port returns beyond what it was asked for — a draft, or an entry of another ledger — is discarded
  * here rather than accumulated (rule 1): a report states its result as its own, and an excess is a host bug
@@ -67,7 +91,7 @@ export async function totalsByAccount(
           totals.set(line.accountId, totalsOfAccount);
         }
 
-        const amount = line.amount;
+        const amount = functionalAmountOf(line);
         if (line.side === 'DEBIT') totalsOfAccount.debit = totalsOfAccount.debit.add(amount);
         else totalsOfAccount.credit = totalsOfAccount.credit.add(amount);
       }

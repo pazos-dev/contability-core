@@ -58,7 +58,7 @@ function draft(id, status = 'DRAFT') {
       }),
     );
 
-  return status === 'POSTED' ? entry.post(1) : entry;
+  return status === 'POSTED' ? entry.post({ number: 1, functionalCurrency: uyu, rates: [] }) : entry;
 }
 
 async function harness({ ledgers = LEDGERS, ...memoryOptions } = {}) {

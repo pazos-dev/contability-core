@@ -46,4 +46,21 @@ export class MoneyFactor {
   get denominator(): bigint {
     return this.#denominator;
   }
+
+  /**
+   * The exact decimal literal this factor was parsed from.
+   * `fromDecimal` and `toDecimal` are inverses for every accepted literal: `0.21` is 21/100 and becomes
+   * `"0.21"` again, decimals written as zeros included (`"0.210"` stays `"0.210"`). It never goes through a
+   * `number`, so nothing is lost on the way back.
+   */
+  toDecimal(): string {
+    // The denominator is always a power of ten, so its digit count minus one is the number of decimals.
+    const decimals = this.#denominator.toString().length - 1;
+    const negative = this.#numerator < 0n;
+    const digits = (negative ? -this.#numerator : this.#numerator).toString();
+    if (decimals === 0) return negative ? `-${digits}` : digits;
+
+    const padded = digits.padStart(decimals + 1, '0');
+    return `${negative ? '-' : ''}${padded.slice(0, -decimals)}.${padded.slice(-decimals)}`;
+  }
 }

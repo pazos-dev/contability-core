@@ -3,7 +3,7 @@ import type { EntryStatus, PostingSide } from '../domain/entries/index.js';
 import type { JournalStatus } from '../domain/journal/index.js';
 import type { LedgerStatus } from '../domain/ledger/index.js';
 import type { PeriodStatus } from '../domain/period/index.js';
-import type { CurrencyJSON, MoneyJSON } from '../domain/shared/money/index.js';
+import type { CurrencyJSON, ExchangeRateJSON, MoneyJSON } from '../domain/shared/money/index.js';
 
 /**
  * Data shapes of this layer: the inputs and outputs of every use case, plus the record the idempotency port
@@ -152,12 +152,33 @@ export interface ClosePeriodResult {
 
 // ── Entries ──────────────────────────────────────────────────────────────────────────────────────────
 
-/** One line of an entry, already serializable. */
+/**
+ * One rate of a posting, as the caller supplies it: the currency of the foreign line and the exact factor that
+ * converts it into the ledger's functional currency.
+ *
+ * The destination is not part of the input: it is the ledger's currency, which the application resolves, so a
+ * caller cannot convert into a currency the book does not keep. The factor is text, never a number, and is
+ * parsed with `MoneyFactor.fromDecimal`, so `INVALID_FACTOR` and `INVALID_EXCHANGE_RATE` come from the domain.
+ */
+export interface ExchangeRateInput {
+  readonly currency: CurrencyJSON;
+  readonly factor: string;
+}
+
+/**
+ * One line of an entry, already serializable.
+ *
+ * A posted line carries both amounts: `amount` is what was agreed, in its own currency, and `functionalAmount`
+ * is what it is worth in the ledger's currency; `rate` appears only when the line had to be converted. A draft
+ * line carries `amount` alone, because a draft does not convert (009d, rule 9).
+ */
 export interface PostedLineResult {
   readonly lineId: string;
   readonly accountId: string;
   readonly side: PostingSide;
   readonly amount: MoneyJSON;
+  readonly functionalAmount?: MoneyJSON;
+  readonly rate?: ExchangeRateJSON;
   readonly description?: string;
 }
 
@@ -230,8 +251,14 @@ export interface PostEntryInput {
   readonly ledgerId: string;
   readonly entryId: string;
   readonly idempotencyKey: string;
+  /** One rate per foreign currency present, chosen by the caller: the core never looks a quote up (009d, D2). */
+  readonly rates?: readonly ExchangeRateInput[];
 }
 
+/**
+ * The posted entry as the host reads it. `totalDebit` and `totalCredit` are in the ledger's functional currency:
+ * they are the figures that balance. The original amounts stay available line by line.
+ */
 export interface PostEntryResult {
   readonly ledgerId: string;
   readonly entryId: string;

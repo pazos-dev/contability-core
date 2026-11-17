@@ -618,31 +618,28 @@ test('report rule 1: a draft never appears in the account ledger', async () => {
   assert.deepEqual(stateOf(memory), before);
 });
 
-test('report rule 3: a line in another currency fails closed with CURRENCY_MISMATCH', async () => {
-  // No legitimate path can produce this state: posting rejects another currency, so the double lies and the
-  // core has to be the one that refuses to add two currencies together.
-  const usd = Currency.create('USD', 2);
-  const foreignEntry = JournalEntry.createDraft({
-    id: 'foreign',
+test('report rule 3 / FX15: a posted line without a functional amount fails closed with CURRENCY_MISMATCH', async () => {
+  // No legitimate path can produce this state: posting always attaches the functional amount, so the double
+  // lies with what a host stored before 009d and the core refuses to report an invented conversion.
+  const legacyEntry = {
+    id: 'legacy',
     ledgerId: 'ledger-1',
     journalId: 'jrn-1',
-    periodId: 'per-2026',
     accountingDate: AccountingDate.create('2026-03-15'),
-    description: 'Moneda extranjera',
-  })
-    .addLine(
-      JournalEntryLine.create({ id: 'l1', accountId: 'acc-cash', side: 'DEBIT', amount: Money.fromDecimal('10.00', usd) }),
-    )
-    .addLine(
-      JournalEntryLine.create({ id: 'l2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('10.00', usd) }),
-    )
-    .post(1);
+    description: 'Asiento anterior a 009d',
+    status: 'POSTED',
+    number: 1,
+    lines: [
+      { id: 'l1', accountId: 'acc-cash', side: 'DEBIT', amount: Money.fromDecimal('10.00', uyu) },
+      { id: 'l2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('10.00', uyu) },
+    ],
+  };
 
   const { memory, app } = await harness({
     chart: [CASH, REVENUE],
     memoryOptions: {
       overrides: () => ({
-        postedEntries: { findPostedMovements: async () => ({ entries: [foreignEntry], nextCursor: null }) },
+        postedEntries: { findPostedMovements: async () => ({ entries: [legacyEntry], nextCursor: null }) },
       }),
     },
   });
@@ -811,7 +808,7 @@ test('GL10: a port that returns a draft and an entry of another ledger is discar
         amount: Money.fromDecimal('3000.00', uyu),
       }),
     )
-    .post(1);
+    .post({ number: 1, functionalCurrency: uyu, rates: [] });
 
   const { memory, app } = await harness({
     chart: { 'ledger-1': [CASH, REVENUE], 'ledger-2': [BANK] },

@@ -29,6 +29,7 @@ export type {
   CreateEntryDraftInput,
   EntryDraftResult,
   EntryLineInput,
+  ExchangeRateInput,
   PostEntryInput,
   PostEntryResult,
   PostedLineResult,

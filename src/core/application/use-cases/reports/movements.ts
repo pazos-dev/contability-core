@@ -5,6 +5,7 @@ import type { AccountMovementRow } from '../../dto.js';
 import * as errors from '../../errors.js';
 import type { UnitOfWorkScope } from '../../ports.js';
 import { isReportEntry, type ReportRange } from './rules.js';
+import { functionalAmountOf } from './aggregate.js';
 
 /**
  * The account ledger: one account, its movements in chronological order and the balance after each one.
@@ -116,9 +117,10 @@ export async function movementRows(
 
   let running = opening;
   return drained.map(({ entry, line }) => {
-    // `Money` refuses to add another currency, so a line the host denominated elsewhere fails the report
-    // closed here instead of producing a sum of two currencies (rule 3).
-    running = signed(running, line);
+    // The report is kept in the book's currency: the functional amount is what it adds, and a line without one
+    // —host data written before 009d— fails the report closed instead of producing a sum of two currencies.
+    const amount = functionalAmountOf(line);
+    running = line.side === 'DEBIT' ? running.add(amount) : running.subtract(amount);
 
     const position: MovementPosition = { date: entry.accountingDate.value, entryId: entry.id, lineId: line.id };
 
@@ -133,7 +135,7 @@ export async function movementRows(
         // make the field of the row optional too.
         description: entry.description,
         side: line.side,
-        amount: line.amount.toJSON(),
+        amount: amount.toJSON(),
         runningBalance: running.toJSON(),
         ...(entry.reversalOfEntryId === undefined ? {} : { reversalOfEntryId: entry.reversalOfEntryId }),
       },
@@ -243,9 +245,10 @@ export function decodeCursor(raw: string): MovementsCursor {
   return { position: { date, entryId, lineId }, raw };
 }
 
-/** The signed movement of one line: debit adds, credit subtracts, and the side is the only thing that decides. */
+/** The signed movement of one line in the book's currency: debit adds, credit subtracts. */
 function signed(balance: Money, line: JournalEntryLine): Money {
-  return line.side === 'DEBIT' ? balance.add(line.amount) : balance.subtract(line.amount);
+  const amount = functionalAmountOf(line);
+  return line.side === 'DEBIT' ? balance.add(amount) : balance.subtract(amount);
 }
 
 /**

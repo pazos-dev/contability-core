@@ -455,27 +455,29 @@ test('TB08: an INACTIVE ledger is reported normally', async () => {
   assert.equal(inactive.balanced, true);
 });
 
-test('TB09: a line in another currency fails closed with CURRENCY_MISMATCH and reports nothing', async () => {
-  // No legitimate path can produce this state: posting rejects another currency. The double lies so the
-  // core has to be the one that refuses to add two currencies together (rule 3).
-  const usd = Currency.create('USD', 2);
-  const foreignEntry = JournalEntry.createDraft({
-    id: 'foreign',
+test('TB09 / FX15: a posted line without a functional amount fails closed with CURRENCY_MISMATCH', async () => {
+  // No legitimate path can produce this state: posting always attaches the functional amount, so the double
+  // lies with what a host stored before 009d. The core must not invent a historical conversion, so the report
+  // fails closed instead of adding amounts it cannot compare.
+  const legacyEntry = {
+    id: 'legacy',
     ledgerId: 'ledger-1',
     journalId: 'jrn-1',
-    periodId: 'per-2026',
     accountingDate: AccountingDate.create('2026-03-15'),
-    description: 'Moneda extranjera',
-  })
-    .addLine(JournalEntryLine.create({ id: 'l1', accountId: 'acc-cash', side: 'DEBIT', amount: Money.fromDecimal('10.00', usd) }))
-    .addLine(JournalEntryLine.create({ id: 'l2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('10.00', usd) }))
-    .post(1);
+    description: 'Asiento anterior a 009d',
+    status: 'POSTED',
+    number: 1,
+    lines: [
+      { id: 'l1', accountId: 'acc-cash', side: 'DEBIT', amount: Money.fromDecimal('10.00', uyu) },
+      { id: 'l2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('10.00', uyu) },
+    ],
+  };
 
   const { memory, app } = await harness({
     memoryOptions: {
       overrides: () => ({
         postedEntries: {
-          findPostedMovements: async () => ({ entries: [foreignEntry], nextCursor: null }),
+          findPostedMovements: async () => ({ entries: [legacyEntry], nextCursor: null }),
         },
       }),
     },
@@ -571,7 +573,7 @@ test('S7: a trial balance that does not agree reports the totals and balanced fa
         amount: Money.fromDecimal('100.00', uyu),
       }),
     )
-    .post(1);
+    .post({ number: 1, functionalCurrency: uyu, rates: [] });
 
   const { memory, app } = await harness({
     memoryOptions: {
