@@ -65,8 +65,9 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 4. **Borrador de reversión.** `original.createReversalDraft({ id: reversalEntryId, periodId,
    accountingDate, description })`. El dominio exige que el original esté POSTED: un original en DRAFT
    recibe `ENTRY_STATE` y no se escribe nada (E09). Las líneas del borrador invierten DEBIT/CREDIT,
-   conservan importe y descripción, y **reutilizan los ids de línea del original**, que son únicos dentro
-   de su asiento.
+   conservan importe, descripción e **importe funcional y tasa del original**, y **reutilizan los ids de línea
+del original**, que son únicos dentro
+de su asiento.
 5. **Diario.** `findById(ledgerId, original.journalId)`; ausente es `JOURNAL_NOT_FOUND`, `INACTIVE` es
    `JOURNAL_INACTIVE`.
 6. **Período destino.** `findById(ledgerId, periodId)`; ausente es `PERIOD_NOT_FOUND`. No `OPEN` es
@@ -86,9 +87,11 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
    contabilizarse después lo decide `postEntry`, que contabiliza ese mismo borrador y no otro asiento. La
    comprobación va inmediatamente antes de escribir, dentro de la unidad de trabajo, para que un adaptador
    durable pueda sustituirla por una restricción única sin moverla.
-10. **Contabilizar.** `reversalDraft.post(number)`, con el número que se pide al contador del libro: sus
-   errores burbujean (en la práctica no debería fallar,
-   porque las líneas espejadas conservan equilibrio y moneda del original).
+10. **Contabilizar.** `reversalDraft.post({ number, functionalCurrency, rates: [] })`, con el número que se
+   pide al contador del libro y la moneda funcional del libro: sus errores burbujean (en la práctica no
+   debería fallar, porque las líneas espejadas conservan el equilibrio funcional del original). No se envían
+   tasas: la reversión espeja el importe funcional del original y no vuelve a convertir
+   (`foreign-currency.md`, regla 8).
 11. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
     trabajo. El original nunca se guarda: no se toca.
 12. **Resultado.** Se arma a partir de la reversión posteada.
@@ -99,7 +102,8 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 2. La reversión es un asiento nuevo con identidad propia: id, período y fecha los elige el llamador.
 3. Un original admite como máximo una reversión completa contabilizada.
 4. Revertir no reabre períodos ni modifica cierres.
-5. La reversión hereda moneda, importes y cuentas del original: no se leen de la entrada del caso de uso.
+5. La reversión hereda moneda original, importe funcional, tasa y cuentas del original: no se leen de la
+   entrada del caso de uso. Su resultado está en moneda funcional como el de `postEntry`.
 6. El caso de uso no lee reloj, no genera ids y no lee variables de entorno.
 
 ## Errores

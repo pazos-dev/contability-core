@@ -1,7 +1,10 @@
 # SPEC — Libro contable
 
 Estado: **implementado y verificado** hasta el incremento 006f. L01-L16 se implementaron en 006e y L17-L24 en
-006f, que resolvió Q08: el libro declara una moneda funcional única. Este documento fija el comportamiento del
+006f, que resolvió Q08: el libro declara una moneda funcional única. El incremento 009d
+(`foreign-currency.md`) cambió lo que significa contabilizar en otra moneda: ya no se rechaza por serlo, se
+convierte con la tasa que recibe la operación, y por eso L22 y L24 y las reglas 15 y 17 se reescribieron en ese
+mismo incremento. Este documento fija el comportamiento del
 libro contable; lo que describe existe y está probado en `tests/domain/ledger/ledger.test.mjs` y
 `tests/application/ledger.test.mjs`, con L11 cubierto una prueba por área en `tests/application/registration.test.mjs`
 y `tests/application/entry-draft.test.mjs`, y L13 por la prueba de unicidad por plan que ya existía (R04).
@@ -140,13 +143,18 @@ sigue resolviendo antes que cualquier otra entidad, porque es el ámbito que da 
     moneda por defecto, porque suponer una contabilizaría mal en silencio.
 14. La moneda se valida con las reglas de `Currency`, no con reglas nuevas del libro: código de tres letras
     mayúsculas, escala entera de 0 a 6 y escala oficial de la tabla ISO para los códigos catalogados.
-15. Contabilizar un asiento exige que su moneda —la única de sus líneas, ya exigida por el agregado— sea la
-    moneda funcional del libro. Vale para las dos vías que dejan un asiento en `POSTED`: `postEntry` y
-    `reversePostedEntry`.
+15. Contabilizar exige que el asiento quede **expresado en la moneda funcional** del libro: cada línea se
+    convierte con la tasa que recibe la operación y lo que se compara son los importes funcionales
+    (`foreign-currency.md`, reglas 1-8). Una línea en la moneda del libro no necesita tasa; una en otra moneda
+    sin tasa es `ENTRY_RATE_MISSING`. Vale para las dos vías que dejan un asiento en `POSTED`: `postEntry` y
+    `reversePostedEntry`; la reversión espeja los funcionales del original y no vuelve a convertir.
 16. Los borradores **no** se validan por moneda, igual que no se validan por balance ni por período abierto:
-    el borrador admite lo que todavía no se contabilizó y `post` es el punto estricto.
-17. El libro no convierte. `Money` conserva `CURRENCY_MISMATCH` en las operaciones cruzadas y no existe
-    ninguna API de tasas: operar en más de una moneda es un libro por moneda, o conversión en el anfitrión.
+    el borrador admite lo que todavía no se contabilizó y `post` es el punto estricto. Puede mezclar monedas y
+    no guarda importe funcional.
+17. El libro no guarda tasas ni las busca por fecha: la aporta quien llama, por operación, y se persiste con
+    la línea que convirtió (`foreign-currency.md`, D2 y reglas 6-7). `Money` conserva `CURRENCY_MISMATCH` en
+    las operaciones cruzadas porque convertir no es una operación de dinero sino una multiplicación por un
+    factor exacto (`rounding.md`).
 18. Varios libros pueden declarar la misma moneda funcional; una moneda por libro, no dos.
 
 ## Errores
@@ -158,6 +166,10 @@ De dominio, burbujean sin envolver: `INVALID_LEDGER` y `INVALID_CURRENCY` (este 
 
 `LEDGER_CURRENCY_MISMATCH` pertenece a la aplicación y no al agregado porque la moneda del libro vive en otro
 agregado: `JournalEntry` conoce `ledgerId`, no el libro, y resolverlo exige una lectura que el dominio no hace.
+Desde 009d ese código dejó de ser el rechazo por defecto de una línea en otra moneda y sobrevive en un solo
+caso: revertir un asiento que nunca tuvo importe funcional —datos anteriores al incremento—, porque no hay
+nada que espejar. La falta de tasa es `ENTRY_RATE_MISSING` y la pareja equivocada o el factor no positivo son
+`INVALID_EXCHANGE_RATE`, las tres del dominio (`foreign-currency.md`).
 
 Todo error deja el estado como estaba: ni libro, ni registro de idempotencia parcial.
 
@@ -186,9 +198,9 @@ Todo error deja el estado como estaba: ni libro, ni registro de idempotencia par
 | L19 | 13 | Un alta sin `currency` | `registerLedger` | Error de dominio por moneda ausente; nada guardado |
 | L20 | 12 | La misma clave y la misma petición salvo la moneda | Repetir `registerLedger` | `IDEMPOTENCY_CONFLICT`; el libro guardado conserva su moneda original |
 | L21 | 12 | Un libro registrado con moneda | `rename`, `setLedgerStatus` a `INACTIVE` y de vuelta a `ACTIVE` | La moneda es la misma en todas las copias |
-| L22 | 15 | Un libro `UYU` con un borrador balanceado en `USD` | `postEntry` | `LEDGER_CURRENCY_MISMATCH`; el asiento sigue `DRAFT` y no hay registro de idempotencia |
+| L22 | 15 | Un libro `UYU` con un borrador balanceado en `USD` | `postEntry` sin tasas | `ENTRY_RATE_MISSING`; el asiento sigue `DRAFT` y no hay registro de idempotencia. Con la tasa `USD → UYU` contabiliza y cuadra en funcional |
 | L23 | 16 | Un libro `UYU` | `createEntryDraft` y `addEntryLine` con líneas `USD` | El borrador se crea y se edita sin error; el rechazo aparece recién al contabilizar |
-| L24 | 15 | Un libro en un código propio `ABC` con escala 2 y un borrador `ABC` con escala 4 | `postEntry` | `LEDGER_CURRENCY_MISMATCH`: el mismo código con otra escala es otra moneda, y por eso el libro guarda el par |
+| L24 | 15 | Un libro en un código propio `ABC` con escala 2 y un borrador `ABC` con escala 4 | `postEntry` | `ENTRY_RATE_MISSING`: el mismo código con otra escala es otra moneda, y por eso el libro guarda el par y esa línea necesita su propia tasa |
 
 ## Decisiones
 
@@ -201,18 +213,18 @@ Resueltas en esta spec, con el motivo:
 | Un solo puerto | `LedgerRepository` reemplaza a `LedgerDirectory` | `chartOfAccountsIdOf` ya era la lectura del libro; el repositorio lleva la misma información más nombre y estado. Dos puertos para el mismo dato obligarían al anfitrión a mantener dos implementaciones coherentes |
 | `setLedgerStatus` sin clave de idempotencia | Igual que `setAccountStatus` | Repetir el estado es no-op por construcción, así que no hay segundo efecto que evitar |
 | El core no valida que el plan exista | Sin comprobación | No hay entidad de plan de cuentas: es un identificador del anfitrión. Inventar una tabla de planes acá sería decidir por el anfitrión |
-| Moneda única por libro | El asiento en otra moneda funcional se rechaza al contabilizar | Es la opción A de Q08. Un libro con asientos en dos monedas necesita importe funcional, tasa y fecha de tasa por línea, más cuentas de diferencia de cambio: eso es otro incremento con decisiones fiscales propias, no un campo más |
+| Moneda única por libro | Una sola moneda funcional; el asiento en otra moneda se convierte al contabilizar | Es la opción A de Q08. Un libro con asientos en dos monedas necesita importe funcional y tasa por línea: eso es 009d, y sigue sin haber cuentas de diferencia de cambio, que son otra operación |
 | Moneda funcional inmutable | No hay `changeLedgerCurrency` | La moneda funcional es la unidad de cuenta del libro: cambiarla invalida todo asiento ya contabilizado, y ningún reporte histórico seguiría significando lo mismo. Un libro con otra moneda es otro libro |
-| La guarda de moneda vive en la aplicación | `LEDGER_CURRENCY_MISMATCH` en `postEntry` y `reversePostedEntry` | La moneda del libro está en el `Ledger` y el asiento sólo conoce `ledgerId`; mover ese dato al agregado duplicaría la fuente o rompería el límite entre agregados |
+| La guarda de moneda vive en la aplicación | `LEDGER_CURRENCY_MISMATCH` sólo en la reversión de un asiento sin funcional | La moneda del libro está en el `Ledger` y el asiento sólo conoce `ledgerId`; la conversión la decide el agregado porque recibe la moneda funcional y las tasas con la operación (009d) |
 | La guarda no está en los borradores | Sólo al contabilizar | `createEntryDraft` ya declara que valida lo que hace coherente el borrador y que `postEntry` revalida todo. Validar la moneda antes habría invertido ese reparto y duplicado la regla |
-| Sin conversión | `Money` no gana tasas | El core no tiene fuente de tasas ni fecha de aplicación; elegir una por defecto produciría importes funcionales falsos que nadie detectaría. Q08 queda cerrada como moneda única |
+| Sin tabla de tasas | La tasa la aporta el llamador, por operación | El core no tiene fuente de tasas ni fecha de aplicación; elegir una por defecto produciría importes funcionales falsos que nadie detectaría. `ExchangeRate` es un valor que viaja con la operación y se guarda con la línea (009d) |
 | Sin moneda por defecto | `currency` obligatoria | Una moneda supuesta es peor que un alta fallida: contabiliza en silencio en la unidad equivocada |
 
 Pendientes, con lo que bloquean:
 
 | ID | Tema | Impacto |
 | --- | --- | --- |
-| Q08 | Moneda funcional y conversión | **Resuelta como moneda única por libro** en el incremento 006f. Queda abierta sólo la conversión: si algún día hace falta multimoneda operativa en un mismo libro, necesita tasa, fecha de tasa, importe funcional por línea y cuentas de diferencia de cambio |
+| Q08 | Moneda funcional y conversión | **Resuelta**: moneda única por libro en 006f y conversión con tasa recibida en 009d. Una tabla de cotizaciones, la diferencia de cambio y la revaluación al cierre siguen fuera, con spec propia |
 | Q11 | Numeración de asientos y su ámbito | La numeración podría ser por libro; no cambia el alta de libro |
 | — | Ejercicio contable por libro | Agrupar períodos en ejercicios necesita su propia spec; no bloquea el libro |
 | — | Consolidación entre libros | Fuera de fase; exigiría una relación entre libros que hoy no existe |
@@ -259,9 +271,12 @@ Pendientes, con lo que bloquean:
   `Ledger` se filtra al paquete fuera de él.
 - L17-L21 en `tests/application/ledger.test.mjs`; L22 y L23 en `tests/application/post-entry.test.mjs` y
   `tests/application/entry-draft.test.mjs`; la inmutabilidad de L21 se cubre además en el agregado.
+- L22 y L24 se reescribieron en 009d: la tasa es lo que falta, no la moneda. Sus casos viven en
+  `tests/application/post-entry.test.mjs` y el detalle de la conversión en
+  `tests/application/foreign-currency.test.mjs` (FX01-FX14).
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
 - Estado hoy: **implementado y verificado**. Existen `Ledger`, `LedgerRepository`, `registerLedger` y
-  `setLedgerStatus`; la fachada expone trece métodos; `chartOfAccountsByLedger` ya no existe en el adaptador
-  en memoria y los libros se siembran registrándolos. Siguen fuera de alcance: conversión de moneda (Q08
-  abierta sólo en esa parte), cambio de plan de un libro (sin operación), borrado (se desactiva) y
-  verificación de que el plan exista (Q07, a cargo del anfitrión).
+  `setLedgerStatus`; la fachada expone diecisiete métodos; `chartOfAccountsByLedger` ya no existe en el adaptador
+  en memoria y los libros se siembran registrándolos. Siguen fuera de alcance: tabla de cotizaciones,
+  diferencia de cambio y revaluación al cierre (`foreign-currency.md`), cambio de plan de un libro (sin
+  operación), borrado (se desactiva) y verificación de que el plan exista (Q07, a cargo del anfitrión).
