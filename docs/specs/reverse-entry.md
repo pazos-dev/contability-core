@@ -66,8 +66,7 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
    accountingDate, description })`. El dominio exige que el original esté POSTED: un original en DRAFT
    recibe `ENTRY_STATE` y no se escribe nada (E09). Las líneas del borrador invierten DEBIT/CREDIT,
    conservan importe, descripción e **importe funcional y tasa del original**, y **reutilizan los ids de línea
-del original**, que son únicos dentro
-de su asiento.
+   del original**, que son únicos dentro de su asiento.
 5. **Diario.** `findById(ledgerId, original.journalId)`; ausente es `JOURNAL_NOT_FOUND`, `INACTIVE` es
    `JOURNAL_INACTIVE`.
 6. **Período destino.** `findById(ledgerId, periodId)`; ausente es `PERIOD_NOT_FOUND`. No `OPEN` es

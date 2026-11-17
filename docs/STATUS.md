@@ -414,12 +414,19 @@ otra moneda; lo que falta, si falta, es la tasa.
   lleva modo de redondeo (se aplica `HALF_UP` por defecto, así que FX14 sólo ejercita ese modo) y la conversión
   exige monedas de la misma escala, porque `Money.multiply` devuelve el producto en la moneda del operando y
   una sola multiplicación no puede expresar un cambio de escala sin redondear dos veces.
-- Pruebas: 28 nuevas —13 en `tests/domain/entries/foreign-currency.test.mjs` y 15 en
-  `tests/application/foreign-currency.test.mjs`—, escritas antes de implementar y con rojo observado (el módulo
-  de dominio no cargaba sin `ExchangeRate`; en la aplicación fallaban 12 de 14). La suite pasa de 354 a 383.
+- Pruebas: 28 nuevas —12 en `tests/domain/entries/foreign-currency.test.mjs`, 15 en
+  `tests/application/foreign-currency.test.mjs` y una en `tests/public-api.test.mjs`—, escritas antes de
+  implementar y con rojo observado (el módulo de dominio no cargaba sin `ExchangeRate`; en la aplicación
+  fallaban 12 de 15). La suite pasa de 355 a 383.
   Además se migraron al nuevo contexto de `post` los 30 sitios existentes y se retargetizaron los cuatro casos
   que fijaban el rechazo anterior (L22, L24, la reversión de un asiento extranjero y L23), más TB09 y la regla 3
   del mayor, que ahora prueban la guarda de FX15 con un puerto que miente.
+- Revisión posterior de 009d: `JournalEntryLine.restore` da al adaptador durable la única vía válida para
+  reconstruir una línea convertida —`create` sigue siendo la ruta del borrador y no acepta `functionalAmount` ni
+  `rate`—, la huella de idempotencia canonicaliza cada tasa (`41.25` y `41.250` replayan) y `HA45` de
+  `docs/INTEGRATION.md` documenta la obligación del anfitrión. Pruebas: 8 nuevas —siete en
+  `tests/application/foreign-currency-regressions.test.mjs`, de las que tres estaban en rojo antes del arreglo,
+  y una en `tests/public-api.test.mjs`—; la suite pasa de 383 a 391.
 
 ### 009b — redondeo y operaciones con factor — `docs/specs/rounding.md`
 
@@ -605,7 +612,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 383 pruebas, 383 correctas, 0 fallos. |
+| `pnpm test` | 391 pruebas, 391 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 

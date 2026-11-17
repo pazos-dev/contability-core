@@ -150,7 +150,8 @@ Burban los de dominio: `ENTRY_STATE`, `DUPLICATE_LINE_ID`, `INVALID_ENTRY_LINE`,
 - Una edición no revalida el resto del borrador: sigue siendo un borrador, con las mismas reglas diferidas
   a `postEntry`.
 - La cabecera nueva no se comprueba contra las líneas ni contra la moneda del libro: contabilizar vuelve a
-  exigir la moneda funcional (`LEDGER_CURRENCY_MISMATCH`) sobre el asiento tal como quede.
+  exigir, sobre el asiento tal como quede, una tasa por cada moneda extranjera (`ENTRY_RATE_MISSING`) y el
+  cuadre en moneda funcional.
 - Dos ediciones concurrentes del mismo borrador son responsabilidad del anfitrión: el core lee, calcula y
   entrega dentro de una unidad de trabajo, pero sin control de versión no puede detectar la carrera. Queda
   declarado como límite, no como garantía.

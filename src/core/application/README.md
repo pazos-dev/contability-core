@@ -51,10 +51,11 @@ aparte: el criterio es la forma de la lectura —un puerto se separa cuando la l
 de salida en volumen—, y dos puertos sobre cuentas obligarían al anfitrión a mantener dos implementaciones
 coherentes.
 
-La moneda funcional es una regla cruzada y por eso vive acá: el asiento conoce `ledgerId`, no el libro. `post` y
-`reverse` —las dos vías que dejan un asiento en `POSTED`— llaman a `requireLedgerCurrency`, que compara la
-moneda de cada línea con la del libro y falla con `LEDGER_CURRENCY_MISMATCH`. Los borradores no la validan,
-igual que no validan el balance ni el período abierto.
+La moneda funcional es una regla cruzada y por eso vive acá: el asiento conoce `ledgerId`, no el libro. Desde
+009d la conversión la decide el agregado, que recibe la moneda funcional y las tasas en `post`; `reverse` todavía
+llama a `requireLedgerCurrency` para el asiento que se espeja, porque una reversión no convierte: reusa lo que el
+original ya tenía y falla con `LEDGER_CURRENCY_MISMATCH` si el original no trae importe funcional y está en otra
+moneda. Los borradores no se validan, igual que no validan el balance ni el período abierto.
 
 Dos contratos del puerto que se leen mal si no están dichos: `EntryRepository.findReversalsOf` devuelve
 **todas** las reversiones de un original, para que ninguna tape a otra por el orden de la persistencia, y

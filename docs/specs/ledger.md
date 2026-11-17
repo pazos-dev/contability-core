@@ -45,8 +45,9 @@ Excluye, declarado para no prometerlo:
 - **Borrado de libros.** Se desactivan; el historial queda.
 - **Cambio de plan de un libro.** No hay operación; ver «Decisiones».
 - **Jerarquía entre libros, consolidación y reportes por libro.** Corresponde a 008.
-- **Conversión de moneda.** El libro declara **una** moneda funcional y no convierte: sin tasas, sin importe
-  funcional por línea y sin cuentas de diferencia de cambio (Q08, resuelta como moneda única).
+- **Tasas y diferencia de cambio.** El libro declara **una** moneda funcional inmutable; la conversión de una
+  línea la decide la contabilización con la tasa que recibe y la guarda con la línea (009d). El core no elige ni
+  busca cotizaciones y no lleva cuentas de diferencia de cambio (Q08).
 - **Concurrencia y unicidad durable.** Del anfitrión (Q09): dos altas simultáneas del mismo id las separa su
   clave primaria, no este repositorio.
 
@@ -166,10 +167,12 @@ De dominio, burbujean sin envolver: `INVALID_LEDGER` y `INVALID_CURRENCY` (este 
 
 `LEDGER_CURRENCY_MISMATCH` pertenece a la aplicación y no al agregado porque la moneda del libro vive en otro
 agregado: `JournalEntry` conoce `ledgerId`, no el libro, y resolverlo exige una lectura que el dominio no hace.
-Desde 009d ese código dejó de ser el rechazo por defecto de una línea en otra moneda y sobrevive en un solo
-caso: revertir un asiento que nunca tuvo importe funcional —datos anteriores al incremento—, porque no hay
-nada que espejar. La falta de tasa es `ENTRY_RATE_MISSING` y la pareja equivocada o el factor no positivo son
-`INVALID_EXCHANGE_RATE`, las tres del dominio (`foreign-currency.md`).
+Desde 009d ese código dejó de ser el rechazo por defecto de una línea en otra moneda: la falta de tasa es
+`ENTRY_RATE_MISSING` y la pareja equivocada o el factor no positivo son `INVALID_EXCHANGE_RATE`, las tres del
+dominio (`foreign-currency.md`). Como guarda de la reversión compara el importe funcional y recurre al original
+cuando no lo hay, así que un asiento antiguo en la moneda del libro se revierte igual; la discrepancia sólo
+podría darse con un original en moneda extranjera **sin** funcional, que la contabilización anterior a 009d no
+podía producir.
 
 Todo error deja el estado como estaba: ni libro, ni registro de idempotencia parcial.
 

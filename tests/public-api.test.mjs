@@ -97,6 +97,22 @@ test('API: the domain publishes the exchange rate and entry rate error codes', a
 // The application barrel publishes behaviour and data shapes, and the facade is the only entry point for
 // behaviour. Types are erased at runtime, so the facade count is fixed at run time and the type surface is
 // fixed against the declaration file the build emits.
+test('API: the entries barrel publishes the input of the host restore path', async () => {
+  const { readFileSync } = await import('node:fs');
+  const declaration = readFileSync(new URL('../dist/core/domain/entries/index.d.ts', import.meta.url), 'utf8');
+  const exportedTypes = [...declaration.matchAll(/export type \{([^}]*)\} from/g)].flatMap((match) =>
+    match[1].split(',').map((name) => name.trim()).filter((name) => name.length > 0),
+  );
+
+  // A durable adapter rebuilds a converted line with `restore`: its input is part of the published surface.
+  for (const type of ['JournalEntryLineInput', 'JournalEntryLineRestoreInput']) {
+    assert.ok(exportedTypes.includes(type), `entries barrel must export the type ${type}`);
+  }
+
+  const { JournalEntryLine } = await import('../dist/index.js');
+  assert.equal(typeof JournalEntryLine.restore, 'function');
+});
+
 test('API: the application barrel publishes the report and port types', async () => {
   const { readFileSync } = await import('node:fs');
   const declaration = readFileSync(new URL('../dist/core/application/index.d.ts', import.meta.url), 'utf8');

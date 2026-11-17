@@ -207,7 +207,7 @@ test('L24: the same code with another scale is another currency, so it needs a r
     .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('1000.0000', abc4) }));
   await saveEntry(memory, draft);
 
-  // The ledger's own pair does not convert the line: `ABC/2` is not `ABC/4`, so there is no rate for it.
+  // A rate that converts a currency into itself is not a rate: the pair is refused, not the missing conversion.
   await assert.rejects(
     app.postEntry({
       ledgerId: 'ledger-1',

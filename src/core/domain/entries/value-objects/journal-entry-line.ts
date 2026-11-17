@@ -1,9 +1,11 @@
 import { describeValue } from '../../shared/describe-value.js';
-import { ExchangeRate, Money } from '../../shared/money/index.js';
+import { Currency, ExchangeRate, Money, MoneyFactor } from '../../shared/money/index.js';
+import type { ExchangeRateJSON, MoneyJSON } from '../../shared/money/index.js';
 import type {
   JournalEntryLineFields,
   JournalEntryLineFunctionalInput,
   JournalEntryLineInput,
+  JournalEntryLineRestoreInput,
 } from '../dto/journal-entry-line-dto.js';
 import { invalidEntryLine } from '../errors/entry-errors.js';
 import { requireOptionalText, requireText } from '../entry-text.js';
@@ -33,6 +35,11 @@ export const FUNCTIONAL_AMOUNT_TOKEN = Symbol('JournalEntryLine.functionalAmount
  * A caller-created line has one amount, in the currency it was agreed in. Posting adds the second one:
  * `functionalAmount`, in the ledger's currency, and `rate` when the line had to be converted. Both are
  * absent on a draft, because a draft does not convert (009d, rule 9).
+ *
+ * There are two doors, and they are not interchangeable. `create` is the draft path: a caller creates the line
+ * in the currency it was agreed in and never says what it is worth in the book. `restore` is the host's adapter
+ * path: it rebuilds a line from what the host stored, functional amount and rate included, because reading the
+ * history must not convert it again (rule 7).
  */
 export class JournalEntryLine {
   readonly #id: string;
@@ -76,6 +83,42 @@ export class JournalEntryLine {
 
   get id(): string {
     return this.#id;
+  }
+
+  /**
+   * Rebuilds a line a host persisted, functional amount and rate included.
+   *
+   * It is the counterpart of `create` for adapters: a durable repository has to return the line it stored, and
+   * the stored functional amount and rate are the history rule 7 protects. Recomputing them on read would let a
+   * later rate or rounding policy move what was already posted, so the host restores them here.
+   *
+   * The input is the serialized shape of the two stored values (`MoneyJSON` and `ExchangeRateJSON`), hydrated by
+   * the money domain's own constructors: an amount that is not a `Money`, a functional amount that is not a
+   * valid `MoneyJSON`, or a rate that is not a positive factor between two different currencies fails with that
+   * domain's error. A rate only travels with the functional amount it converted. The currency of the functional
+   * amount is whatever the host stored; posting is where the entry checks it against the ledger's functional
+   * currency.
+   */
+  static restore(input: JournalEntryLineRestoreInput): JournalEntryLine {
+    if (typeof input !== 'object' || input === null) {
+      throw invalidEntryLine(`expected an input object, received ${describeValue(input)}`);
+    }
+
+    const functionalAmount = requireRestoredFunctionalAmount(input.functionalAmount);
+    const rate = requireRestoredRate(input.rate);
+    if (rate !== undefined && functionalAmount === undefined) {
+      throw invalidEntryLine('a rate is restored only together with the functional amount it converted');
+    }
+
+    return new JournalEntryLine({
+      id: requireText(input.id, 'id', invalidEntryLine),
+      accountId: requireText(input.accountId, 'accountId', invalidEntryLine),
+      side: requireSide(input.side),
+      amount: requirePositiveAmount(input.amount),
+      functionalAmount,
+      rate,
+      description: requireOptionalText(input.description, 'description', invalidEntryLine),
+    }, CONSTRUCTION_TOKEN);
   }
 
   get accountId(): string {
@@ -161,4 +204,27 @@ function requirePositiveAmount(value: unknown): Money {
     throw invalidEntryLine(`amount must be strictly positive, received ${value.toDecimal()}`);
   }
   return value;
+}
+
+/** A restored functional amount is the serialized one: `Money.fromJSON` owns its validation. */
+function requireRestoredFunctionalAmount(value: MoneyJSON | undefined): Money | undefined {
+  return value === undefined ? undefined : Money.fromJSON(value);
+}
+
+/**
+ * A restored rate is hydrated with the rate's own constructor, so its factor and its pair are validated by the
+ * money domain and not repeated here. The target is not compared with the stored functional amount: posting
+ * checks that the line is worth something in the ledger's currency.
+ */
+function requireRestoredRate(value: ExchangeRateJSON | undefined): ExchangeRate | undefined {
+  if (value === undefined) return undefined;
+  if (typeof value !== 'object' || value === null) {
+    throw invalidEntryLine(`rate must be an exchange rate, received ${describeValue(value)}`);
+  }
+
+  return ExchangeRate.create({
+    from: Currency.fromJSON(value.from),
+    to: Currency.fromJSON(value.to),
+    factor: MoneyFactor.fromDecimal(value.factor),
+  });
 }
