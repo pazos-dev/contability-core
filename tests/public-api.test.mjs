@@ -6,8 +6,10 @@ import assert from 'node:assert/strict';
 const barrels = {
   'core/domain/shared/money': [
     'Currency',
+    'DEFAULT_ROUNDING_MODE',
     'Money',
     'MoneyError',
+    'MoneyFactor',
     'ISO_4217_PUBLISHED',
     'listIsoCurrencies',
     'listIsoCurrenciesWithoutMinorUnit',
@@ -57,6 +59,20 @@ test('API: the package still aggregates the domain barrels', async () => {
       [],
       `${name} must be fully aggregated`,
     );
+  }
+});
+
+// The rounding mode is a type, so it is erased at runtime and fixed against the declaration file the build
+// emits: a value export would be a second, contradictory surface.
+test('API: the money barrel publishes the rounding mode and the serialized shapes as types', async () => {
+  const { readFileSync } = await import('node:fs');
+  const declaration = readFileSync(new URL('../dist/core/domain/shared/money/index.d.ts', import.meta.url), 'utf8');
+  const exportedTypes = [...declaration.matchAll(/export type \{([^}]*)\} from/g)].flatMap((match) =>
+    match[1].split(',').map((name) => name.trim()).filter((name) => name.length > 0),
+  );
+
+  for (const type of ['CurrencyJSON', 'MoneyErrorCode', 'MoneyJSON', 'RoundingMode']) {
+    assert.ok(exportedTypes.includes(type), `money barrel must export the type ${type}`);
   }
 });
 
