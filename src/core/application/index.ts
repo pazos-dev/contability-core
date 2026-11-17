@@ -24,6 +24,7 @@ export type {
   AccountMovementsInput,
   AccountMovementsResult,
   AddEntryLineInput,
+  ChangeEntryHeaderInput,
   ClosePeriodInput,
   ClosePeriodResult,
   CreateEntryDraftInput,

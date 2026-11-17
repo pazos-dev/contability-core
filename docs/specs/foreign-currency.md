@@ -118,8 +118,10 @@ cuadran. El original sigue disponible línea por línea.
    futuro de cotización o de política de redondeo no mueve el histórico.
 8. **La reversión no recalcula.** Reutiliza las tasas del original y espeja los funcionales, que quedan
    exactamente opuestos. No hay diferencia de cambio en una reversión.
-9. **Un borrador no convierte.** Puede tener líneas en cualquier moneda y no guarda funcional; las tasas se
-   entregan al contabilizar. Sigue siendo tolerante, como con el cuadre y el período.
+9. **Un borrador no convierte.** Puede tener líneas en cualquier moneda y la ruta del core (`create`) no le
+   guarda funcional: las tasas se entregan al contabilizar. Un funcional en un borrador sólo aparece si el
+   anfitrión reconstruyó la línea con `JournalEntryLine.restore`, y esa decisión es suya; la moneda se sigue
+   comprobando al contabilizar. Sigue siendo tolerante, como con el cuadre y el período.
 10. **La tasa entra en la huella de idempotencia.** La misma clave con otra tasa es `IDEMPOTENCY_CONFLICT` y no
     un replay: cambia el asiento.
 11. **Los reportes no cambian de contrato.** Siguen sumando en moneda funcional y siguen fallando cerrado con

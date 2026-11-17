@@ -1,6 +1,6 @@
 # SPEC — Revertir un asiento contabilizado
 
-Estado: lista para implementar (incremento 006b).
+Estado: implementada y verificada (incremento 006b).
 Ruta: `src/core/application/use-cases/entries/`.
 Depende de: `entries.md` (E09), `post-entry.md` (invariantes de contabilización reutilizadas).
 Contrato general de casos de uso y puertos: `registration.md`.
@@ -60,40 +60,46 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 
 1. **Idempotencia.** `find(ledgerId, 'reversePostedEntry', key)`: huella igual devuelve el resultado
    guardado; huella distinta es `IDEMPOTENCY_CONFLICT`.
-2. **Libro.** `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
+2. **Libro.** `requireActiveLedger(ledgerId)`; ausente es `LEDGER_NOT_FOUND` e `INACTIVE` es
+   `LEDGER_INACTIVE` (R6). Devuelve el `Ledger`, así que su `chartOfAccountsId` es el plan de las cuentas y su
+   `currency` la moneda funcional contra la que se comprueba el original.
 3. **Original.** `findById(ledgerId, originalEntryId)`; ausente o de otro libro es `ENTRY_NOT_FOUND`.
 4. **Borrador de reversión.** `original.createReversalDraft({ id: reversalEntryId, periodId,
    accountingDate, description })`. El dominio exige que el original esté POSTED: un original en DRAFT
    recibe `ENTRY_STATE` y no se escribe nada (E09). Las líneas del borrador invierten DEBIT/CREDIT,
    conservan importe, descripción e **importe funcional y tasa del original**, y **reutilizan los ids de línea
    del original**, que son únicos dentro de su asiento.
-5. **Diario.** `findById(ledgerId, original.journalId)`; ausente es `JOURNAL_NOT_FOUND`, `INACTIVE` es
+5. **Moneda.** `requireLedgerCurrency(ledger, draft)` sobre el borrador recién creado: el importe funcional de
+   cada línea —o su importe si no lo tiene— debe estar en la moneda del libro. Un original en moneda extranjera
+   **sin** importe funcional escrito antes de 009d es `LEDGER_CURRENCY_MISMATCH`. Va antes del diario porque es
+   una propiedad del borrador, no del libro: un original así no tiene nada que espejar.
+6. **Diario.** `findById(ledgerId, original.journalId)`; ausente es `JOURNAL_NOT_FOUND`, `INACTIVE` es
    `JOURNAL_INACTIVE`.
-6. **Período destino.** `findById(ledgerId, periodId)`; ausente es `PERIOD_NOT_FOUND`. No `OPEN` es
+7. **Período destino.** `findById(ledgerId, periodId)`; ausente es `PERIOD_NOT_FOUND`. No `OPEN` es
    `PERIOD_CLOSED`; que no contenga la fecha es `PERIOD_DATE_OUTSIDE`. El período **destino** debe estar
    abierto aunque el período del original ya esté cerrado.
-7. **Cuentas.** Para cada línea del borrador de reversión, en orden: `ACCOUNT_NOT_FOUND` si la cuenta no
+8. **Cuentas.** Para cada línea del borrador de reversión, en orden: `ACCOUNT_NOT_FOUND` si la cuenta no
    existe o es de otro plan, `ACCOUNT_INACTIVE` si está inactiva, `ACCOUNT_NOT_POSTABLE` si no admite
    movimientos. Son las mismas reglas que `postEntry` aplica a un borrador nuevo: revertir no es una vía
    para contabilizar en una cuenta desactivada.
-8. **Id de reversión libre.** `findById(ledgerId, reversalEntryId)`: si ya existe un asiento con ese id, es
+9. **Id de reversión libre.** `findById(ledgerId, reversalEntryId)`: si ya existe un asiento con ese id, es
    `ENTRY_ALREADY_EXISTS`. El guardado es un *upsert* por `(ledgerId, entryId)`, así que reutilizar un id
    sobrescribiría el asiento guardado; en el adaptador del anfitrión la clave primaria lo impide. El dominio ya rechaza el caso
    `reversalEntryId === originalEntryId` con `INVALID_ENTRY`.
-9. **Reversión existente.** `entries.findReversalsOf(ledgerId, originalEntryId)` no vacío es
+10. **Reversión existente.** `entries.findReversalsOf(ledgerId, originalEntryId)` no vacío es
    `ENTRY_ALREADY_REVERSED`. Cuenta cualquier estado: esta operación crea un asiento **nuevo**, así que no
    hay ninguna reversión que pueda convivir con otra ya existente. Si un borrador de reversión puede o no
    contabilizarse después lo decide `postEntry`, que contabiliza ese mismo borrador y no otro asiento. La
    comprobación va inmediatamente antes de escribir, dentro de la unidad de trabajo, para que un adaptador
    durable pueda sustituirla por una restricción única sin moverla.
-10. **Contabilizar.** `reversalDraft.post({ number, functionalCurrency, rates: [] })`, con el número que se
+11. **Contabilizar.** `reversalDraft.post({ number, functionalCurrency, rates: [] })`, con el número que se
    pide al contador del libro y la moneda funcional del libro: sus errores burbujean (en la práctica no
    debería fallar, porque las líneas espejadas conservan el equilibrio funcional del original). No se envían
    tasas: la reversión espeja el importe funcional del original y no vuelve a convertir
    (`foreign-currency.md`, regla 8).
-11. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
+12. **Escritura única.** `entries.save(postedReversal)` y `idempotency.record(...)` en la misma unidad de
     trabajo. El original nunca se guarda: no se toca.
-12. **Resultado.** Se arma a partir de la reversión posteada.
+13. **Resultado.** Se arma a partir de la reversión posteada.
 
 ## Reglas e invariantes
 
@@ -107,7 +113,7 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 
 ## Errores
 
-Códigos propios: `LEDGER_NOT_FOUND`, `ENTRY_NOT_FOUND`, `ENTRY_ALREADY_EXISTS`, `ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`,
+Códigos propios: `LEDGER_NOT_FOUND`, `LEDGER_INACTIVE`, `LEDGER_CURRENCY_MISMATCH`, `ENTRY_NOT_FOUND`, `ENTRY_ALREADY_EXISTS`, `ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`,
 `JOURNAL_INACTIVE`, `PERIOD_NOT_FOUND`, `PERIOD_CLOSED`, `PERIOD_DATE_OUTSIDE`, `ACCOUNT_NOT_FOUND`,
 `ACCOUNT_INACTIVE`, `ACCOUNT_NOT_POSTABLE`, `IDEMPOTENCY_CONFLICT`.
 

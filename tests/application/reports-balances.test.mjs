@@ -407,6 +407,66 @@ test('TB05: from and to are inclusive on the accounting date and exclude what fa
   assert.equal(result.balanced, true);
 });
 
+test('report rule 1: a posted entry outside the requested range is discarded, not summed', async () => {
+  // The port is asked for the range, and the core checks the dates again when it discards what the port
+  // returned beyond the request. An entry of the same ledger and POSTED, but outside the window, is such an
+  // excess: the report corrects it by ignoring it instead of summing it or failing over it.
+  const outside = JournalEntry.createDraft({
+    id: 'outside-range',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-05-01'),
+    description: 'Fuera del rango',
+  })
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l1',
+        accountId: 'acc-cash',
+        side: 'DEBIT',
+        amount: Money.fromDecimal('100.00', uyu),
+      }),
+    )
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l2',
+        accountId: 'acc-rev',
+        side: 'CREDIT',
+        amount: Money.fromDecimal('100.00', uyu),
+      }),
+    )
+    .post({ number: 2, functionalCurrency: uyu, rates: [] });
+
+  const { memory, app } = await harness({
+    memoryOptions: {
+      overrides: (defaults) => ({
+        postedEntries: {
+          findPostedMovements: async (ledgerId, criteria, page) => {
+            const result = await defaults.postedEntries.findPostedMovements(ledgerId, criteria, page);
+            return { entries: [...result.entries, outside], nextCursor: result.nextCursor };
+          },
+        },
+      }),
+    },
+  });
+  await post(app, {
+    entryId: 'inside',
+    accountingDate: '2026-03-15',
+    lines: [line('l1', 'acc-cash', 'DEBIT', '10.00'), line('l2', 'acc-rev', 'CREDIT', '10.00')],
+  });
+  const before = stateOf(memory);
+
+  const result = await app.trialBalance({ ledgerId: 'ledger-1', from: '2026-03-01', to: '2026-03-31' });
+  const rows = rowsById(result);
+
+  // Only the in-range 10.00 is summed: the out-of-range 100.00 is neither in the rows nor in the totals.
+  assert.deepEqual(summary(rows['acc-cash']), ['1.1.01', '1000', '0', '1000', 'DEBIT']);
+  assert.deepEqual(summary(rows['acc-rev']), ['4.1.01', '0', '1000', '-1000', 'CREDIT']);
+  assert.deepEqual(result.totals, { debit: amount('10.00'), credit: amount('10.00') });
+  assert.equal(result.balanced, true);
+  assert.deepEqual(stateOf(memory), before);
+});
+
 test('TB06: a range without movements is a valid result', async () => {
   const { memory, app } = await harness();
   const before = stateOf(memory);

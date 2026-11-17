@@ -668,3 +668,58 @@ test('U04b: a replay hands out a copy, so a caller cannot rewrite the remembered
   assert.deepEqual(third, asPosted);
   assert.equal(storedEntry(memory, 'ledger-1').status, 'POSTED');
 });
+
+// A malformed `rates` value is an input of this layer, not a domain value: the shape is validated before the
+// unit of work opens, so the caller gets INVALID_APPLICATION_INPUT instead of a TypeError from the fingerprint.
+test('L25: a malformed rates value is INVALID_APPLICATION_INPUT and writes nothing', async () => {
+  const { memory, app } = await harness();
+  await saveEntry(memory, balancedDraft());
+
+  const malformed = [5, [null], [{}], [{ currency: { code: 'USD', scale: 2 } }], [{ factor: '41.25' }], ['41.25']];
+  for (const [index, rates] of malformed.entries()) {
+    await assert.rejects(
+      app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: `key-${index}`, rates }),
+      assertCode('INVALID_APPLICATION_INPUT'),
+      `rates: ${JSON.stringify(rates)}`,
+    );
+  }
+
+  // The draft is untouched, no idempotency record exists, and the counter was never asked: the first valid
+  // posting of this ledger is number 1.
+  assert.equal(storedEntry(memory).status, 'DRAFT');
+  assert.deepEqual(storedEntry(memory).lines.map((item) => item.id), ['line-1', 'line-2']);
+  assert.deepEqual(memory.snapshot().idempotency, []);
+  assert.equal(memory.snapshot().entries.length, 1);
+
+  const posted = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+  assert.equal(posted.number, 1);
+});
+
+// Posting a host-built reversal draft stores the link to the original; the result has to carry the same fact,
+// because the caller cannot recover it from a shape that hides it.
+test('L26: posting a host-built reversal draft returns the link it stored', async () => {
+  const { memory, app } = await harness();
+  await saveEntry(memory, balancedDraft());
+  const original = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' });
+
+  // Posting is not reversing: an entry that reverses nothing says so by carrying no link at all.
+  assert.equal(original.reversalOfEntryId, undefined);
+  assert.equal('reversalOfEntryId' in original, false);
+
+  await saveEntry(
+    memory,
+    storedEntry(memory).createReversalDraft({
+      id: 'reversal-1',
+      periodId: 'per-2026',
+      accountingDate: AccountingDate.create('2026-04-01'),
+    }),
+  );
+
+  const result = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'reversal-1', idempotencyKey: 'key-2' });
+
+  assert.equal(result.status, 'POSTED');
+  assert.equal(result.number, 2);
+  assert.equal(result.reversalOfEntryId, 'entry-1');
+  assert.deepEqual(result.totalDebit, result.totalCredit);
+  assert.equal(storedEntry(memory, 'ledger-1', 'reversal-1').reversalOfEntryId, 'entry-1');
+});

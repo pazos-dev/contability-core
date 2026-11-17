@@ -4,7 +4,7 @@ Estado: **implementado y verificado**. 008a (`accountBalances`, `trialBalance`) 
 existen y están probados. Este documento fija el comportamiento de los tres reportes del módulo. Nada de lo
 que describe existía antes de este incremento: es la primera superficie de **lectura**.
 Ruta prevista: casos de uso en `src/core/application/use-cases/reports/`, puerto de lectura en
-`src/core/application/ports/`, adaptador en memoria en `src/adapters/memory/`.
+`src/core/application/ports.ts`, adaptador en memoria en `src/adapters/memory/`.
 Depende de: `ledger.md` (la moneda funcional del libro, L17-L24), `entries.md` (qué es un asiento
 `POSTED`), `registration.md` (convenciones de casos de uso, errores y DTO) y `money.md`.
 Decisión que lo habilita: Q08 resuelta como **una** moneda funcional por libro, la que la contabilización fija
@@ -176,8 +176,9 @@ bajo, y eso es lo que fija qué error ve el llamador.
 1. **Sólo asientos `POSTED`.** Un borrador no tiene hecho contable: no aparece en ningún reporte, ni con
    saldo cero. Es la regla que más se rompe en silencio, porque un borrador tiene líneas y puede balancear. El
    core la **vuelve a aplicar** sobre lo que el puerto devuelve, y descarta también lo que no pertenece al
-   libro pedido: un puerto que devuelve de más no puede ensuciar un reporte, y un reporte no falla por un
-   error del anfitrión que se puede corregir descartándolo.
+   libro pedido y lo que cae fuera de `from`/`to` (reglas 4 y 5, inclusivos sobre `accountingDate`): un puerto
+   que devuelve de más no puede ensuciar un reporte, y un reporte no falla por un error del anfitrión que se
+   puede corregir descartándolo.
 2. **Una reversión es un asiento más.** Suma con el lado invertido y netea contra el original, que sigue
    `POSTED` y sigue contando. El original **nunca** se excluye por estar revertido: excluirlo daría cero
    donde corresponde el importe, y las dos lecturas parecen razonables hasta que se comparan.
@@ -358,4 +359,5 @@ Pendientes que este incremento no cierra:
 - Comandos: `pnpm check` — `check:project`, `typecheck`, `build` y `test` en ese orden. **`pnpm test` por sí
   solo corre contra `dist/` y no prueba el código actual**; sin `build` antes, su resultado no vale.
 - Estado hoy: **implementado y verificado**. `pnpm check` en verde con **293 pruebas** (eran 260 al abrir el
-  incremento): 18 de 008a y 14 de 008b, más la prueba del barrel que fija dieciséis métodos.
+  incremento): 18 de 008a y 14 de 008b, más la prueba del barrel, que hoy fija diecisiete métodos (dieciséis
+  al cerrar 008; el diecisiete llegó con 009c).

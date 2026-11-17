@@ -1,6 +1,7 @@
 import { JournalEntryLine, type JournalEntry, type PostingSide } from '../../../domain/entries/index.js';
 import { Currency, ExchangeRate, Money, MoneyFactor } from '../../../domain/shared/money/index.js';
 import type { EntryDraftResult, EntryLineInput, ExchangeRateInput, PostedLineResult, PostEntryResult } from '../../dto.js';
+import * as errors from '../../errors.js';
 
 /** Serializes one line: a domain value never leaves the module raw. */
 export function serializeLine(line: JournalEntryLine): PostedLineResult {
@@ -64,16 +65,44 @@ export function rateOf(input: ExchangeRateInput, functionalCurrency: Currency): 
  * An absent list and an empty one are the same request, and both produce `undefined`, which the fingerprint
  * drops: a request without rates keeps the fingerprint it had before this increment.
  *
+ * The shape is validated here because it is an input of this layer, not a domain value: the value must be absent
+ * or a list of plain objects carrying `currency` and `factor`. Anything else is `INVALID_APPLICATION_INPUT`
+ * before the unit of work opens, so a malformed request cannot throw a `TypeError` from the fingerprint and
+ * cannot write anything. The contents still belong to the domain: `Currency.fromJSON` and
+ * `MoneyFactor.fromDecimal` are the ones that reject an unknown currency or a factor that is not canonical.
+ *
  * The factor is canonicalized as a value, not as a spelling: `41.25` and `41.250` are the same rate
  * (`ExchangeRate.equals`), so they have to produce the same fingerprint or a replay would be mistaken for
  * `IDEMPOTENCY_CONFLICT`.
  */
 export function normalizedRates(rates: readonly ExchangeRateInput[] | undefined): readonly string[] | undefined {
-  if (rates === undefined || rates.length === 0) return undefined;
+  if (rates === undefined) return undefined;
+  if (!Array.isArray(rates)) throw errors.invalidApplicationInput('rates', rates);
+  if (rates.length === 0) return undefined;
 
   return rates
-    .map((rate) => `${rate.currency.code}/${rate.currency.scale}/${canonicalFactor(rate.factor)}`)
+    .map((rate) => {
+      if (!isExchangeRateInput(rate)) throw errors.invalidApplicationInput('rates', rate);
+      return `${rate.currency.code}/${rate.currency.scale}/${canonicalFactor(rate.factor)}`;
+    })
     .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+}
+
+/**
+ * A rate as the caller must send it: a plain object with the line's currency and the factor as text.
+ *
+ * Only the shape is checked. The currency is a plain object with a code and a scale because that is
+ * `CurrencyJSON`, and both are hydrated by the domain, which rejects what it does not accept.
+ */
+function isExchangeRateInput(value: unknown): value is ExchangeRateInput {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false;
+
+  const candidate = value as { readonly currency?: unknown; readonly factor?: unknown };
+  if (typeof candidate.factor !== 'string') return false;
+  if (typeof candidate.currency !== 'object' || candidate.currency === null) return false;
+
+  const currency = candidate.currency as { readonly code?: unknown; readonly scale?: unknown };
+  return typeof currency.code === 'string' && typeof currency.scale === 'number';
 }
 
 /**
@@ -126,6 +155,7 @@ export function postedResultOf(entry: JournalEntry): PostEntryResult {
     status: 'POSTED',
     number,
     accountingDate: entry.accountingDate.value,
+    ...(entry.reversalOfEntryId === undefined ? {} : { reversalOfEntryId: entry.reversalOfEntryId }),
     lines: entry.lines.map(serializeLine),
     totalDebit: sumSide(entry.lines, 'DEBIT').toJSON(),
     totalCredit: sumSide(entry.lines, 'CREDIT').toJSON(),

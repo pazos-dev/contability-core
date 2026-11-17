@@ -1,5 +1,5 @@
 import type { AccountStatus, AccountType } from '../domain/account/index.js';
-import type { EntryStatus, PostingSide } from '../domain/entries/index.js';
+import type { PostingSide } from '../domain/entries/index.js';
 import type { JournalStatus } from '../domain/journal/index.js';
 import type { LedgerStatus } from '../domain/ledger/index.js';
 import type { PeriodStatus } from '../domain/period/index.js';
@@ -258,15 +258,21 @@ export interface PostEntryInput {
 /**
  * The posted entry as the host reads it. `totalDebit` and `totalCredit` are in the ledger's functional currency:
  * they are the figures that balance. The original amounts stay available line by line.
+ *
+ * `status` is the `POSTED` literal and not `EntryStatus`: this is the result of a posting, and a wider type would
+ * let a host accept a draft where a posting was promised. `reversalOfEntryId` is present only when the entry
+ * reverses another, which happens when a host-built reversal draft is posted through `postEntry` as well as
+ * through `reversePostedEntry`: the link is stored, so the result says so.
  */
 export interface PostEntryResult {
   readonly ledgerId: string;
   readonly entryId: string;
   readonly journalId: string;
   readonly periodId: string;
-  readonly status: EntryStatus;
+  readonly status: 'POSTED';
   readonly number: number;
   readonly accountingDate: string;
+  readonly reversalOfEntryId?: string;
   readonly lines: readonly PostedLineResult[];
   readonly totalDebit: MoneyJSON;
   readonly totalCredit: MoneyJSON;

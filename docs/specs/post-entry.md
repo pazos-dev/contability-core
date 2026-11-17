@@ -62,12 +62,19 @@ interface PostEntryResult {
   readonly journalId: string;
   readonly periodId: string;
   readonly status: 'POSTED';
+  readonly number: number;
   readonly accountingDate: string;
+  readonly reversalOfEntryId?: string;
   readonly lines: readonly PostedLineResult[];
   readonly totalDebit: MoneyJSON;
   readonly totalCredit: MoneyJSON;
 }
 ```
+
+`status` es el literal `POSTED`, no `EntryStatus`: es el resultado de una contabilización, y un tipo más ancho
+dejaría pasar un borrador donde se prometió un asiento. `reversalOfEntryId` aparece sólo cuando el asiento
+revierte otro: contabilizar por `postEntry` un borrador de reversión guardado por el anfitrión conserva el
+enlace, y un resultado que lo ocultara perdería un dato que el llamador no puede recuperar (`reverse-entry.md`).
 
 `MoneyJSON` es el tipo que ya publica el dominio: `Money.toJSON()`, es decir
 `{ minorUnits: string, currency: { code, scale } }`. No se inventa un contrato paralelo para el dinero.
@@ -87,10 +94,19 @@ El resultado no expone la instancia del agregado ni nada mutable: `lines` es una
 El orden es parte del contrato: con dos condiciones inválidas a la vez, el error reportado es el de la
 regla de menor número. Todas las lecturas y la escritura viven en una sola llamada a `unitOfWork.run`.
 
+Antes de abrir la unidad de trabajo se calcula la huella de idempotencia, y ahí se valida la forma de la
+entrada: `rates` tiene que estar ausente o ser una lista de objetos con `currency` y `factor`. Cualquier otra
+cosa es `INVALID_APPLICATION_INPUT` de esta capa y no escribe nada, ni asiento ni registro de idempotencia, ni
+consume un número. El contenido de cada tasa sigue siendo del dominio: `Currency.fromJSON` y
+`MoneyFactor.fromDecimal` son los que rechazan una moneda desconocida o un factor que no es un decimal
+canónico.
+
 1. **Idempotencia.** `find(ledgerId, 'postEntry', key)`.
    - Huella igual: devolver el resultado guardado. Sin lecturas de estado y sin segundo efecto.
    - Huella distinta: `IDEMPOTENCY_CONFLICT`.
-2. **Libro.** `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
+2. **Libro.** `requireActiveLedger(ledgerId)`; ausente es `LEDGER_NOT_FOUND` e `INACTIVE` es
+   `LEDGER_INACTIVE` (R6). Devuelve el `Ledger`, así que su `chartOfAccountsId` es el plan que se usa después
+   (Q07) y su `currency` es la moneda funcional a la que se convierten las líneas.
 3. **Asiento.** `findById(ledgerId, entryId)`; ausente es `ENTRY_NOT_FOUND`. La búsqueda está acotada por
    libro: un id de otro libro es indistinguible de uno inexistente.
 4. **Diario.** `findById(ledgerId, journalId)`; ausente es `JOURNAL_NOT_FOUND`, incluido el caso de un
@@ -139,12 +155,14 @@ Un fallo en cualquier paso no escribe nada: el borrador nunca se guarda a medias
    El caso de uso sólo hidrata cada tasa con la moneda del libro como destino.
 5. Los importes viajan como `minorUnits` en cadena. Nunca `number`, nunca `bigint` crudo en JSON.
 6. El caso de uso no lee reloj, no genera ids y no lee variables de entorno.
-7. `chartOfAccountsIdOf` participa aunque el asiento no lo lleve: es lo que impide que las cuentas de las
-   líneas vengan de otro plan de cuentas.
+7. El plan del libro participa aunque el asiento no lo lleve: es lo que impide que las cuentas de las
+   líneas vengan de otro plan de cuentas. Lo entrega `requireActiveLedger` como `ledger.chartOfAccountsId`; no
+   hay una lectura aparte del plan.
 
 ## Errores
 
-Códigos propios: `LEDGER_NOT_FOUND`, `ENTRY_NOT_FOUND`, `ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`, `JOURNAL_INACTIVE`,
+Códigos propios: `INVALID_APPLICATION_INPUT`, `LEDGER_NOT_FOUND`, `LEDGER_INACTIVE`, `ENTRY_NOT_FOUND`,
+`ENTRY_ALREADY_REVERSED`, `JOURNAL_NOT_FOUND`, `JOURNAL_INACTIVE`,
 `PERIOD_NOT_FOUND`, `PERIOD_CLOSED`, `PERIOD_DATE_OUTSIDE`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_INACTIVE`,
 `ACCOUNT_NOT_POSTABLE`, `IDEMPOTENCY_CONFLICT`.
 

@@ -35,9 +35,10 @@ La moneda funcional es del libro, no del asiento, así que llega con la operaci�
 (`foreign-currency.md`, reglas 5 y 12): una línea en otra moneda sin tasa es `ENTRY_RATE_MISSING`, dos tasas con
 la misma moneda de origen son `ENTRY_RATE_DUPLICATE` y una pareja que no corresponde o un factor que no es un
 `MoneyFactor` positivo son `INVALID_EXCHANGE_RATE`. `ENTRY_CURRENCY_MISMATCH` sobrevive como guarda propia del
-agregado para un importe funcional heredado en otra moneda: por el camino público no es alcanzable, porque sólo
-la contabilización escribe ese campo y siempre con la moneda que recibió. Los borradores no se validan por
-moneda ni convierten, igual que no se validan por balance.
+agregado para un importe funcional heredado en otra moneda: la contabilización escribe ese campo con la moneda
+que recibió, y un importe funcional en un borrador sólo puede venir de `JournalEntryLine.restore`, la ruta del
+adaptador del anfitrión. Ponerlo ahí es responsabilidad del anfitrión; la moneda se sigue comprobando al
+contabilizar. Los borradores no se validan por moneda ni convierten, igual que no se validan por balance.
 
 ## Reversión
 

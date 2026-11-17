@@ -57,9 +57,9 @@ export function functionalAmountOf(line: JournalEntryLine): Money {
  * `Money.add` throw the same code: a report that cannot add must fail closed rather than return a sum that
  * silently mixed currencies (rule 3).
  *
- * What the port returns beyond what it was asked for — a draft, or an entry of another ledger — is discarded
- * here rather than accumulated (rule 1): a report states its result as its own, and an excess is a host bug
- * that is corrected by ignoring it, not by failing the read.
+ * What the port returns beyond what it was asked for — a draft, an entry of another ledger, or one outside the
+ * requested window — is discarded here rather than accumulated (rule 1): a report states its result as its own,
+ * and an excess is a host bug that is corrected by ignoring it, not by failing the read.
  */
 export async function totalsByAccount(
   scope: UnitOfWorkScope,
@@ -82,7 +82,7 @@ export async function totalsByAccount(
     );
 
     for (const entry of page.entries) {
-      if (!isReportEntry(entry, ledgerId)) continue;
+      if (!isReportEntry(entry, ledgerId, range)) continue;
 
       for (const line of entry.lines) {
         let totalsOfAccount = totals.get(line.accountId);
