@@ -113,6 +113,42 @@ test('API: the entries barrel publishes the input of the host restore path', asy
   assert.equal(typeof JournalEntryLine.restore, 'function');
 });
 
+// The facade is the only behaviour surface, so every input it receives has to be published: a caller cannot
+// call a method whose input type it cannot name. The seventeen methods use sixteen input types, because
+// `trialBalance` shares `AccountBalancesInput` with `accountBalances`. They are listed one by one on purpose:
+// a sampled list let `ChangeEntryHeaderInput` go unpublished, and a new method with an unpublished input has to
+// fail here instead of failing for the host.
+test('API: the application barrel publishes the input type of every facade method', async () => {
+  const { readFileSync } = await import('node:fs');
+  const declaration = readFileSync(new URL('../dist/core/application/index.d.ts', import.meta.url), 'utf8');
+  const exportedTypes = [...declaration.matchAll(/export type \{([^}]*)\} from/g)].flatMap((match) =>
+    match[1].split(',').map((name) => name.trim()).filter((name) => name.length > 0),
+  );
+
+  const facadeInputTypes = [
+    'RegisterLedgerInput',
+    'RegisterAccountInput',
+    'SetAccountStatusInput',
+    'RegisterJournalInput',
+    'SetJournalStatusInput',
+    'SetLedgerStatusInput',
+    'RegisterPeriodInput',
+    'ClosePeriodInput',
+    'CreateEntryDraftInput',
+    'AddEntryLineInput',
+    'RemoveEntryLineInput',
+    'ChangeEntryHeaderInput',
+    'PostEntryInput',
+    'ReversePostedEntryInput',
+    'AccountBalancesInput',
+    'AccountMovementsInput',
+  ];
+
+  for (const type of facadeInputTypes) {
+    assert.ok(exportedTypes.includes(type), `application barrel must export the type ${type}`);
+  }
+});
+
 test('API: the application barrel publishes the report and port types', async () => {
   const { readFileSync } = await import('node:fs');
   const declaration = readFileSync(new URL('../dist/core/application/index.d.ts', import.meta.url), 'utf8');
@@ -122,10 +158,8 @@ test('API: the application barrel publishes the report and port types', async ()
 
   for (const type of [
     'AccountBalanceRow',
-    'AccountBalancesInput',
     'AccountBalancesResult',
     'AccountMovementRow',
-    'AccountMovementsInput',
     'AccountMovementsResult',
     'EntryNumberSequence',
     'ExchangeRateInput',
@@ -134,6 +168,19 @@ test('API: the application barrel publishes the report and port types', async ()
   ]) {
     assert.ok(exportedTypes.includes(type), `application barrel must export the type ${type}`);
   }
+});
+
+// A posted entry is always POSTED, so the published result has to say exactly that: a wider status would let a
+// host accept a draft where a posting was promised. The reversal link travels in the same shape because posting
+// a host-built reversal draft stores it, and a result that hides it loses a fact the caller cannot recover.
+test('API: the posted result declares the POSTED literal and the optional reversal link', async () => {
+  const { readFileSync } = await import('node:fs');
+  const declaration = readFileSync(new URL('../dist/core/application/dto.d.ts', import.meta.url), 'utf8');
+  const block = declaration.match(/export interface PostEntryResult \{([^}]*)\}/);
+
+  assert.ok(block, 'dto.d.ts must declare PostEntryResult');
+  assert.match(block[1], /readonly status: 'POSTED';/);
+  assert.match(block[1], /readonly reversalOfEntryId\?: string;/);
 });
 
 // The facade is the only public entry point of the application layer: seventeen use cases after 009c, no more

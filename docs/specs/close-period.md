@@ -51,7 +51,9 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 
 1. **Idempotencia.** `find(ledgerId, 'closePeriod', key)`: huella igual devuelve el resultado guardado sin
    segundo efecto; huella distinta es `IDEMPOTENCY_CONFLICT`.
-2. **Libro.** `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
+2. **Libro.** `requireActiveLedger(ledgerId)`; ausente es `LEDGER_NOT_FOUND` e `INACTIVE` es
+   `LEDGER_INACTIVE` (R6). Devuelve el `Ledger`, y su `chartOfAccountsId` es el plan del libro; no hay una
+   lectura aparte del plan.
 3. **Período.** `findById(ledgerId, periodId)`; ausente, o de otro libro, es `PERIOD_NOT_FOUND`.
 4. **Estado.** Si el período ya está `CLOSED` y no hubo coincidencia de idempotencia, `AccountingPeriod.close()`
    produce `PERIOD_ALREADY_CLOSED` y burbujea: cerrar dos veces con claves distintas es un error de estado,
@@ -70,7 +72,7 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 
 ## Errores
 
-Códigos propios: `LEDGER_NOT_FOUND`, `PERIOD_NOT_FOUND`, `IDEMPOTENCY_CONFLICT`.
+Códigos propios: `LEDGER_NOT_FOUND`, `LEDGER_INACTIVE`, `PERIOD_NOT_FOUND`, `IDEMPOTENCY_CONFLICT`.
 Burbujea `PERIOD_ALREADY_CLOSED` del dominio.
 
 ## Criterios de aceptación

@@ -113,8 +113,9 @@ Las salidas son serializables y sin instancias de dominio, igual que el resto de
 3. **Transición.** `deactivate()` o `activate()` devuelven una copia; repetir el estado actual es no-op.
 4. **Escritura.** `ledgers.save(next)` en la unidad de trabajo.
 
-Orden en los once casos de uso existentes: donde hoy se resuelve el plan con `chartOfAccountsIdOf(ledgerId)`,
-se resuelve el libro con `ledgers.findById(ledgerId)`. Ausente sigue siendo `LEDGER_NOT_FOUND`, y el nuevo
+Orden en los casos de uso existentes: el plan no se resuelve por su cuenta; lo entrega
+`requireActiveLedger(ledgerId)` —o `requireChartOfAccountsId`, que delega en ella— como
+`ledger.chartOfAccountsId`. Ausente sigue siendo `LEDGER_NOT_FOUND`, y el nuevo
 `status` distinto de `ACTIVE` es `LEDGER_INACTIVE`. La posición dentro de cada flujo no cambia: el libro se
 sigue resolviendo antes que cualquier otra entidad, porque es el ámbito que da sentido a las demás.
 

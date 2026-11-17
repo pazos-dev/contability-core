@@ -1,6 +1,6 @@
 # SPEC — Crear un borrador de asiento
 
-Estado: lista para implementar (incremento 006c).
+Estado: implementada y verificada (incremento 006c).
 Ruta: `src/core/application/use-cases/entries/entries.ts`.
 Depende de: `entries.md` (E01-E11) y del contrato general de `registration.md` (puertos, errores, unidad
 de trabajo, huella de idempotencia).
@@ -76,7 +76,9 @@ La huella de idempotencia cubre todos los campos salvo la clave, con las líneas
 Todo dentro de una sola llamada a `unitOfWork.run`.
 
 1. **Idempotencia.** Huella igual devuelve el resultado guardado; distinta es `IDEMPOTENCY_CONFLICT`.
-2. **Libro.** `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
+2. **Libro.** `requireActiveLedger(ledgerId)`; ausente es `LEDGER_NOT_FOUND` e `INACTIVE` es
+   `LEDGER_INACTIVE` (R6). Devuelve el `Ledger`, y su `chartOfAccountsId` es el plan con el que se comprueban
+   las cuentas de las líneas.
 3. **Id libre.** `entries.findById(ledgerId, entryId)` presente es `ENTRY_ALREADY_EXISTS`: un id de asiento
    nunca se reutiliza, porque el guardado es un *upsert*.
 4. **Diario.** `journals.findById(ledgerId, journalId)`; ausente es `JOURNAL_NOT_FOUND`. **No** se exige
@@ -91,7 +93,7 @@ Todo dentro de una sola llamada a `unitOfWork.run`.
 
 ## Errores
 
-Propios: `LEDGER_NOT_FOUND`, `ENTRY_ALREADY_EXISTS`, `JOURNAL_NOT_FOUND`, `PERIOD_NOT_FOUND`,
+Propios: `LEDGER_NOT_FOUND`, `LEDGER_INACTIVE`, `ENTRY_ALREADY_EXISTS`, `JOURNAL_NOT_FOUND`, `PERIOD_NOT_FOUND`,
 `ACCOUNT_NOT_FOUND`, `IDEMPOTENCY_CONFLICT`.
 Burban los de dominio: `INVALID_ENTRY`, `INVALID_ENTRY_LINE`, `DUPLICATE_LINE_ID`, `INVALID_DATE`,
 `INVALID_MONEY`, `INVALID_CURRENCY`.

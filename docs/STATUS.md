@@ -305,7 +305,7 @@ información de lo contabilizado.
   sin acumulación en cuentas de grupo; sin efectos ni idempotencia.
 - Un balance que no cuadra no es error: devuelve `totals` y `balanced: false`, porque encontrar la diferencia es
   el uso principal del reporte.
-- Fachada: de trece a **quince** métodos. `tests/public-api.test.mjs` lo fija y además comprueba los tipos
+- Fachada: de trece a **dieciséis** métodos. `tests/public-api.test.mjs` lo fija y además comprueba los tipos
   nuevos contra `dist/core/application/index.d.ts`, porque los tipos se borran en runtime.
 - Pruebas de 008a: `tests/application/reports-balances.test.mjs`, una por criterio (18), escritas antes de
   implementar: el rojo fue 17/17 por `app.accountBalances is not a function`. TB09 usa un `PostedEntriesQuery`
@@ -373,8 +373,10 @@ método diecisiete de la fachada y la operación que el límite del 006d dejaba 
 - **Un contabilizado no se edita**: `ENTRY_STATE` desde la guarda del agregado, y conserva su número.
 - La fecha entra como texto y se hidrata con `AccountingDate.create`, así que `2026-02-30` falla con
   `INVALID_DATE` y no se normaliza.
-- Pruebas: 11 nuevas en `tests/application/entry-draft-header.test.mjs`, una por criterio, más tres en el
-  agregado. Rojo observado antes de implementar (11 de 11). La suite pasa de 340 a 354 pruebas.
+- Pruebas: 12 nuevas hoy en `tests/application/entry-draft-header.test.mjs` —once por los criterios L14-L24 más
+  `L15b`, que la corrección del nombre de la operación agregó para fijar que editar líneas no toca la cabecera—,
+  más tres en el agregado. Rojo observado antes de implementar (11 de 11). La suite pasó de 340 a 354 pruebas al
+  cerrar el incremento y a 355 con `L15b`.
 - `#copyWith` es compartido por `addLine`, `removeLine`, `post` y `changeHeader`. Durante la implementación se
   corrió una comprobación diferencial contra el commit base sobre las cuatro operaciones —salidas, asientos
   guardados y registros de idempotencia idénticos—, pero ese instrumento no vive en el repo. Lo que sí queda es
@@ -392,8 +394,9 @@ otra moneda; lo que falta, si falta, es la tasa.
   positivo, un operando que no sea `Currency` y una moneda convertida en sí misma. `MoneyFactor` gana
   `toDecimal()`, la inversa exacta de `fromDecimal` (41,25 es 4125/100 y vuelve a `"41.25"`).
 - `JournalEntryLine` gana `functionalAmount` y `rate`, opcionales, y ninguno entra en `JournalEntryLineInput`:
-  los escribe sólo el agregado al contabilizar, con un token interno, así que un llamador no puede declarar
-  cuánto vale su línea en el libro.
+  `create` —la ruta del borrador— no los acepta, y contabilizar los escribe con un token interno. `restore`,
+  pública desde la revisión de 009d, es la ruta del adaptador del anfitrión: un funcional en un borrador es
+  responsabilidad suya y la moneda se sigue comprobando al contabilizar.
 - `JournalEntry.post({ number, functionalCurrency, rates })`: la moneda funcional llega con la operación porque
   el agregado conoce `ledgerId`, no el libro. Una línea en la moneda del libro no lleva tasa; una en otra
   moneda exige la suya (`ENTRY_RATE_MISSING`), dos tasas con la misma moneda de origen son
@@ -605,6 +608,41 @@ solo agrega esos barrels.
 `tests/public-api.test.mjs` fija la superficie de cada barrel y la del paquete, y falla si el paquete
 exporta algo fuera de ellos.
 
+### Revisión del núcleo — revisión de solo lectura y seguimiento
+
+Revisión de solo lectura del core, **176 comprobaciones** sobre dominio, aplicación, adaptador y documentación.
+**No se encontró ningún defecto de comportamiento en el dinero**: `Money`, `MoneyFactor`, `ExchangeRate`, el
+redondeo y el reparto conservan sus invariantes, y las pruebas de `tests/domain/shared/money/` no cambiaron de
+resultado (sí se retiraron tres aserciones que no podían fallar por el motivo que afirmaban).
+
+Lo que sí encontró, y este seguimiento corrige:
+
+- **B1.** `ChangeEntryHeaderInput` no se publicaba en el barrel de aplicación aunque es la entrada de
+  `changeEntryHeader`; el tipo se exporta ahora junto a sus hermanos.
+- **T1.** La prueba del barrel enumeraba una muestra de tipos. Ahora enumera los dieciséis tipos de entrada que
+  usan los diecisiete métodos de la fachada, así que un método nuevo con una entrada sin publicar rompe la suite.
+- **M1.** La regla 1 de `docs/specs/reports.md` prometía que un puerto no puede ensuciar un reporte, pero el core
+  sólo descartaba estado y libro. Ahora vuelve a comprobar `from`/`to` (inclusivos sobre `accountingDate`) en
+  saldos, balance y mayor, y la regla dice lo que el código hace.
+- **L1.** Un `rates` mal formado (`5`, `[null]`, `[{}]`) lanzaba un `TypeError` antes de toda guarda. La forma se
+  valida en la huella, antes de abrir la unidad de trabajo, y falla con `INVALID_APPLICATION_INPUT` sin escribir
+  nada ni consumir número.
+- **L2.** `PostEntryResult.status` pasa a ser el literal `'POSTED'` y el resultado lleva `reversalOfEntryId?`
+  cuando el asiento revierte otro, porque contabilizar un borrador de reversión del anfitrión guarda el enlace y
+  el resultado lo ocultaba.
+- **T2.** Tres aserciones vacuas del caso RD19 se retiraron: comparaban objetos que siempre se reconstruyen. La
+  parte que puede fallar —el estado del receptor antes y después— queda.
+
+También se corrigieron las afirmaciones falsas de `docs/ARCHITECTURE.md`, `docs/specs/entry-numbering.md`, de los
+`docs/specs/*.md` de los incrementos 006a-006e, 008, 009a, 009c y 009d tocados por la revisión y de este mismo
+documento: la firma de `post`, el número de métodos, el orden de validación (`requireActiveLedger` con
+`LEDGER_INACTIVE` y `requireLedgerCurrency` antes del diario), los barrels, la resolución del plan y el funcional
+de una línea. Las dos menciones a `chartOfAccountsIdOf` que quedan en `docs/specs/ledger.md` son históricas:
+describen el puerto que 006e reemplazó.
+
+Pruebas nuevas: 6 (T1, M1 en los dos reportes, L1, L2 en runtime y la forma declarada de L2). La suite pasa de
+391 a 397 pruebas.
+
 ## Comprobaciones ejecutadas
 
 | Comando | Resultado |
@@ -612,7 +650,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 391 pruebas, 391 correctas, 0 fallos. |
+| `pnpm test` | 397 pruebas, 397 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 

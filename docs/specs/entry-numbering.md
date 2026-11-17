@@ -46,10 +46,12 @@ Dominio — `JournalEntry` gana un número opcional:
 readonly number?: number;
 ```
 
-Y `post` deja de ser sin argumentos:
+Y `post` deja de ser sin argumentos. Desde 009d el contexto lleva también la moneda funcional del libro y las
+tasas de cada línea extranjera (`foreign-currency.md`); la firma vigente es:
 
 ```ts
-post(number: number): JournalEntry;
+post(context: JournalEntryPostContext): JournalEntry;
+// { number, functionalCurrency, rates }
 ```
 
 Puerto nuevo, en `UnitOfWorkScope`:

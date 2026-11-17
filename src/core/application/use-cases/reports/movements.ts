@@ -256,14 +256,17 @@ function signed(balance: Money, line: JournalEntryLine): Money {
  *
  * The pages are forgotten as they are consumed, so what is held is the caller's accumulation and never the
  * ledger's history. The port's own cursor is used only to walk its pages, never to answer the caller, and an
- * entry that is not `POSTED` or that belongs to another ledger is dropped here (rule 1): the report asks for
- * the right entries and still discards what it did not ask for.
+ * entry that is not `POSTED`, that belongs to another ledger or that falls outside the requested window is
+ * dropped here (rule 1): the report asks for the right entries and still discards what it did not ask for.
  */
 async function* postedEntries(
   scope: UnitOfWorkScope,
   ledgerId: string,
   criteria: { readonly from?: AccountingDate; readonly to?: AccountingDate; readonly accountId?: string },
 ): AsyncGenerator<JournalEntry> {
+  // The criteria are also the window of the report, so the discard below re-checks the dates the port was asked
+  // for and not only the status and the ledger.
+  const range: ReportRange = { from: criteria.from, to: criteria.to };
   let cursor: string | undefined;
 
   for (;;) {
@@ -274,7 +277,7 @@ async function* postedEntries(
     );
 
     for (const entry of page.entries) {
-      if (isReportEntry(entry, ledgerId)) yield entry;
+      if (isReportEntry(entry, ledgerId, range)) yield entry;
     }
 
     if (page.nextCursor === null) return;

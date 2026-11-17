@@ -22,7 +22,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/shared/` | Kernel compartido del dominio: `describe-value.ts` y `money/`. |
 | `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `factor.ts`, `rounding-mode.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `factor.ts` y `rounding-mode.ts` existen desde 009b, con las operaciones de `docs/specs/rounding.md`. |
 | `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
-| `src/core/application/dto.ts` | Las 26 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
+| `src/core/application/dto.ts` | Las 36 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
 | `src/core/application/facade/` | La puerta de entrada: `accounting.ts` con la clase `Accounting`, única superficie pública de la capa. |
 | `src/core/application/use-cases/` | Una carpeta por área con la clase de operaciones estáticas y su `rules.ts`: `ledgers/`, `accounts/`, `journals/`, `periods/`, `entries/` (esta suma `result.ts`); más `shared/` con las reglas que invocan dos o más áreas y la idempotencia. Las dependencias viajan por parámetro, nunca en un campo estático. Internos. |
 | `src/adapters/` | Memoria para desarrollo/pruebas; persistencia real posterior. |
@@ -88,12 +88,12 @@ cambiar sin romper el contrato público.
 
 | Barrel | Superficie publicada |
 | --- | --- |
-| `src/core/domain/shared/money/index.ts` | `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit`, `IsoCurrencyEntry` y sus tipos. |
+| `src/core/domain/shared/money/index.ts` | `Currency`, `ExchangeRate`, `Money`, `MoneyFactor`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit`, `DEFAULT_ROUNDING_MODE`, y sus tipos `CurrencyJSON`, `ExchangeRateJSON`, `MoneyJSON`, `MoneyErrorCode`, `RoundingMode`, `IsoCurrencyEntry`. |
 | `src/core/domain/ledger/index.ts` | `Ledger`, `LedgerError`, `LedgerInput`, `LedgerErrorCode`, `LedgerStatus`. |
-| `src/core/domain/account/index.ts` | `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos. |
-| `src/core/domain/journal/index.ts` | `Journal`, `JournalError` y sus tipos. |
-| `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos. |
-| `src/core/domain/entries/index.ts` | `JournalEntry`, `JournalEntryLine`, `EntryError`, `EntryStatus`, `PostingSide`, `JournalEntryInput`, `JournalEntryReversalInput`, `JournalEntryLineInput` y `EntryErrorCode`. |
+| `src/core/domain/account/index.ts` | `Account`, `AccountCode`, `AccountError`, `AccountInput`, `AccountErrorCode`, `AccountStatus`, `AccountType`. |
+| `src/core/domain/journal/index.ts` | `Journal`, `JournalError`, `JournalInput`, `JournalErrorCode`, `JournalStatus`. |
+| `src/core/domain/period/index.ts` | `AccountingDate`, `AccountingPeriod`, `PeriodError`, `AccountingPeriodInput`, `PeriodStatus`, `PeriodErrorCode`. |
+| `src/core/domain/entries/index.ts` | `JournalEntry`, `JournalEntryLine`, `EntryError`, y sus tipos `EntryStatus`, `PostingSide`, `JournalEntryInput`, `JournalEntryReversalInput`, `JournalEntryHeaderInput`, `JournalEntryPostContext`, `JournalEntryLineInput`, `JournalEntryLineRestoreInput`, `EntryErrorCode`. |
 | `src/core/application/index.ts` | `Accounting`, `ApplicationError` y los tipos de dato (`dto`) y de puerto. Las clases de caso de uso son internas. |
 | `src/adapters/memory/index.ts` | `createInMemoryAccounting` y sus tipos. |
 

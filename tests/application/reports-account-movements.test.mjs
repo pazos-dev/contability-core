@@ -756,6 +756,70 @@ test('GL09: a cursor the report did not produce is INVALID_APPLICATION_INPUT', a
   assert.deepEqual(stateOf(memory), before);
 });
 
+test('report rule 1: a posted entry outside the requested range is not listed', async () => {
+  // Same rule as in the balance reports, applied to the account ledger: the core checks the dates again when
+  // it discards, so an in-range entry and an out-of-range one of the same ledger do not both count.
+  const outside = JournalEntry.createDraft({
+    id: 'outside-range',
+    ledgerId: 'ledger-1',
+    journalId: 'jrn-1',
+    periodId: 'per-2026',
+    accountingDate: AccountingDate.create('2026-05-01'),
+    description: 'Fuera del rango',
+  })
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l1',
+        accountId: 'acc-cash',
+        side: 'DEBIT',
+        amount: Money.fromDecimal('100.00', uyu),
+      }),
+    )
+    .addLine(
+      JournalEntryLine.create({
+        id: 'l2',
+        accountId: 'acc-rev',
+        side: 'CREDIT',
+        amount: Money.fromDecimal('100.00', uyu),
+      }),
+    )
+    .post({ number: 2, functionalCurrency: uyu, rates: [] });
+
+  const { memory, app } = await harness({
+    chart: [CASH, REVENUE],
+    memoryOptions: {
+      overrides: (defaults) => ({
+        postedEntries: {
+          findPostedMovements: async (ledgerId, criteria, page) => {
+            const result = await defaults.postedEntries.findPostedMovements(ledgerId, criteria, page);
+            return { entries: [...result.entries, outside], nextCursor: result.nextCursor };
+          },
+        },
+      }),
+    },
+  });
+  await post(app, {
+    entryId: 'inside',
+    accountingDate: '2026-03-15',
+    lines: [line('l1', 'acc-cash', 'DEBIT', '10.00'), line('l2', 'acc-rev', 'CREDIT', '10.00')],
+  });
+  const before = stateOf(memory);
+
+  const movements = await app.accountMovements({
+    ledgerId: 'ledger-1',
+    accountId: 'acc-cash',
+    from: '2026-03-01',
+    to: '2026-03-31',
+  });
+
+  // Only the in-range line is a row, and the closing balance is its 10.00: the 100.00 of May is not listed.
+  assert.deepEqual(movements.rows.map((row) => row.entryId), ['inside']);
+  assert.deepEqual(movements.rows.map((row) => row.amount.minorUnits), ['1000']);
+  assert.deepEqual(movements.closingBalance, amount('10.00'));
+  assert.equal(movements.nextCursor, null);
+  assert.deepEqual(stateOf(memory), before);
+});
+
 test('GL10: a port that returns a draft and an entry of another ledger is discarded, not obeyed', async () => {
   // Rule 1 is checked again at the port boundary. A host that returns a draft and an entry of another ledger
   // is an excess the report corrects by ignoring it — it does not fail, because the excess is not the

@@ -1,6 +1,6 @@
 # SPEC — Registro de cuentas, diarios y períodos
 
-Estado: lista para implementar (incremento 006a).
+Estado: implementada y verificada (incremento 006a).
 Ruta: `src/core/application/use-cases/accounts/`, `src/core/application/use-cases/journals/` y
 `src/core/application/use-cases/periods/`.
 Depende de: `account.md` (A04, A05, A07, A09), `journal.md` (J03), `period.md` (P07).
@@ -66,8 +66,10 @@ Reglas de contrato:
    una conexión independiente disfrazada de unidad de trabajo.
 2. Las entradas son serializables: cadenas y booleanos. Los casos de uso construyen los objetos de
    valor; el anfitrión no puede saltarse una validación de dominio pasando instancias ya armadas.
-3. `chartOfAccountsId` **no** es una entrada. Lo resuelve `ledgerDirectory.chartOfAccountsIdOf(ledgerId)`
-   dentro de la unidad de trabajo, así que el anfitrión no puede declarar un plan distinto al del libro (Q07).
+3. `chartOfAccountsId` **no** es una entrada. Lo resuelve el libro dentro de la unidad de trabajo
+   (`ledgers.findById`), que devuelve el `Ledger` con su plan y su estado: un libro `INACTIVE` es
+   `LEDGER_INACTIVE` y uno ausente `LEDGER_NOT_FOUND`, así que el anfitrión no puede declarar un plan
+   distinto al del libro (Q07).
 4. Las salidas son serializables y sin instancias de dominio. `Money` viaja como
    `{ minorUnits: string, code: string, scale: number }`.
 5. No hay reloj ni generador de identificadores: los ids y las fechas llegan en la entrada.
@@ -164,7 +166,7 @@ class ApplicationError extends Error {
 Los errores de dominio burbujean sin envolver: ya tienen códigos estables. `ApplicationError` sólo cubre
 las reglas que cruzan entidades. Códigos de este incremento:
 
-`INVALID_APPLICATION_INPUT`, `LEDGER_NOT_FOUND`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_ALREADY_EXISTS`,
+`INVALID_APPLICATION_INPUT`, `LEDGER_NOT_FOUND`, `LEDGER_INACTIVE`, `ACCOUNT_NOT_FOUND`, `ACCOUNT_ALREADY_EXISTS`,
 `ACCOUNT_CODE_DUPLICATE`, `ACCOUNT_PARENT_NOT_GROUPING`, `ACCOUNT_HAS_MOVEMENTS`,
 `JOURNAL_NOT_FOUND`, `JOURNAL_ALREADY_EXISTS`, `JOURNAL_CODE_DUPLICATE`,
 `PERIOD_NOT_FOUND`, `PERIOD_ALREADY_EXISTS`, `PERIOD_OVERLAP`, `IDEMPOTENCY_CONFLICT`.
@@ -183,7 +185,8 @@ Orden de validación:
 1. `idempotencyKey` repetida con la misma huella devuelve el resultado guardado, sin segundo efecto;
    con huella distinta es `IDEMPOTENCY_CONFLICT`. La huella cubre `ledgerId`, `accountId`, `code`, `name`,
    `type`, `parentId` y `postingAllowed`.
-2. Plan del libro: `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
+2. Libro: `requireActiveLedger(ledgerId)`; ausente es `LEDGER_NOT_FOUND` e `INACTIVE` es `LEDGER_INACTIVE`.
+   Devuelve el `Ledger`, y su `chartOfAccountsId` es el plan del libro.
 3. Id repetido: `findById(accountId)` presente es `ACCOUNT_ALREADY_EXISTS` (nunca se sobrescribe).
 4. Código repetido en el plan: `findByCode(chart, code)` presente es `ACCOUNT_CODE_DUPLICATE` (A05).
    El mismo código en otro plan es válido.
@@ -210,7 +213,8 @@ dominio (`INVALID_ACCOUNT`).
 Entrada: `{ ledgerId, accountId, status: 'ACTIVE' | 'INACTIVE' }`.
 Salida: `{ ledgerId, accountId, status }`.
 
-- Plan del libro, id existente y pertenencia al plan: si no, `ACCOUNT_NOT_FOUND` o `LEDGER_NOT_FOUND`.
+- Libro, id existente y pertenencia al plan: libro ausente o inactivo es `LEDGER_NOT_FOUND` /
+  `LEDGER_INACTIVE`; cuenta ausente o de otro plan es `ACCOUNT_NOT_FOUND`.
 - `INACTIVE` aplica `deactivate()`; `ACTIVE` aplica `activate()` (A09). Los dos devuelven copia y conservan
   identidad, plan, código, nombre, padre y `postingAllowed`.
 - Repetir el mismo estado no es error: es un no-op que devuelve el resultado. Por eso este caso de uso no
@@ -226,8 +230,8 @@ Entrada: `{ ledgerId, journalId, code, name, idempotencyKey? }`.
 Salida: `{ ledgerId, journalId, code, status }`.
 
 1. Idempotencia como en `registerAccount`, con huella de `ledgerId`, `journalId`, `code` y `name`.
-2. `chartOfAccountsIdOf(ledgerId)` presente, o `LEDGER_NOT_FOUND`. El diario no guarda plan, pero exige
-  libro conocido.
+2. `requireActiveLedger(ledgerId)` presente y `ACTIVE`, o `LEDGER_NOT_FOUND` / `LEDGER_INACTIVE`. El diario no
+  guarda plan, pero exige libro conocido y activo.
 3. `findById(ledgerId, journalId)` presente es `JOURNAL_ALREADY_EXISTS`.
 4. `findByCode(ledgerId, code)` presente es `JOURNAL_CODE_DUPLICATE` (J03).
 5. `Journal.create` y guardar. Nace `ACTIVE`.
@@ -244,7 +248,7 @@ Entrada: `{ ledgerId, periodId, name, startDate, endDate, idempotencyKey? }`, co
 Salida: `{ ledgerId, periodId, startDate, endDate, status }`.
 
 1. Idempotencia con huella de `ledgerId`, `periodId`, `name`, `startDate` y `endDate`.
-2. `chartOfAccountsIdOf(ledgerId)` presente, o `LEDGER_NOT_FOUND`.
+2. `requireActiveLedger(ledgerId)` presente y `ACTIVE`, o `LEDGER_NOT_FOUND` / `LEDGER_INACTIVE`.
 3. `findById(ledgerId, periodId)` presente es `PERIOD_ALREADY_EXISTS`.
 4. `AccountingDate.create` para ambas fechas y `AccountingPeriod.create`; sus errores burbujean
    (`INVALID_DATE`, `INVALID_PERIOD`).

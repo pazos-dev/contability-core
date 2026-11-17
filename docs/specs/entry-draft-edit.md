@@ -72,7 +72,9 @@ en las dos primeras, y `journalId`, `periodId`, `accountingDate` y `description`
 ## Flujo y orden de validación
 
 1. **Idempotencia.** Huella igual devuelve el resultado guardado; distinta es `IDEMPOTENCY_CONFLICT`.
-2. **Libro.** `chartOfAccountsIdOf(ledgerId)`; ausente es `LEDGER_NOT_FOUND`.
+2. **Libro.** `requireActiveLedger(ledgerId)`; ausente es `LEDGER_NOT_FOUND` e `INACTIVE` es
+   `LEDGER_INACTIVE` (R6). Devuelve el `Ledger`, y su `chartOfAccountsId` es el plan con el que se comprueban
+   las cuentas de la línea nueva.
 3. **Asiento.** `entries.findById(ledgerId, entryId)`; ausente o de otro libro es `ENTRY_NOT_FOUND`.
 4. **Cuenta de la línea nueva** (`addEntryLine` solamente): debe existir y ser del plan del libro;
    `ACCOUNT_NOT_FOUND`. No se exige activa ni contabilizable: es un borrador.

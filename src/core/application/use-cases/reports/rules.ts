@@ -66,16 +66,21 @@ export function requireReportLimit(limit: number | undefined): number {
 }
 
 /**
- * Rule 1 applied again at the port boundary: only a `POSTED` entry of the requested ledger belongs to a
- * report.
+ * Rule 1 applied again at the port boundary: only a `POSTED` entry of the requested ledger inside the requested
+ * window belongs to a report.
  *
  * The port is asked for exactly that, and the core checks it again because a report states its result as its
  * own and a draft — which has lines and can balance — would otherwise be indistinguishable from an accounting
  * fact. Entries of another ledger are dropped for the same reason: they are not part of the book being read.
+ * The dates are checked too, inclusively on `accountingDate`, because a report that sums or lists an entry
+ * outside the window it was asked for is answering a different question than the one the caller asked.
  *
  * It is a discard and not an error. A host that returns more than it was asked for made a mistake the report
  * can correct by ignoring the excess, and a report may not fail over data it never requested.
  */
-export function isReportEntry(entry: JournalEntry, ledgerId: string): boolean {
-  return entry.status === 'POSTED' && entry.ledgerId === ledgerId;
+export function isReportEntry(entry: JournalEntry, ledgerId: string, range: ReportRange): boolean {
+  if (entry.status !== 'POSTED' || entry.ledgerId !== ledgerId) return false;
+  if (range.from !== undefined && entry.accountingDate.compare(range.from) < 0) return false;
+  if (range.to !== undefined && entry.accountingDate.compare(range.to) > 0) return false;
+  return true;
 }
