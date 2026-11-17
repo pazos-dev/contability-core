@@ -5,7 +5,7 @@ export type {
   JournalEntryPostContext,
   JournalEntryReversalInput,
 } from './dto/journal-entry-dto.js';
-export type { JournalEntryLineInput } from './dto/journal-entry-line-dto.js';
+export type { JournalEntryLineInput, JournalEntryLineRestoreInput } from './dto/journal-entry-line-dto.js';
 export { EntryError } from './errors/entry-errors.js';
 export type { EntryErrorCode } from './errors/entry-errors.js';
 export type { EntryStatus } from './types/entry-status.js';

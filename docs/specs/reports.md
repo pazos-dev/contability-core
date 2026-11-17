@@ -7,7 +7,8 @@ Ruta prevista: casos de uso en `src/core/application/use-cases/reports/`, puerto
 `src/core/application/ports/`, adaptador en memoria en `src/adapters/memory/`.
 Depende de: `ledger.md` (la moneda funcional del libro, L17-L24), `entries.md` (qué es un asiento
 `POSTED`), `registration.md` (convenciones de casos de uso, errores y DTO) y `money.md`.
-Decisión que lo habilita: Q08 resuelta como **una** moneda funcional por libro, sin conversión.
+Decisión que lo habilita: Q08 resuelta como **una** moneda funcional por libro, la que la contabilización fija
+en cada línea al convertirla con la tasa recibida (009d).
 
 ## Objetivo
 

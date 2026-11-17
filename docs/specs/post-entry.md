@@ -76,8 +76,9 @@ Cada línea lleva además su importe funcional y, si hubo conversión, la tasa u
 
 La huella de idempotencia es `ledgerId` + `entryId` y, cuando la petición trae tasas, esas tasas en forma
 canónica `code/scale/factor` ordenadas: es literalmente todo el campo de la petición además de
-la clave, tal como exige la regla 6 de `registration.md`. Otra `entryId` con la misma clave y el mismo libro
-es otra petición (U05).
+la clave, tal como exige la regla 6 de `registration.md`. El factor se canonicaliza como valor —`41.25` y
+`41.250` son la misma tasa y por tanto la misma huella—, y una petición sin tasas conserva la huella anterior.
+Otra `entryId` con la misma clave y el mismo libro es otra petición (U05).
 
 El resultado no expone la instancia del agregado ni nada mutable: `lines` es una copia serializada.
 

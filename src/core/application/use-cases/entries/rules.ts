@@ -53,8 +53,9 @@ export async function requireNoReversal(
  * survives for the one path where the aggregate takes the amount it is handed instead of converting: reversing
  * a posted entry mirrors the functional amounts of the original, so what has to be in the ledger's currency is
  * the functional one. A line written before 009d carries none, and its own amount is the honest fallback: an
- * entry posted in a foreign currency before the core could convert is refused here, because a reversal cannot
- * invent the conversion the original never had.
+ * entry whose own amount is in another currency and that carries no functional amount is refused here, because a
+ * reversal cannot invent the conversion the original never had. Posting no longer reaches this rule: since 009d
+ * the aggregate converts and guards the pair itself.
  *
  * Drafts never pass through this rule, exactly like balance and open period: a draft may hold any currency and
  * `post` is the strict point (`ledger.md`, rule 16).

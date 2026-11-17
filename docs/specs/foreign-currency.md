@@ -9,12 +9,13 @@ asiento), `rounding.md` (RD01-RD20: `MoneyFactor` y `multiply`), `post-entry.md`
 
 ## Objetivo
 
-Que un asiento pueda registrar una operación hecha en una moneda distinta de la funcional del libro, guardando
-las dos cosas: **lo que se pactó** en su moneda y **lo que vale en el libro**, con la tasa que se usó.
+Que un asiento pueda registrar una operación hecha en una moneda distinta de la funcional del libro **y de la
+misma escala**, guardando las dos cosas: **lo que se pactó** en su moneda y **lo que vale en el libro**, con la
+tasa que se usó.
 
-Hoy el libro tiene una moneda funcional y contabilizar en otra se rechaza con `LEDGER_CURRENCY_MISMATCH`: el
-motor no puede representar una compra en dólares dentro de un libro en pesos. Este incremento abre esa puerta sin
-abrir la de la conversión automática: el core no trae cotizaciones, sólo aplica la que recibe.
+El motor deja de rechazar por defecto una compra en dólares dentro de un libro en pesos: la convierte con la tasa
+que recibe. No abre, en cambio, la puerta de la conversión automática —el core no trae cotizaciones— ni la de las
+monedas de escala distinta, que una sola multiplicación no puede expresar (desviación 2).
 
 ## Alcance y exclusiones
 
@@ -36,6 +37,9 @@ Excluye, declarado para no prometerlo:
 - **Revaluación de saldos al cierre.** Un saldo en moneda extranjera no se actualiza solo.
 - **Conversión entre libros.** Consolidar dos libros con monedas distintas es otra cosa y sigue fuera.
 - **Tasas que no sean un factor exacto.** Nada de `number`, nada de coma flotante: la tasa es un `MoneyFactor`.
+- **Monedas de escala distinta.** `Money.multiply` devuelve el producto en la moneda del operando, así que una
+  sola multiplicación no puede convertir entre dos escalas sin redondear dos veces; la pareja se rechaza con
+  `INVALID_EXCHANGE_RATE` en vez de convertirse de forma aproximada (desviación 2).
 
 ## Entradas y salidas
 
@@ -121,7 +125,10 @@ cuadran. El original sigue disponible línea por línea.
 11. **Los reportes no cambian de contrato.** Siguen sumando en moneda funcional y siguen fallando cerrado con
     `CURRENCY_MISMATCH` si un asiento llegara sin funcional.
 12. **El asiento no acepta dos tasas para la misma moneda.** Es `ENTRY_RATE_DUPLICATE`: elegir una sería
-    inventar una regla de precedencia.
+    inventar una regla de precedencia. La lista se recorre en el orden recibido y de cada tasa se comprueba
+    primero el destino y después el duplicado, así que el primer problema de la lista es el que se informa: una
+    tasa con destino equivocado en primer lugar gana sobre un duplicado posterior, y un duplicado anterior gana
+    sobre un destino equivocado posterior.
 13. **Nada de reloj ni de entorno.** El core no fecha la tasa; si el anfitrión necesita registrar el momento en
     que la obtuvo, lo guarda él y lo usa para elegirla.
 14. **La moneda del libro sigue siendo inmutable.** No se agrega una segunda moneda funcional ni un histórico de
@@ -138,11 +145,13 @@ Códigos nuevos:
 | `ENTRY_RATE_DUPLICATE` | `EntryError` | Dos tasas con la misma moneda de origen en la misma operación |
 
 Los tres viven en el dominio porque es el agregado el que recibe la moneda funcional y las tasas, y decide.
-La aplicación no duplica esas comprobaciones: sólo hidrata el JSON de cada tasa.
+La aplicación no duplica esas comprobaciones: sólo hidrata el JSON de cada tasa. Esa hidratación ocurre antes de
+la regla de estado del agregado, así que volver a contabilizar un asiento ya contabilizado con una tasa inválida
+responde `INVALID_EXCHANGE_RATE` y no `ENTRY_STATE`; ninguno de los dos rechazos deja nada escrito.
 
-`LEDGER_CURRENCY_MISMATCH` **deja de ser el rechazo por defecto**: una línea en otra moneda ya no es un error en
-sí, sino un caso que exige tasa. El código se retira de `postEntry` y queda sólo si una reversión intenta
-convertir algo que no estaba convertido.
+`LEDGER_CURRENCY_MISMATCH` **no es el rechazo por defecto**: una línea en otra moneda no es un error en sí,
+sino un caso que exige tasa. El código no aparece en `postEntry` y sobrevive sólo como guarda de la reversión
+(desviación 3).
 
 ## Criterios de aceptación
 
@@ -185,19 +194,19 @@ Siguen abiertas y no bloquean esta entrega:
 
 ## Integración y consistencia
 
-- **Cambio de contrato de dominio (ítem 3).** `JournalEntryLine` gana `functionalAmount` y `rate`, y `post`
+- **Cambio de contrato de dominio (ítem 3).** `JournalEntryLine` gana `functionalAmount`, `rate` y la fábrica
+  `restore` —la ruta del adaptador para reconstruir una línea contabilizada—, y `post`
   cambia de firma y deja de exigir una sola moneda para pasar a exigir funcionales equilibrados. `PostEntryInput` gana `rates`
   opcional y `PostedLineResult` gana dos campos. Un anfitrión que hoy lea `amount` sigue funcionando; uno que
   asuma que `amount` es la moneda del libro, no.
-- **`LEDGER_CURRENCY_MISMATCH` cambia de significado.** Hoy rechaza cualquier línea en otra moneda (L24 de
-  `ledger.md`). Después de este incremento, el rechazo se llama `ENTRY_RATE_MISSING` y ocurre por falta de
-  tasa. `ledger.md` y `entries.md` (E05, E12) se actualizan en el mismo incremento.
-- **Pendiente de este incremento:** la obligación `HA45` de `docs/INTEGRATION.md` no se escribió todavía, porque
-  ese documento quedó fuera de la superficie de 009d; la obligación en sí no cambia lo que sigue.
-- **Lo que debe dar el anfitrión (obligación nueva).** Persistir por línea `functionalAmount` y la tasa usada, y
-  migrar los asientos existentes: un asiento sin funcional **no se puede leer** en un reporte (FX15). Es la
-  tercera migración de esta clase, después de la moneda del libro (006f) y los números de asiento (009a).
-  Entra en `docs/INTEGRATION.md` como `HA45` cuando la implementación se apruebe.
+- **`LEDGER_CURRENCY_MISMATCH` cambió de significado.** Antes rechazaba cualquier línea en otra moneda (L24 de
+  `ledger.md`); desde 009d el rechazo por falta de tasa se llama `ENTRY_RATE_MISSING`. `ledger.md` y `entries.md`
+  (E05, E12) se actualizaron en el mismo incremento.
+- **Lo que debe dar el anfitrión: `HA45` de `docs/INTEGRATION.md`.** Persistir por línea `functionalAmount` y la
+  tasa usada, reconstruir cada línea con `JournalEntryLine.restore(...)` —nunca con `create`, que es la ruta del
+  borrador y no acepta los dos valores— y migrar los asientos existentes: un asiento sin funcional **no se puede
+  leer** en un reporte (FX15). Es la cuarta migración de esta clase, después de la moneda del libro (006f), los
+  números de asiento (009a) y la huella de idempotencia (HA41).
 - **Idempotencia.** Las tasas entran en la huella: la misma clave con otra tasa es conflicto, no replay.
 - **Concurrencia.** Sin cambios: la conversión ocurre dentro de la unidad de trabajo de la contabilización.
 - **Reportes.** No cambian de contrato; su falla cerrada por moneda pasa a ser la red que atrapa un asiento sin
@@ -219,19 +228,26 @@ Comandos reales del repositorio: `pnpm check:project`, `pnpm typecheck`, `pnpm b
 
 Ejecutada sobre este incremento:
 
-- `tests/domain/entries/foreign-currency.test.mjs`: 13 pruebas. Rojo observado antes de implementar: el módulo
+- `tests/domain/entries/foreign-currency.test.mjs`: 12 pruebas. Rojo observado antes de implementar: el módulo
   entero no cargaba (`SyntaxError: The requested module '../../../dist/index.js' does not provide an export
   named 'ExchangeRate'`).
 - `tests/application/foreign-currency.test.mjs`: 15 pruebas, FX01, FX03-FX14 (FX02 se fija en las dos) más una
-  que fija el comportamiento anterior del huella de idempotencia. Rojo
-  observado antes de implementar: 12 de 14 fallaban con el `LEDGER_CURRENCY_MISMATCH` del camino anterior —o
-  con la comprobación del código nuevo, que nunca llegaba a ejecutarse—; las dos que pasaban son las que
-  fijaban comportamiento que ya existía (un borrador tolerante y el replay de una petición sin tasas).
+  que fija el comportamiento anterior de la huella de idempotencia. Rojo
+  observado antes de implementar: 12 de 15 fallaban con el `LEDGER_CURRENCY_MISMATCH` del camino anterior —o
+  con la comprobación del código nuevo, que nunca llegaba a ejecutarse—; las tres que pasaban son las que
+  fijaban comportamiento que ya existía (un borrador tolerante, el replay de una petición sin tasas y el
+  `PRESERVE` de la huella anterior).
 - `docs/specs/{ledger,entries,post-entry,reverse-entry,reports}.md`: reescritas las reglas que 009d vuelve
   falsas, conservando su numeración.
 - `tests/public-api.test.mjs`: fija `ExchangeRate` en el barrel de `money`, el tipo `ExchangeRateJSON`, el tipo
   `ExchangeRateInput` del barrel de aplicación y los tres códigos nuevos en los `.d.ts` emitidos.
-- Comandos reales: `pnpm build`, `pnpm test` (383 pruebas, 383 correctas), `pnpm typecheck`,
+- `tests/application/foreign-currency-regressions.test.mjs`: 7 pruebas de la revisión de 009d. Tres estaban en
+  rojo antes del arreglo —`JournalEntryLine.restore` no existía y `41.250` no replayaba la huella de `41.25`— y
+  cuatro fijan límites que el código ya tenía: una tasa de la moneda funcional se rechaza aunque ninguna línea la
+  necesite, una conversión que redondea a cero funcional se contabiliza con cero, y el orden de la lista decide
+  entre `ENTRY_RATE_DUPLICATE` y `INVALID_EXCHANGE_RATE`. `tests/public-api.test.mjs` gana una prueba para el
+  tipo `JournalEntryLineRestoreInput` y la fábrica `restore`.
+- Comandos reales: `pnpm build`, `pnpm test` (391 pruebas, 391 correctas), `pnpm typecheck`,
   `pnpm check:project`.
 
 ## Lo que la implementación fijó
@@ -252,8 +268,11 @@ Cuatro puntos que el borrador no resolvía, decididos al implementar y probados 
    tasa del original, y `reversePostedEntry` contabiliza la reversión con `rates: []`. Es la ruta más simple de
    las dos que el diseño admitía: no hay que reenviar las tasas del original ni comprobar que sigan siendo las
    mismas, y los funcionales quedan exactamente opuestos por construcción. `LEDGER_CURRENCY_MISMATCH` sobrevive
-   justo aquí, para revertir un asiento sin importe funcional escrito antes de 009d: sin nada que espejar, la
-   aplicación lo rechaza.
+   ahí como guarda de la aplicación: `requireLedgerCurrency` compara el importe funcional y, si no lo hay, el
+   original, así que un asiento antiguo en la moneda del libro se revierte sin problema; la rama de discrepancia
+   sólo puede dispararse con un original en moneda extranjera **sin** importe funcional, que la contabilización
+   anterior a 009d no podía producir porque entonces exigía la moneda del libro. No es un camino alcanzable, es
+   una defensa.
 4. **FX15 es una guarda, no un camino alcanzable.** `JournalEntry` no se puede construir contabilizado sin
    pasar por `post`, y `post` siempre deja el importe funcional. La guarda vive en los reportes —una línea
    contabilizada sin funcional es `CURRENCY_MISMATCH` de dominio, sin conversión inventada— y se prueba con un

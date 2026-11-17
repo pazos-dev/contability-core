@@ -63,13 +63,27 @@ export function rateOf(input: ExchangeRateInput, functionalCurrency: Currency): 
  *
  * An absent list and an empty one are the same request, and both produce `undefined`, which the fingerprint
  * drops: a request without rates keeps the fingerprint it had before this increment.
+ *
+ * The factor is canonicalized as a value, not as a spelling: `41.25` and `41.250` are the same rate
+ * (`ExchangeRate.equals`), so they have to produce the same fingerprint or a replay would be mistaken for
+ * `IDEMPOTENCY_CONFLICT`.
  */
 export function normalizedRates(rates: readonly ExchangeRateInput[] | undefined): readonly string[] | undefined {
   if (rates === undefined || rates.length === 0) return undefined;
 
   return rates
-    .map((rate) => `${rate.currency.code}/${rate.currency.scale}/${rate.factor}`)
+    .map((rate) => `${rate.currency.code}/${rate.currency.scale}/${canonicalFactor(rate.factor)}`)
     .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+}
+
+/**
+ * One factor without the trailing zeros a decimal keeps for free: `41.250` becomes `41.25` and `3.000`
+ * becomes `3`, which is the same value with the denominator brought down to one. The transformation is
+ * textual on purpose: the fingerprint is computed before the aggregate hydrates and validates the rates, and
+ * an invalid factor has to reach that validation unchanged instead of failing here with another error.
+ */
+function canonicalFactor(factor: string): string {
+  return factor.includes('.') ? factor.replace(/0+$/, '').replace(/\.$/, '') : factor;
 }
 
 /**

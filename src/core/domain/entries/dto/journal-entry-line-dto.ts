@@ -1,4 +1,4 @@
-import type { ExchangeRate, Money } from '../../shared/money/index.js';
+import type { ExchangeRate, ExchangeRateJSON, Money, MoneyJSON } from '../../shared/money/index.js';
 import type { PostingSide } from '../types/posting-side.js';
 
 /** Input data of a new entry line; ids are opaque values received from the caller. */
@@ -8,6 +8,20 @@ export interface JournalEntryLineInput {
   readonly side: PostingSide;
   readonly amount: Money;
   readonly description?: string;
+}
+
+/**
+ * Input data of a line a host rebuilds from its storage: the same validated input as `create` —with `amount`
+ * already hydrated as a `Money`— plus the functional amount and the rate it persisted with the line. The two
+ * extra fields are exactly the ones `PostedLineResult` publishes, so a durable adapter can feed back what it
+ * wrote.
+ *
+ * The two stored values are hydration, not a decision: `restore` checks their type and their consistency, and
+ * the aggregate still checks at posting that the functional amount is worth something in the book's currency.
+ */
+export interface JournalEntryLineRestoreInput extends JournalEntryLineInput {
+  readonly functionalAmount?: MoneyJSON;
+  readonly rate?: ExchangeRateJSON;
 }
 
 /**
