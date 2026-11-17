@@ -41,8 +41,8 @@ Excluye, declarado para no prometerlo:
 - **Acumulación en cuentas de grupo (rollup).** Una fila por cuenta, sin sumar a los padres (D3). El
   balance completo por jerarquía es otro incremento con su propia regla de qué cuenta agrupa qué.
 - **Conversión y multimoneda.** El reporte es de una sola moneda porque el libro tiene una sola moneda
-  funcional. No hay columnas por moneda, ni tasa, ni diferencia de cambio calculada. Convertir es del
-  anfitrión antes de entregar el asiento, o un incremento propio (Q08, mitad abierta).
+  funcional: informa importes funcionales y no tiene columnas por moneda, ni tasa, ni diferencia de cambio
+  calculada. La conversión ocurre al contabilizar, no al leer (`foreign-currency.md`).
 - **Consolidación entre libros.** No hay reportes que sumen dos libros.
 - **Filtros de presentación.** Se listan todas las cuentas del plan, incluidas las de saldo cero (D4).
   Ocultar, ordenar distinto, agrupar o exportar es del consumidor, no del motor.
@@ -180,9 +180,12 @@ bajo, y eso es lo que fija qué error ve el llamador.
 2. **Una reversión es un asiento más.** Suma con el lado invertido y netea contra el original, que sigue
    `POSTED` y sigue contando. El original **nunca** se excluye por estar revertido: excluirlo daría cero
    donde corresponde el importe, y las dos lecturas parecen razonables hasta que se comparan.
-3. **Una sola moneda.** Todo importe de un reporte está en la moneda funcional del libro. Si el puerto
-   devuelve un movimiento en otra moneda, la suma falla con `CURRENCY_MISMATCH` de dominio, que burbujea
-   sin envolver: el reporte **falla cerrado** en lugar de sumar monedas distintas.
+3. **Una sola moneda, la del libro.** Todo importe de un reporte está en la moneda funcional del libro: el
+   reporte suma el **importe funcional** de cada línea, no el original con el que se pactó. Si el puerto
+   devuelve una línea contabilizada sin importe funcional —datos del anfitrión anteriores a 009d—, la suma
+   falla cerrado con `CURRENCY_MISMATCH` de dominio: el core no inventa una conversión histórica. Ese es el
+   único significado que le queda a la regla desde 009d; una línea en otra moneda ya no es un error, porque
+   contabilizarla la convirtió (`foreign-currency.md`, regla 11).
 4. **`from` y `to` son inclusivos** y se comparan sobre `accountingDate`, no sobre la fecha de carga ni
    sobre el período del asiento.
 5. **`from` ausente** significa desde el origen; **`to` ausente**, sin techo. El resultado informa `null`
@@ -226,7 +229,8 @@ bajo, y eso es lo que fija qué error ve el llamador.
 
 Propios de esta entrega: reutiliza `LEDGER_NOT_FOUND`, `ACCOUNT_NOT_FOUND` e `INVALID_APPLICATION_INPUT`.
 De dominio, burbujean sin envolver: `INVALID_DATE` (fecha imposible, por ejemplo un 29 de febrero no
-bisiesto) y `CURRENCY_MISMATCH` (movimiento en una moneda distinta de la del libro).
+bisiesto) y `CURRENCY_MISMATCH` (una línea contabilizada sin importe funcional, es decir datos del anfitrión
+anteriores a 009d: el reporte no inventa una conversión histórica).
 
 Todo error deja el estado como estaba: no hay estado que cambiar.
 
@@ -251,7 +255,7 @@ llamador vea la diferencia. Un reporte que se niega a mostrar la discrepancia no
 | TB06 | 6 | Un libro sin asientos | `trialBalance` con un rango sin movimientos | No es error: cuentas con saldo cero y totales en cero |
 | TB07 | 8 | Cuentas con códigos `1.9` y `1.10` | `trialBalance` | El orden es por código como texto y es el mismo en dos llamadas seguidas |
 | TB08 | 9 | Un libro `INACTIVE` con asientos contabilizados | `trialBalance` | Responde normalmente; el estado del libro no afecta la lectura |
-| TB09 | 3 | Un puerto que devuelve una línea en una moneda distinta de la del libro | `accountBalances` y `trialBalance` | `CURRENCY_MISMATCH` y ningún resultado parcial, en las dos |
+| TB09 | 3 | Un puerto que devuelve una línea contabilizada sin importe funcional (datos anteriores a 009d) | `accountBalances` y `trialBalance` | `CURRENCY_MISMATCH` y ningún resultado parcial, en las dos |
 | TB10 | 10 | Una cuenta de grupo con una cuenta hija con movimientos | `trialBalance` | La fila del grupo no incluye lo de la hija |
 | TB11 | 4, 6 | Un `from` posterior a `to` | `trialBalance` | `INVALID_APPLICATION_INPUT`; un `from` imposible es `INVALID_DATE` |
 | GL01 | 13 | Una cuenta con movimientos en un rango | `accountMovements` | Filas cronológicas, `runningBalance` después de cada una y `closingBalance` de la última |
@@ -298,7 +302,7 @@ Pendientes que este incremento no cierra:
 
 | ID | Tema | Impacto |
 | --- | --- | --- |
-| Q08 | Conversión y multimoneda | Abierta sólo en la conversión. Mientras siga así, un reporte es de una moneda y quien tenga operaciones en otra moneda las convierte antes de entregar el asiento |
+| Q08 | Conversión y multimoneda | Resuelta en 009d (`foreign-currency.md`): el asiento se convierte al contabilizar y el reporte suma el importe funcional. Tabla de cotizaciones, diferencia de cambio y revaluación al cierre siguen fuera |
 | — | Rollup por jerarquía de cuentas | Excluido por D3; necesita su propia regla de agregación |
 | — | Reportes por período y por ejercicio | Excluidos por D2; el ejercicio contable tampoco existe como entidad |
 | — | Consolidación entre libros | Fuera de fase |
@@ -341,7 +345,8 @@ Pendientes que este incremento no cierra:
 - Cada criterio se prueba desde la fachada, no contra funciones internas, para que el contrato público sea
   lo que queda fijado.
 - TB09 y GL10 necesitan un puerto que mienta: se implementa un `PostedEntriesQuery` de prueba que devuelve
-  una línea en otra moneda, un borrador y un asiento de otro libro, porque ningún camino legítimo del módulo
+  una línea contabilizada sin importe funcional (datos anteriores a 009d), un borrador y un asiento de otro
+  libro, porque ningún camino legítimo del módulo
   puede producir esos estados.
 - GL09 es la prueba que justifica que el cursor no se confíe: un cursor bien formado que el reporte no produjo
   tiene que fallar, porque aceptarlo saltearía filas en silencio y la primera verificación independiente del

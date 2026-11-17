@@ -1,6 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-17. Entrega: preparación 2.0. Último incremento: 009c, cabecera de borrador
+Actualizado: 2026-11-17. Entrega: preparación 2.0. Último incremento: 009d, moneda extranjera y conversión
+(`docs/specs/foreign-currency.md`): una línea conserva su importe original, gana su importe funcional y la tasa
+usada, el cuadre se evalúa en moneda funcional y la reversión espeja sin recalcular; antes, 009c, cabecera de
+borrador
 (`docs/specs/entry-draft-edit.md`, L14-L24): diario, período, fecha contable y descripción se reemplazan en un
 borrador sin borrarlo, y un asiento contabilizado sigue sin editarse; antes, 009b, redondeo y operaciones con
 factor (`docs/specs/rounding.md`), que cierra Q05; antes, 009a, numeración de asientos
@@ -378,6 +381,46 @@ método diecisiete de la fachada y la operación que el límite del 006d dejaba 
   una prueba que fija la parte comprobable: `addEntryLine` y `removeEntryLine` conservan la cabecera
   (`tests/application/entry-draft-header.test.mjs`).
 
+### 009d — moneda extranjera y conversión — `docs/specs/foreign-currency.md`, FX01-FX15
+
+El asiento puede registrar una operación pactada en otra moneda: guarda lo que se pactó y lo que vale en el
+libro, con la tasa que se usó. `LEDGER_CURRENCY_MISMATCH` deja de ser el rechazo por defecto de una línea en
+otra moneda; lo que falta, si falta, es la tasa.
+
+- `ExchangeRate` en `src/core/domain/shared/money/exchange-rate.ts`: valor inmutable `from`/`to`/`factor` con
+  `MoneyFactor`, que rechaza con `INVALID_EXCHANGE_RATE` un factor que no sea un `MoneyFactor` estrictamente
+  positivo, un operando que no sea `Currency` y una moneda convertida en sí misma. `MoneyFactor` gana
+  `toDecimal()`, la inversa exacta de `fromDecimal` (41,25 es 4125/100 y vuelve a `"41.25"`).
+- `JournalEntryLine` gana `functionalAmount` y `rate`, opcionales, y ninguno entra en `JournalEntryLineInput`:
+  los escribe sólo el agregado al contabilizar, con un token interno, así que un llamador no puede declarar
+  cuánto vale su línea en el libro.
+- `JournalEntry.post({ number, functionalCurrency, rates })`: la moneda funcional llega con la operación porque
+  el agregado conoce `ledgerId`, no el libro. Una línea en la moneda del libro no lleva tasa; una en otra
+  moneda exige la suya (`ENTRY_RATE_MISSING`), dos tasas con la misma moneda de origen son
+  `ENTRY_RATE_DUPLICATE` y una pareja que no corresponde es `INVALID_EXCHANGE_RATE`. El cuadre compara
+  unidades mínimas funcionales, así que dos monedas distintas pueden cuadrar.
+- `postEntry` acepta `rates?: ExchangeRateInput[]` (`{ currency, factor }`), las hidrata con la moneda del libro
+  como destino y las pasa al agregado. Las tasas entran en la huella de idempotencia en forma canónica; una
+  petición sin tasas conserva la huella que tenía antes de este incremento.
+- El resultado de una línea lleva `amount` (el original), `functionalAmount` y `rate` si hubo conversión, y
+  `totalDebit`/`totalCredit` pasan a estar en moneda funcional.
+- La reversión espeja el funcional y la tasa del original y se contabiliza con `rates: []`: no recalcula y no
+  produce diferencia de cambio. `LEDGER_CURRENCY_MISMATCH` sobrevive sólo ahí, para un original escrito antes
+  de 009d que nunca tuvo funcional.
+- Los reportes no cambian de contrato: suman el importe funcional de cada línea, así que un asiento en moneda
+  extranjera aparece en la moneda del libro, y una línea contabilizada sin funcional falla cerrado con
+  `CURRENCY_MISMATCH` en lugar de inventar una conversión histórica (FX15, guarda sin camino público).
+- **Desviaciones de la spec, decididas al implementar** y documentadas en `foreign-currency.md`: la tasa no
+  lleva modo de redondeo (se aplica `HALF_UP` por defecto, así que FX14 sólo ejercita ese modo) y la conversión
+  exige monedas de la misma escala, porque `Money.multiply` devuelve el producto en la moneda del operando y
+  una sola multiplicación no puede expresar un cambio de escala sin redondear dos veces.
+- Pruebas: 28 nuevas —13 en `tests/domain/entries/foreign-currency.test.mjs` y 15 en
+  `tests/application/foreign-currency.test.mjs`—, escritas antes de implementar y con rojo observado (el módulo
+  de dominio no cargaba sin `ExchangeRate`; en la aplicación fallaban 12 de 14). La suite pasa de 354 a 383.
+  Además se migraron al nuevo contexto de `post` los 30 sitios existentes y se retargetizaron los cuatro casos
+  que fijaban el rechazo anterior (L22, L24, la reversión de un asiento extranjero y L23), más TB09 y la regla 3
+  del mayor, que ahora prueban la guarda de FX15 con un puerto que miente.
+
 ### 009b — redondeo y operaciones con factor — `docs/specs/rounding.md`
 
 Cierra Q05: **tres modos** (`HALF_UP`, `HALF_EVEN`, `DOWN`), redondeo **simétrico** respecto del signo, modo
@@ -534,8 +577,8 @@ Cada contexto acotado expone su superficie en su propio `src/core/domain/<domini
 compartido en `shared/money/index.ts`; fuera de esa carpeta nadie importa los archivos internos. `src/index.ts`
 solo agrega esos barrels.
 
-- `shared/money/index.ts`: `Currency`, `Money`, `MoneyError`, `ISO_4217_PUBLISHED`, `listIsoCurrencies`,
-  `listIsoCurrenciesWithoutMinorUnit` y sus tipos.
+- `shared/money/index.ts`: `Currency`, `ExchangeRate`, `Money`, `MoneyError`, `MoneyFactor`,
+  `ISO_4217_PUBLISHED`, `listIsoCurrencies`, `listIsoCurrenciesWithoutMinorUnit` y sus tipos.
 - `ledger/index.ts`: `Ledger`, `LedgerError`, `LedgerInput`, `LedgerErrorCode`, `LedgerStatus`.
 - `account/index.ts`: `Account`, `AccountCode`, `AccountType`, `AccountError` y sus tipos.
 - `journal/index.ts`: `Journal`, `JournalError` y sus tipos.
@@ -562,7 +605,7 @@ exporta algo fuera de ellos.
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
 | `pnpm typecheck` | Correcto sobre `src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
-| `pnpm test` | 243 pruebas, 243 correctas, 0 fallos. |
+| `pnpm test` | 383 pruebas, 383 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
@@ -641,9 +684,10 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 
 ## Pendiente de implementar
 
-**009: extensiones** según necesidad demostrada —multimoneda operativa, ejercicio contable, país, impuestos o
-integraciones—, de la que 009a ya tomó la numeración de asientos y 009b el redondeo. Sin ORM, HTTP ni interfaz
-visual en este repositorio.
+**009: extensiones** según necesidad demostrada —ejercicio contable, país, impuestos o integraciones—, de la
+que 009a tomó la numeración de asientos, 009b el redondeo, 009c la cabecera del borrador y 009d la conversión
+con tasa recibida. Sigue fuera la tabla de cotizaciones, la diferencia de cambio y la revaluación al cierre.
+Sin ORM, HTTP ni interfaz visual en este repositorio.
 
 ## Siguiente tarea
 
@@ -653,15 +697,17 @@ y su moneda funcional, así que ya no hay conceptos del módulo que sólo exista
 El contrato del adaptador ya está escrito (007), la numeración de asientos ya existe (009a) y el redondeo
 también (009b), así que un anfitrión durable puede emitir asientos numerados, aplicar una tasa y repartir un
 importe, y verificar obligación por obligación lo que le toca.
-El ciclo de edición de un borrador ya está completo: crear, agregar y quitar líneas, y corregir la cabecera.
-Queda **009: extensiones** según necesidad demostrada. El candidato que un anfitrión real va a pedir primero es
-la **conversión de moneda** (la mitad abierta de Q08), seguido de **reversión parcial o cancelación de una
+El ciclo de edición de un borrador ya está completo (crear, agregar, quitar, corregir la cabecera) y un asiento
+puede contabilizarse en una moneda distinta de la del libro con la tasa que recibe la operación, sin
+recalcularla al revertir. Queda **009: extensiones** según necesidad demostrada. Los candidatos que un anfitrión
+real va a pedir primero son la **tabla de cotizaciones** con su fecha (elegir la tasa hoy es suyo), la
+**diferencia de cambio** por liquidación o revaluación, y la **reversión parcial o cancelación de una
 reversión**. Sin prometer nada de lo que la sección 7 del contrato excluye.
 
-Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
-una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
-plan de cuentas no es una entidad del core (Q07), sino un identificador del anfitrión que el libro guarda sin
-verificar.
+Lo que **no** se promete: el core no guarda ni busca cotizaciones y no fecha la tasa; no calcula diferencia de
+cambio ni revalúa saldos al cierre; la conversión exige monedas de la misma escala (ver 009d); no hay
+consolidación entre libros; y el plan de cuentas no es una entidad del core (Q07), sino un identificador del
+anfitrión que el libro guarda sin verificar.
 
 ## Relevo de sesión
 

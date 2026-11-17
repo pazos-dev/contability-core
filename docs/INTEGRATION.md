@@ -207,6 +207,12 @@ Tienen su propia sección, porque el detalle es el que se olvida: 4 y 5.
   Migrar o invalidar es tu decisión, y conviene tomarla antes de que un reintento la tome por vos.
 - **`HA42`** — **008 tampoco escribe ni cambia datos.** Sumó dos lecturas, `PostedEntriesQuery` y
   `AccountRepository.findByChart`, que tu compilador te va a reclamar.
+- **`HA45`** — **Moneda extranjera (009d).** Cada línea contabilizada lleva `functionalAmount` en la moneda
+  funcional del libro y, cuando hubo conversión, la tasa usada (`from`, `to` y `factor`). Hay que persistir los
+  dos: recalcular el funcional al leer mueve el histórico si cambia una cotización o una política de redondeo.
+  Los asientos ya persistidos no tienen funcional y **no se pueden leer** en un reporte: falla cerrado con
+  `CURRENCY_MISMATCH` en lugar de inventar una conversión. Es la cuarta migración de esta clase, después de la
+  moneda del libro (006f), los números de asiento (009a) y la huella de idempotencia (HA41).
 - **`HA44`** — **Numeración (009a).** `JournalEntry.post` ahora exige el número, así que un anfitrión que arme
   asientos con el dominio deja de compilar hasta que lo pase. Además, la huella de idempotencia de `postEntry`
   no cambió: un resultado guardado antes de numerar se devuelve **sin** `number`. Migrarlos o invalidarlos es

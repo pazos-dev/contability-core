@@ -41,8 +41,14 @@ interface PostEntryInput {
   readonly ledgerId: string;
   readonly entryId: string;
   readonly idempotencyKey: string;
+  readonly rates?: readonly ExchangeRateInput[];
 }
 ```
+
+`ExchangeRateInput` es `{ currency: CurrencyJSON, factor: string }`: la moneda de la línea extranjera y el
+factor exacto que la lleva a la moneda del libro, que el caso de uso resuelve del `Ledger` y por eso no viaja en
+la entrada. Las tasas son opcionales y sólo hacen falta para las líneas que no están en la moneda funcional
+(`foreign-currency.md`, reglas 3-4).
 
 `idempotencyKey` es obligatoria: contabilizar es la operación repetible por excelencia. La clave se aísla
 por libro y por operación (`'postEntry'`).
@@ -65,8 +71,11 @@ interface PostEntryResult {
 
 `MoneyJSON` es el tipo que ya publica el dominio: `Money.toJSON()`, es decir
 `{ minorUnits: string, currency: { code, scale } }`. No se inventa un contrato paralelo para el dinero.
+Cada línea lleva además su importe funcional y, si hubo conversión, la tasa usada (`PostedLineResult` en
+`foreign-currency.md`), y `totalDebit`/`totalCredit` pasan a estar en moneda funcional: son los que cuadran.
 
-La huella de idempotencia es `ledgerId` + `entryId`: es literalmente todo el campo de la petición además de
+La huella de idempotencia es `ledgerId` + `entryId` y, cuando la petición trae tasas, esas tasas en forma
+canónica `code/scale/factor` ordenadas: es literalmente todo el campo de la petición además de
 la clave, tal como exige la regla 6 de `registration.md`. Otra `entryId` con la misma clave y el mismo libro
 es otra petición (U05).
 
@@ -105,9 +114,11 @@ regla de menor número. Todas las lecturas y la escritura viven en una sola llam
      contabilizada.
    Contabilizar por acá no puede producir una segunda reversión completa que `reversePostedEntry` habría
    rechazado.
-8. **Invariantes del agregado.** `entry.post(number)`, con el número que se pide al contador del libro: sus
+8. **Invariantes del agregado.** `entry.post({ number, functionalCurrency, rates })`, con el número que se
+   pide al contador del libro, la moneda funcional del libro y las tasas que el caso de uso hidrata: sus
    errores burbujean tal cual
-   (`ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED`, `ENTRY_CURRENCY_MISMATCH`). Un asiento ya
+   (`ENTRY_STATE`, `ENTRY_INCOMPLETE`, `ENTRY_UNBALANCED`, `ENTRY_RATE_MISSING`, `ENTRY_RATE_DUPLICATE`,
+   `INVALID_EXCHANGE_RATE`). Un asiento ya
    `POSTED` sin coincidencia de idempotencia llega acá y recibe `ENTRY_STATE` (E11).
 9. **Escritura única.** Dentro de la misma unidad de trabajo: `entries.save(posted)` y
    `idempotency.record(...)` con la huella y el resultado. Si cualquiera falla, ninguno de los dos queda.
@@ -122,7 +133,9 @@ Un fallo en cualquier paso no escribe nada: el borrador nunca se guarda a medias
 2. El asiento nace congelado: el resultado se calcula después de guardar y no permite volver a DRAFT.
 3. El asiento debe pertenecer al libro: `entry.ledgerId` es siempre el de la búsqueda, así que una
    cabecera de otro libro no se alcanza.
-4. Todas las líneas comparten moneda y escala; eso lo decide E05 en el dominio, no el caso de uso.
+4. Cada línea queda en la moneda funcional del libro: la conversión la decide el agregado con las tasas que
+   recibe y lo que se compara es el importe funcional, no el original (`foreign-currency.md`, reglas 1-8).
+   El caso de uso sólo hidrata cada tasa con la moneda del libro como destino.
 5. Los importes viajan como `minorUnits` en cadena. Nunca `number`, nunca `bigint` crudo en JSON.
 6. El caso de uso no lee reloj, no genera ids y no lee variables de entorno.
 7. `chartOfAccountsIdOf` participa aunque el asiento no lo lleve: es lo que impide que las cuentas de las
