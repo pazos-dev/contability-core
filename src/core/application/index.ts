@@ -53,5 +53,5 @@ export type {
   TrialBalanceResult,
 } from './dto.js';
 // The use case classes are internal on purpose: the package publishes `Accounting`, so a host never sees
-// sixteen symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
+// seventeen symbols nor a per-operation surface. `accounting.ts` composes them, and the area modules under
 // `use-cases/` are internal wiring for the facade, not part of the package surface.

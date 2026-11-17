@@ -145,7 +145,7 @@ El asiento contabilizado no se modifica en el sitio: las correcciones se represe
 | Cuentas | `registerAccount`, `setAccountStatus` |
 | Diarios | `registerJournal`, `setJournalStatus` |
 | Períodos | `registerPeriod`, `closePeriod` |
-| Asientos | `createEntryDraft`, `addEntryLine`, `removeEntryLine`, `postEntry`, `reversePostedEntry` |
+| Asientos | `createEntryDraft`, `addEntryLine`, `removeEntryLine`, `changeEntryHeader`, `postEntry`, `reversePostedEntry` |
 
 Estas operaciones internas se agrupan en clases de área con **métodos estáticos sin estado global**; las dependencias pasan por parámetro. La fachada sí es una instancia que conserva `ApplicationDeps` en un campo privado. Así, diferentes instancias de `Accounting` pueden apuntar a distintos adaptadores sin compartir una configuración estática mutable.
 
