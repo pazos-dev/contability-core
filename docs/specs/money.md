@@ -13,6 +13,8 @@ No usar símbolos ni formato localizado para identificar una moneda.
 
 API orientativa: Currency.create(code, scale), Money.fromMinorUnits(value, currency),
 Money.fromDecimal(text, currency), add, subtract, compare, equals, toDecimal y toJSON/fromJSON.
+Desde 009b: multiply(factor, mode?), divide(divisor, mode?), allocate(parts), MoneyFactor, RoundingMode
+y DEFAULT_ROUNDING_MODE, especificados en `docs/specs/rounding.md`.
 Elegir una firma coherente al implementar; no crear entidades con ID ni repositorios para estos valores.
 
 Parser decimal propuesto: `^-?(0|[1-9][0-9]*)(\.[0-9]+)?$`, sin espacios ni notación científica.
@@ -28,7 +30,8 @@ JSON: `{ "minorUnits": "1025", "currency": { "code": "UYU", "scale": 2 } }`.
 La escala forma parte del importe guardado: se persiste y no se deduce del código, porque la tabla
 ISO 4217 puede cambiar y el código solo no alcanza para releer un valor histórico.
 Validar datos unknown al reconstruir. `minorUnits` usa cadena entera canónica, sin decimales ni exponentes.
-Excepciones propuestas: INVALID_CURRENCY, INVALID_MONEY, CURRENCY_MISMATCH.
+Excepciones: INVALID_CURRENCY, INVALID_MONEY, CURRENCY_MISMATCH, e INVALID_FACTOR, DIVISION_BY_ZERO,
+INVALID_ROUNDING_MODE para las operaciones con factor (`docs/specs/rounding.md`).
 
 ## Criterios de aceptación
 
@@ -50,7 +53,8 @@ Excepciones propuestas: INVALID_CURRENCY, INVALID_MONEY, CURRENCY_MISMATCH.
 | M14 | JSON sin `scale`, solo con `code` | `INVALID_CURRENCY`; la escala se guarda, nunca se deduce del código. |
 | M15 | JSON con `scale` distinto del oficial y código ISO | `INVALID_CURRENCY`; el importe no se reinterpreta con la escala nueva. Para una moneda propia no hay escala oficial: la persistida es la autoridad. |
 
-`rounding-mode.ts` se añade solo al especificar una operación que redondee.
-Conversión, reparto, multiplicación y límites fiscales quedan fuera del incremento.
+`rounding-mode.ts` se añade al especificar una operación que redondee: hecho en el incremento 009b, con
+`multiply`, `divide`, `allocate` y los tres modos en `docs/specs/rounding.md` (RD01-RD20).
+Conversión y límites fiscales quedan fuera también de ese incremento.
 El catálogo de monedas, sus criterios IC01-IC14 y el régimen de las monedas retiradas viven en
 `docs/specs/currency-catalog.md`.

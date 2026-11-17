@@ -20,7 +20,7 @@ Una aplicación anfitriona importa el módulo y conecta adaptadores; también pu
 | `src/core/domain/entries/` | Raíz: `journal-entry.ts` (agregado) y `entry-text.ts` (ayudante interno). `value-objects/journal-entry-line.ts`; `types/entry-status.ts`, `types/posting-side.ts`; `errors/entry-errors.ts`; `dto/journal-entry-dto.ts`, `dto/journal-entry-line-dto.ts`. |
 | `src/core/domain/period/` | Raíz: `accounting-period.ts` (agregado). `value-objects/accounting-date.ts`; `types/period-status.ts`; `errors/period-errors.ts`; `dto/accounting-period-dto.ts`. |
 | `src/core/domain/shared/` | Kernel compartido del dominio: `describe-value.ts` y `money/`. |
-| `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `rounding-mode.ts` solo al necesitar redondeo. |
+| `src/core/domain/shared/money/` | Plano: `currency.ts`, `money.ts`, `factor.ts`, `rounding-mode.ts`, `currency-catalog.ts` (generado), `money-errors.ts`; `dto/currency-dto.ts`, `dto/money-dto.ts`. `factor.ts` y `rounding-mode.ts` existen desde 009b, con las operaciones de `docs/specs/rounding.md`. |
 | `src/core/application/ports.ts` | Puertos específicos de repositorios, transacción e IDs cuando un caso real los requiera. Sólo contratos de comportamiento: los datos que un puerto persiste viven en `dto.ts`. |
 | `src/core/application/dto.ts` | Las 26 entradas y salidas serializables de los casos de uso, más el registro que persiste el puerto de idempotencia. Datos sin comportamiento. Entidades y modelos ORM no son DTOs públicos. |
 | `src/core/application/facade/` | La puerta de entrada: `accounting.ts` con la clase `Accounting`, única superficie pública de la capa. |
