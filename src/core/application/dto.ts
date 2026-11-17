@@ -196,6 +196,20 @@ export interface RemoveEntryLineInput {
 }
 
 /**
+ * The complete header of a draft. All four fields are required: an absent field would mean "keep" and that
+ * is exactly where a caller loses what it did not send.
+ */
+export interface ChangeEntryHeaderInput {
+  readonly ledgerId: string;
+  readonly entryId: string;
+  readonly journalId: string;
+  readonly periodId: string;
+  readonly accountingDate: string;
+  readonly description: string;
+  readonly idempotencyKey?: string;
+}
+
+/**
  * A draft reports no totals: it may be empty or unbalanced, so a total is a posting notion.
  * It is also the result of every draft edit: the draft as it stands after the operation.
  * A draft never carries a number — the field is `null` so the four entry operations keep one shape.

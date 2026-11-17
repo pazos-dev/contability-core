@@ -4,6 +4,7 @@ import { AccountingDate } from '../period/index.js';
 import type {
   JournalEntryChanges,
   JournalEntryFields,
+  JournalEntryHeaderInput,
   JournalEntryInput,
   JournalEntryReversalInput,
 } from './dto/journal-entry-dto.js';
@@ -165,6 +166,31 @@ export class JournalEntry {
   }
 
   /**
+   * Returns a draft with a new header: journal, period, accounting date and description.
+   *
+   * The four fields are the whole header, so a caller that changes one still sends all of them. Everything
+   * else —id, ledger, status, number, lines and the reversal link— is preserved: a draft does not move
+   * between ledgers or change identity, and a reversal keeps pointing at its original while it moves to the
+   * period and date it needs. Only the aggregate's own state rule applies here: a posted entry has no header
+   * to change. Nothing is revalidated against the lines or the currency, because a draft is allowed to stay
+   * unbalanced, inactive or out of its period until `post()` asks again.
+   */
+  changeHeader(changes: JournalEntryHeaderInput): JournalEntry {
+    this.#requireDraft('a posted entry cannot change its header');
+
+    if (typeof changes !== 'object' || changes === null) {
+      throw invalidEntry(`expected a header object, received ${describeValue(changes)}`);
+    }
+
+    return this.#copyWith({
+      journalId: requireText(changes.journalId, 'journalId', invalidEntry),
+      periodId: requireText(changes.periodId, 'periodId', invalidEntry),
+      accountingDate: requireAccountingDate(changes.accountingDate),
+      description: requireText(changes.description, 'description', invalidEntry),
+    });
+  }
+
+  /**
    * Returns a posted copy carrying the number it is given. Debits must equal credits exactly, every line
    * must share one currency definition, at least two lines are required and the number must be a positive
    * integer. A rejected post returns nothing and leaves the receiver as a DRAFT.
@@ -269,10 +295,10 @@ export class JournalEntry {
     return new JournalEntry({
       id: this.#id,
       ledgerId: this.#ledgerId,
-      journalId: this.#journalId,
-      periodId: this.#periodId,
-      accountingDate: this.#accountingDate,
-      description: this.#description,
+      journalId: changes.journalId ?? this.#journalId,
+      periodId: changes.periodId ?? this.#periodId,
+      accountingDate: changes.accountingDate ?? this.#accountingDate,
+      description: changes.description ?? this.#description,
       status: changes.status ?? this.#status,
       number: changes.number ?? this.#number,
       lines: changes.lines ?? this.#lines,

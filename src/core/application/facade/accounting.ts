@@ -5,6 +5,7 @@ import type {
   AccountMovementsInput,
   AccountMovementsResult,
   AddEntryLineInput,
+  ChangeEntryHeaderInput,
   ClosePeriodInput,
   ClosePeriodResult,
   CreateEntryDraftInput,
@@ -42,9 +43,9 @@ import { Reports } from '../use-cases/reports/reports.js';
  *
  * It is a composition, not a new layer on top: each method forwards to the static operation of the same
  * name and adds nothing — no validation, no state, no error translation. The five area classes are
- * internal to `use-cases/`, so the host never has to choose between sixteen symbols.
+ * internal to `use-cases/`, so the host never has to choose between seventeen symbols.
  *
- * Thirteen methods write and three read: `accountBalances`, `trialBalance` and `accountMovements` are the
+ * Fourteen methods write and three read: `accountBalances`, `trialBalance` and `accountMovements` are the
  * read-only surface of the module. Reads take no idempotency key, because repeating them has no second effect.
  *
  * `#deps` is the reason this class is instantiable. The operations themselves are stateless: they receive
@@ -101,6 +102,10 @@ export class Accounting {
 
   removeEntryLine(input: RemoveEntryLineInput): Promise<EntryDraftResult> {
     return Entries.removeLine(this.#deps, input);
+  }
+
+  changeHeader(input: ChangeEntryHeaderInput): Promise<EntryDraftResult> {
+    return Entries.changeHeader(this.#deps, input);
   }
 
   postEntry(input: PostEntryInput): Promise<PostEntryResult> {

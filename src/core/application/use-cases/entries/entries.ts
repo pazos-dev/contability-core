@@ -3,6 +3,7 @@ import { AccountingDate } from '../../../domain/period/index.js';
 import type { ApplicationDeps } from '../../ports.js';
 import type {
   AddEntryLineInput,
+  ChangeEntryHeaderInput,
   CreateEntryDraftInput,
   EntryDraftResult,
   PostEntryInput,
@@ -30,6 +31,7 @@ import { requireLedgerCurrency, requireNoPostedReversal, requireNoReversal } fro
 const CREATE_OPERATION = 'createEntryDraft';
 const ADD_OPERATION = 'addEntryLine';
 const REMOVE_OPERATION = 'removeEntryLine';
+const CHANGE_HEADER_OPERATION = 'changeEntryHeader';
 const POST_OPERATION = 'postEntry';
 const REVERSE_OPERATION = 'reversePostedEntry';
 
@@ -134,6 +136,44 @@ export class Entries {
         const entry = await requireEntry(scope, ledgerId, entryId);
 
         const updated = entry.removeLine(lineId);
+
+        const result = draftResultOf(updated);
+        await scope.entries.save(updated);
+
+        return result;
+      });
+    });
+  }
+
+  /**
+   * Replaces the header of an existing draft: journal, period, accounting date and description.
+   *
+   * It requires the destination journal and period to exist in the same ledger and nothing else: a draft is
+   * tolerant, so an inactive journal, a closed period and a date outside that period are all accepted. Those
+   * are posting concerns and `postEntry` re-checks them whole. The aggregate owns the state rule, so a posted
+   * entry is rejected with `ENTRY_STATE`, and changing the header does not revalidate the lines: a draft may
+   * stay unbalanced and be fixed later.
+   */
+  static async changeHeader(deps: ApplicationDeps, input: ChangeEntryHeaderInput): Promise<EntryDraftResult> {
+    const { ledgerId, entryId, journalId, periodId, accountingDate, description, idempotencyKey } = input;
+    const fingerprint = fingerprintOf({ ledgerId, entryId, journalId, periodId, accountingDate, description });
+
+    return deps.unitOfWork.run(async (scope) => {
+      const idempotency = Idempotency.of(scope, CHANGE_HEADER_OPERATION, ledgerId);
+
+      return idempotency.execute(idempotencyKey, fingerprint, async () => {
+        await requireChartOfAccountsId(scope, ledgerId);
+        const entry = await requireEntry(scope, ledgerId, entryId);
+        await requireJournal(scope, ledgerId, journalId);
+        await requirePeriod(scope, ledgerId, periodId);
+
+        // The aggregate owns the state rule and the four fields; the date is parsed here, like on creation.
+        const updated = entry.changeHeader({
+          journalId,
+          periodId,
+          accountingDate: AccountingDate.create(accountingDate),
+          description,
+        });
 
         const result = draftResultOf(updated);
         await scope.entries.save(updated);
