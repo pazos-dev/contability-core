@@ -1,7 +1,7 @@
 # SPEC — Editar un borrador: líneas y cabecera
 
-Estado: **líneas implementadas** (incremento 006d, L01-L13). **Cabecera especificada y pendiente de
-implementar** (incremento 009c, L14-L24).
+Estado: **implementada y verificada**: líneas en el incremento 006d (L01-L13) y cabecera en el 009c
+(L14-L24).
 Ruta: `src/core/application/use-cases/entries/entries.ts`.
 Depende de: `entries.md` (E06, E07), `entry-draft.md` (D01-D13) y el contrato general de `registration.md`.
 
