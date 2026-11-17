@@ -1,0 +1,34 @@
+name: check
+
+# The same command the project documents in AGENTS.md and README.md. It runs the structure validator, the
+# type check, the build and the suite, in that order: the suite consumes `dist/`, so a build has to happen
+# first. Nothing here is invented for CI — `pnpm check` is the command a human runs locally.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          # `engines.node` requires >=24, which is also what the suite runs on locally.
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm check
