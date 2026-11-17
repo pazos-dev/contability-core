@@ -5,7 +5,8 @@ export type MoneyErrorCode =
   | 'CURRENCY_MISMATCH'
   | 'INVALID_FACTOR'
   | 'DIVISION_BY_ZERO'
-  | 'INVALID_ROUNDING_MODE';
+  | 'INVALID_ROUNDING_MODE'
+  | 'INVALID_EXCHANGE_RATE';
 
 /** Domain exception with a stable code; adapters translate it to their own error model. */
 export class MoneyError extends Error {
@@ -40,4 +41,12 @@ export function divisionByZero(reason: string): MoneyError {
 
 export function invalidRoundingMode(reason: string): MoneyError {
   return new MoneyError('INVALID_ROUNDING_MODE', `Invalid rounding mode: ${reason}.`);
+}
+
+/**
+ * A rate is exact, strictly positive and goes from one currency into a different one. A pair that does not
+ * correspond to the conversion asked for is the same rejection as a factor that is not a positive `MoneyFactor`.
+ */
+export function invalidExchangeRate(reason: string): MoneyError {
+  return new MoneyError('INVALID_EXCHANGE_RATE', `Invalid exchange rate: ${reason}.`);
 }

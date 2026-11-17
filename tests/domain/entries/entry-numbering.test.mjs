@@ -41,7 +41,7 @@ function assertEntryError(code) {
 }
 
 test('N01: post stores the number it is given and the entry keeps it', () => {
-  const posted = balanced().post(7);
+  const posted = balanced().post({ number: 7, functionalCurrency: uyu, rates: [] });
 
   assert.equal(posted.status, 'POSTED');
   assert.equal(posted.number, 7);
@@ -53,19 +53,19 @@ test('N09: a draft carries no number', () => {
 
 test('N10: post rejects anything that is not a positive integer', () => {
   for (const received of [0, -1, 1.5, NaN, Infinity, '1', null, undefined]) {
-    assert.throws(() => balanced().post(received), assertEntryError('ENTRY_NUMBER_INVALID'));
+    assert.throws(() => balanced().post({ number: received, functionalCurrency: uyu, rates: [] }), assertEntryError('ENTRY_NUMBER_INVALID'));
   }
 });
 
 test('N05: a second post is rejected and the number does not change', () => {
-  const posted = balanced().post(1);
+  const posted = balanced().post({ number: 1, functionalCurrency: uyu, rates: [] });
 
-  assert.throws(() => posted.post(2), assertEntryError('ENTRY_STATE'));
+  assert.throws(() => posted.post({ number: 2, functionalCurrency: uyu, rates: [] }), assertEntryError('ENTRY_STATE'));
   assert.equal(posted.number, 1);
 });
 
 test('N06: a reversal draft has no number and receives its own when posted', () => {
-  const posted = balanced().post(3);
+  const posted = balanced().post({ number: 3, functionalCurrency: uyu, rates: [] });
   const reversal = posted.createReversalDraft({
     id: 'entry-2',
     periodId: 'period-2',
@@ -75,7 +75,7 @@ test('N06: a reversal draft has no number and receives its own when posted', () 
   assert.equal(reversal.status, 'DRAFT');
   assert.equal(reversal.number, undefined);
 
-  const postedReversal = reversal.post(4);
+  const postedReversal = reversal.post({ number: 4, functionalCurrency: uyu, rates: [] });
 
   assert.equal(postedReversal.number, 4);
   assert.equal(postedReversal.reversalOfEntryId, 'entry-1');
@@ -86,7 +86,7 @@ test('N10: a rejected number leaves the draft exactly as it was', () => {
   const draft = balanced();
 
   for (const received of [0, -1, 1.5, Number.NaN]) {
-    assert.throws(() => draft.post(received), assertEntryError('ENTRY_NUMBER_INVALID'));
+    assert.throws(() => draft.post({ number: received, functionalCurrency: uyu, rates: [] }), assertEntryError('ENTRY_NUMBER_INVALID'));
     assert.equal(draft.status, 'DRAFT');
     assert.equal(draft.number, undefined);
     assert.equal(draft.lines.length, 2);

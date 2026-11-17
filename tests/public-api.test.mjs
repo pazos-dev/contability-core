@@ -7,6 +7,7 @@ const barrels = {
   'core/domain/shared/money': [
     'Currency',
     'DEFAULT_ROUNDING_MODE',
+    'ExchangeRate',
     'Money',
     'MoneyError',
     'MoneyFactor',
@@ -71,8 +72,25 @@ test('API: the money barrel publishes the rounding mode and the serialized shape
     match[1].split(',').map((name) => name.trim()).filter((name) => name.length > 0),
   );
 
-  for (const type of ['CurrencyJSON', 'MoneyErrorCode', 'MoneyJSON', 'RoundingMode']) {
+  for (const type of ['CurrencyJSON', 'ExchangeRateJSON', 'MoneyErrorCode', 'MoneyJSON', 'RoundingMode']) {
     assert.ok(exportedTypes.includes(type), `money barrel must export the type ${type}`);
+  }
+});
+
+// A code is a member of a union, so it is erased too: the declaration file the build emits is where the new
+// domain codes are pinned. They live in the domain because it is the aggregate that receives the functional
+// currency and the rates and decides (009d).
+test('API: the domain publishes the exchange rate and entry rate error codes', async () => {
+  const { readFileSync } = await import('node:fs');
+
+  const read = (path) => readFileSync(new URL(`../dist/${path}`, import.meta.url), 'utf8');
+  const codes = (path) => [...read(path).matchAll(/'([A-Z_]+)'/g)].map((match) => match[1]);
+
+  assert.ok(codes('core/domain/shared/money/money-errors.d.ts').includes('INVALID_EXCHANGE_RATE'));
+
+  const entryCodes = codes('core/domain/entries/errors/entry-errors.d.ts');
+  for (const code of ['ENTRY_RATE_MISSING', 'ENTRY_RATE_DUPLICATE']) {
+    assert.ok(entryCodes.includes(code), `EntryErrorCode must include ${code}`);
   }
 });
 
@@ -94,6 +112,7 @@ test('API: the application barrel publishes the report and port types', async ()
     'AccountMovementsInput',
     'AccountMovementsResult',
     'EntryNumberSequence',
+    'ExchangeRateInput',
     'PostedEntriesQuery',
     'TrialBalanceResult',
   ]) {

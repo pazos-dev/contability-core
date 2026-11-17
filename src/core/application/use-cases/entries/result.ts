@@ -1,6 +1,6 @@
 import { JournalEntryLine, type JournalEntry, type PostingSide } from '../../../domain/entries/index.js';
-import { Money } from '../../../domain/shared/money/index.js';
-import type { EntryDraftResult, EntryLineInput, PostedLineResult, PostEntryResult } from '../../dto.js';
+import { Currency, ExchangeRate, Money, MoneyFactor } from '../../../domain/shared/money/index.js';
+import type { EntryDraftResult, EntryLineInput, ExchangeRateInput, PostedLineResult, PostEntryResult } from '../../dto.js';
 
 /** Serializes one line: a domain value never leaves the module raw. */
 export function serializeLine(line: JournalEntryLine): PostedLineResult {
@@ -9,6 +9,8 @@ export function serializeLine(line: JournalEntryLine): PostedLineResult {
     accountId: line.accountId,
     side: line.side,
     amount: line.amount.toJSON(),
+    ...(line.functionalAmount === undefined ? {} : { functionalAmount: line.functionalAmount.toJSON() }),
+    ...(line.rate === undefined ? {} : { rate: line.rate.toJSON() }),
     ...(line.description === undefined ? {} : { description: line.description }),
   };
 }
@@ -40,15 +42,52 @@ export function lineOf(line: EntryLineInput): JournalEntryLine {
 }
 
 /**
- * Sums one side of an entry with exact `Money` arithmetic.
+ * Hydrates one rate of a posting: the caller sends the line's currency and the exact factor, and the ledger's
+ * functional currency is the destination.
+ *
+ * The domain validates both — `INVALID_FACTOR` for a factor that is not a canonical decimal and
+ * `INVALID_EXCHANGE_RATE` for a pair or a sign that is not a rate — and the application does not repeat any of
+ * those checks, exactly as it does not repeat the line rules.
+ */
+export function rateOf(input: ExchangeRateInput, functionalCurrency: Currency): ExchangeRate {
+  return ExchangeRate.create({
+    from: Currency.fromJSON(input.currency),
+    to: functionalCurrency,
+    factor: MoneyFactor.fromDecimal(input.factor),
+  });
+}
+
+/**
+ * The rates of a request in canonical form, for the idempotency fingerprint: `code/scale/factor` per rate,
+ * sorted, so the order the caller wrote them in is not part of the request (rule 10).
+ *
+ * An absent list and an empty one are the same request, and both produce `undefined`, which the fingerprint
+ * drops: a request without rates keeps the fingerprint it had before this increment.
+ */
+export function normalizedRates(rates: readonly ExchangeRateInput[] | undefined): readonly string[] | undefined {
+  if (rates === undefined || rates.length === 0) return undefined;
+
+  return rates
+    .map((rate) => `${rate.currency.code}/${rate.currency.scale}/${rate.factor}`)
+    .sort((left, right) => (left < right ? -1 : left > right ? 1 : 0));
+}
+
+/**
+ * Sums one side of a posted entry with exact `Money` arithmetic, in the ledger's functional currency: the
+ * functional amounts are what balance (rule 1).
  * Only called on a posted entry, which is balanced with at least two positive lines, so a side is
- * never empty; the throw is an invariant guard, not a user-facing condition.
+ * never empty and every line carries a functional amount; the throws are invariant guards, not user-facing
+ * conditions.
  */
 export function sumSide(lines: readonly JournalEntryLine[], side: PostingSide): Money {
   let total: Money | undefined;
   for (const line of lines) {
     if (line.side !== side) continue;
-    total = total === undefined ? line.amount : total.add(line.amount);
+    const amount = line.functionalAmount;
+    if (amount === undefined) {
+      throw new Error('Invariant violated: a posted line must carry its functional amount.');
+    }
+    total = total === undefined ? amount : total.add(amount);
   }
   if (total === undefined) {
     throw new Error(`Invariant violated: a posted entry must have at least one ${side} line.`);

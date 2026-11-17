@@ -25,7 +25,7 @@ import {
   requirePostableAccount,
 } from '../shared/rules.js';
 import { fingerprintOf, Idempotency } from '../shared/index.js';
-import { draftResultOf, lineOf, normalizedLine, postedResultOf } from './result.js';
+import { draftResultOf, lineOf, normalizedLine, normalizedRates, postedResultOf, rateOf } from './result.js';
 import { requireLedgerCurrency, requireNoPostedReversal, requireNoReversal } from './rules.js';
 
 const CREATE_OPERATION = 'createEntryDraft';
@@ -187,17 +187,21 @@ export class Entries {
    * Posts a persisted draft.
    *
    * It owns every rule the aggregate cannot decide alone: the ledger resolves the chart of accounts the
-   * lines must belong to (Q07) and the functional currency they must be denominated in (Q08), and the
-   * journal, the period and the accounts must still admit the posting. The draft's `periodId` is
-   * authoritative, but it does not prove the accounting date falls inside that period, so the two are
-   * checked together (P05, A06, J05).
+   * lines must belong to (Q07) and the functional currency they are converted into (Q08), and the journal, the
+   * period and the accounts must still admit the posting. The draft's `periodId` is authoritative, but it does
+   * not prove the accounting date falls inside that period, so the two are checked together (P05, A06, J05).
+   *
+   * The caller may send one rate per foreign currency present; they are hydrated here, with the ledger's
+   * currency as the destination, and handed to the aggregate, which decides which line needs which and rejects
+   * the operation when one is missing (009d). The rates join the idempotency fingerprint in canonical form, so
+   * the same key with another rate is a conflict and not a replay.
    *
    * The entry is never edited here: it is loaded, posted in memory and saved once, together with the
    * idempotency record, inside one unit of work.
    */
   static async post(deps: ApplicationDeps, input: PostEntryInput): Promise<PostEntryResult> {
     const { ledgerId, entryId, idempotencyKey } = input;
-    const fingerprint = fingerprintOf({ ledgerId, entryId });
+    const fingerprint = fingerprintOf({ ledgerId, entryId, rates: normalizedRates(input.rates) });
 
     return deps.unitOfWork.run(async (scope) => {
       const idempotency = Idempotency.of(scope, POST_OPERATION, ledgerId);
@@ -206,15 +210,22 @@ export class Entries {
         const ledger = await requireActiveLedger(scope, ledgerId);
         const chartOfAccountsId = ledger.chartOfAccountsId;
         const entry = await requireEntry(scope, ledgerId, entryId);
-        requireLedgerCurrency(ledger, entry);
         await requireActiveJournal(scope, ledgerId, entry.journalId);
         await requireOpenPeriodContaining(scope, ledgerId, entry.periodId, entry.accountingDate);
         for (const line of entry.lines) await requirePostableAccount(scope, line.accountId, chartOfAccountsId);
         await requireNoPostedReversal(scope, ledgerId, entry);
 
+        // The rates are hydrated after every application guard and before the number is asked for, so an
+        // invalid rate cannot burn a number of the ledger's sequence.
+        const rates = (input.rates ?? []).map((rate) => rateOf(rate, ledger.currency));
+
         // Asked after every application guard and immediately before the save; the aggregate's own checks run
         // after it, so a draft it rejects can burn a number, which rule 7 allows and HA43 accepts as a gap.
-        const posted = entry.post(await scope.entryNumbers.nextNumber(ledgerId));
+        const posted = entry.post({
+          number: await scope.entryNumbers.nextNumber(ledgerId),
+          functionalCurrency: ledger.currency,
+          rates,
+        });
         const result = postedResultOf(posted);
 
         await scope.entries.save(posted);
@@ -233,8 +244,10 @@ export class Entries {
    *
    * The destination period must be open even when the original period is already closed, and the accounts
    * of the original must still admit postings: reversing is not a way around a deactivated account. The
-   * reversal is denominated in the currency of the original, so it must still be the ledger's functional
-   * currency (Q08): the guard is here too because this path also leaves an entry in POSTED.
+   * reversal mirrors the functional amounts and the rates of the original, so it is posted without converting
+   * again and with no rates: an exchange difference is a different operation (009d, rule 8). A line that was
+   * never converted and is not in the ledger's currency is the one case still rejected with
+   * `LEDGER_CURRENCY_MISMATCH`, because there is nothing to mirror.
    */
   static async reverse(deps: ApplicationDeps, input: ReversePostedEntryInput): Promise<ReversePostedEntryResult> {
     const { ledgerId, originalEntryId, reversalEntryId, periodId, accountingDate, description, idempotencyKey } = input;
@@ -272,7 +285,11 @@ export class Entries {
 
         // Asked after every application guard and immediately before the save; the aggregate's own checks run
         // after it, so a draft it rejects can burn a number, which rule 7 allows and HA43 accepts as a gap.
-        const posted = draft.post(await scope.entryNumbers.nextNumber(ledgerId));
+        const posted = draft.post({
+          number: await scope.entryNumbers.nextNumber(ledgerId),
+          functionalCurrency: ledger.currency,
+          rates: [],
+        });
         const result: ReversePostedEntryResult = { ...postedResultOf(posted), reversalOfEntryId: originalEntryId };
 
         await scope.entries.save(posted);

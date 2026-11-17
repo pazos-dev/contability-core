@@ -47,21 +47,23 @@ export async function requireNoReversal(
 }
 
 /**
- * Every line of the entry is denominated in the ledger's functional currency (`ledger.md`, rule 15).
+ * Every line of the entry is expressed in the ledger's functional currency (`ledger.md`, rule 15).
  *
- * The aggregate already guarantees the weaker, intra-aggregate rule: all lines share one currency. That the
- * shared currency is the ledger's crosses two aggregates — the entry knows `ledgerId`, not the ledger — so it
- * lives here and the aggregate stays unaware of books. It is checked line by line instead of through a single
- * "entry currency" because with mixed lines there is no entry currency to compare, and the rule has to hold
- * for every line anyway.
+ * Posting already guarantees that intra-aggregate, from the rates it receives (`entries.md`, E05). This rule
+ * survives for the one path where the aggregate takes the amount it is handed instead of converting: reversing
+ * a posted entry mirrors the functional amounts of the original, so what has to be in the ledger's currency is
+ * the functional one. A line written before 009d carries none, and its own amount is the honest fallback: an
+ * entry posted in a foreign currency before the core could convert is refused here, because a reversal cannot
+ * invent the conversion the original never had.
  *
- * Drafts never pass through this rule, exactly like balance and open period: a draft may hold what has not
- * been posted yet, and `post` is the strict point (`ledger.md`, rule 16).
+ * Drafts never pass through this rule, exactly like balance and open period: a draft may hold any currency and
+ * `post` is the strict point (`ledger.md`, rule 16).
  */
 export function requireLedgerCurrency(ledger: Ledger, entry: JournalEntry): void {
   for (const line of entry.lines) {
-    if (!line.amount.currency.equals(ledger.currency)) {
-      throw errors.ledgerCurrencyMismatch(ledger.id, ledger.currency.toJSON(), line.amount.currency.toJSON());
+    const amount = line.functionalAmount ?? line.amount;
+    if (!amount.currency.equals(ledger.currency)) {
+      throw errors.ledgerCurrencyMismatch(ledger.id, ledger.currency.toJSON(), amount.currency.toJSON());
     }
   }
 }

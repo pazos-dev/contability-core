@@ -10,6 +10,7 @@ import {
   JournalEntry,
   JournalEntryLine,
   Money,
+  MoneyError,
   createInMemoryAccounting,
 } from '../../dist/index.js';
 
@@ -29,6 +30,14 @@ function assertCode(code) {
 function assertEntryCode(code) {
   return (error) => {
     assert.ok(error instanceof EntryError, `expected EntryError, got ${error?.name}: ${error?.message}`);
+    assert.equal(error.code, code, error.message);
+    return true;
+  };
+}
+
+function assertMoneyCode(code) {
+  return (error) => {
+    assert.ok(error instanceof MoneyError, `expected MoneyError, got ${error?.name}: ${error?.message}`);
     assert.equal(error.code, code, error.message);
     return true;
   };
@@ -140,7 +149,7 @@ test('U02: an unknown ledger leaves the draft untouched and writes nothing', asy
   assert.equal(memory.snapshot().idempotency.length, 0);
 });
 
-test('L22: posting in a currency other than the ledger functional one is rejected', async () => {
+test('L22: a foreign draft needs its rate to be posted, and is refused without one', async () => {
   const { memory, app } = await harness();
   const usd = Currency.create('USD', 2);
 
@@ -156,22 +165,32 @@ test('L22: posting in a currency other than the ledger functional one is rejecte
     .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('1000.00', usd) }));
   await saveEntry(memory, draft);
 
+  // 009d: another currency is no longer a rejection by itself, a foreign line without its rate is.
   await assert.rejects(
     app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
-    (error) => {
-      assert.ok(error instanceof ApplicationError, `expected ApplicationError, got ${error?.name}`);
-      assert.equal(error.code, 'LEDGER_CURRENCY_MISMATCH', error.message);
-      assert.equal(error.details.ledgerCurrency, 'UYU/2');
-      assert.equal(error.details.entryCurrency, 'USD/2');
-      return true;
-    },
+    assertEntryCode('ENTRY_RATE_MISSING'),
   );
 
   assert.equal(storedEntry(memory).status, 'DRAFT');
   assert.equal(memory.snapshot().idempotency.length, 0);
+
+  // With the rate it posts, and what balances is the functional amount of both sides.
+  const result = await app.postEntry({
+    ledgerId: 'ledger-1',
+    entryId: 'entry-1',
+    idempotencyKey: 'key-2',
+    rates: [{ currency: { code: 'USD', scale: 2 }, factor: '41.25' }],
+  });
+
+  assert.equal(result.status, 'POSTED');
+  assert.deepEqual(result.totalDebit, { minorUnits: '4125000', currency: { code: 'UYU', scale: 2 } });
+  assert.deepEqual(result.totalCredit, { minorUnits: '4125000', currency: { code: 'UYU', scale: 2 } });
+  assert.deepEqual(result.lines[0].amount, { minorUnits: '100000', currency: { code: 'USD', scale: 2 } });
+  assert.deepEqual(result.lines[0].functionalAmount, { minorUnits: '4125000', currency: { code: 'UYU', scale: 2 } });
+  assert.equal(result.lines[0].rate.factor, '41.25');
 });
 
-test('L24: the same code with another scale is another currency, not the ledger one', async () => {
+test('L24: the same code with another scale is another currency, so it needs a rate of its own', async () => {
   const { memory, app } = await harness({ currency: { code: 'ABC', scale: 2 } });
   assert.equal(memory.snapshot().ledgers[0].currency.scale, 2);
 
@@ -188,22 +207,34 @@ test('L24: the same code with another scale is another currency, not the ledger 
     .addLine(line({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT', amount: Money.fromDecimal('1000.0000', abc4) }));
   await saveEntry(memory, draft);
 
+  // The ledger's own pair does not convert the line: `ABC/2` is not `ABC/4`, so there is no rate for it.
   await assert.rejects(
-    app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'key-1' }),
-    (error) => {
-      assert.ok(error instanceof ApplicationError, `expected ApplicationError, got ${error?.name}`);
-      assert.equal(error.code, 'LEDGER_CURRENCY_MISMATCH', error.message);
-      assert.equal(error.details.ledgerCurrency, 'ABC/2');
-      assert.equal(error.details.entryCurrency, 'ABC/4');
-      return true;
-    },
+    app.postEntry({
+      ledgerId: 'ledger-1',
+      entryId: 'entry-1',
+      idempotencyKey: 'key-1',
+      rates: [{ currency: { code: 'ABC', scale: 2 }, factor: '1' }],
+    }),
+    assertMoneyCode('INVALID_EXCHANGE_RATE'),
   );
-
   assert.equal(storedEntry(memory).status, 'DRAFT');
   assert.deepEqual(memory.snapshot().idempotency, []);
+
+  // A rate ABC/4 → ABC/2 would express the rescale, but one multiply cannot: it rounds in the operand's unit,
+  // so the pair is refused instead of converted approximately.
+  await assert.rejects(
+    app.postEntry({
+      ledgerId: 'ledger-1',
+      entryId: 'entry-1',
+      idempotencyKey: 'key-1',
+      rates: [{ currency: { code: 'ABC', scale: 4 }, factor: '1' }],
+    }),
+    assertMoneyCode('INVALID_EXCHANGE_RATE'),
+  );
+  assert.equal(storedEntry(memory).status, 'DRAFT');
 });
 
-test("L22: a stored entry in another currency cannot be reversed either", async () => {
+test('L22: a stored entry in another currency is reversed, mirroring its functional amounts', async () => {
   const { memory, app } = await harness();
   const usd = Currency.create('USD', 2);
   const usdLine = (overrides = {}) =>
@@ -224,32 +255,42 @@ test("L22: a stored entry in another currency cannot be reversed either", async 
     description: 'Otra moneda funcional',
   })
     .addLine(usdLine())
-    .addLine(usdLine({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT' }))
-    .post(1);
+    .addLine(usdLine({ id: 'line-2', accountId: 'acc-rev', side: 'CREDIT' }));
   await saveEntry(memory, original);
+  await app.postEntry({
+    ledgerId: 'ledger-1',
+    entryId: 'entry-1',
+    idempotencyKey: 'key-1',
+    rates: [{ currency: { code: 'USD', scale: 2 }, factor: '41.25' }],
+  });
   const entryCount = memory.snapshot().entries.length;
 
-  await assert.rejects(
-    app.reversePostedEntry({
-      ledgerId: 'ledger-1',
-      originalEntryId: 'entry-1',
-      reversalEntryId: 'entry-rev',
-      periodId: 'per-2026',
-      accountingDate: '2026-03-16',
-      idempotencyKey: 'rev-1',
-    }),
-    (error) => {
-      assert.ok(error instanceof ApplicationError, `expected ApplicationError, got ${error?.name}`);
-      assert.equal(error.code, 'LEDGER_CURRENCY_MISMATCH', error.message);
-      assert.equal(error.details.ledgerCurrency, 'UYU/2');
-      assert.equal(error.details.entryCurrency, 'USD/2');
-      return true;
-    },
-  );
+  // 009d: the reverse path no longer rejects a foreign entry. It mirrors what the original was posted with,
+  // so it needs no rate and produces no exchange difference.
+  const result = await app.reversePostedEntry({
+    ledgerId: 'ledger-1',
+    originalEntryId: 'entry-1',
+    reversalEntryId: 'entry-rev',
+    periodId: 'per-2026',
+    accountingDate: '2026-03-16',
+    idempotencyKey: 'rev-1',
+  });
 
-  assert.equal(memory.snapshot().entries.length, entryCount);
+  assert.equal(result.reversalOfEntryId, 'entry-1');
+  assert.deepEqual(result.totalDebit, { minorUnits: '4125000', currency: { code: 'UYU', scale: 2 } });
+  assert.deepEqual(result.totalCredit, { minorUnits: '4125000', currency: { code: 'UYU', scale: 2 } });
+  assert.deepEqual(
+    result.lines.map((postedLine) => [postedLine.side, postedLine.amount.currency.code, postedLine.functionalAmount.minorUnits]),
+    [
+      ['CREDIT', 'USD', '4125000'],
+      ['DEBIT', 'USD', '4125000'],
+    ],
+  );
+  assert.equal(result.lines[0].rate.factor, '41.25');
+
+  assert.equal(memory.snapshot().entries.length, entryCount + 1);
   assert.equal(storedEntry(memory).status, 'POSTED');
-  assert.deepEqual(memory.snapshot().idempotency, []);
+  assert.equal(memory.snapshot().idempotency.length, 2);
 });
 
 test('U02: an unknown entry is not found', async () => {

@@ -1,6 +1,10 @@
 import { describeValue } from '../../shared/describe-value.js';
-import { Money } from '../../shared/money/index.js';
-import type { JournalEntryLineFields, JournalEntryLineInput } from '../dto/journal-entry-line-dto.js';
+import { ExchangeRate, Money } from '../../shared/money/index.js';
+import type {
+  JournalEntryLineFields,
+  JournalEntryLineFunctionalInput,
+  JournalEntryLineInput,
+} from '../dto/journal-entry-line-dto.js';
 import { invalidEntryLine } from '../errors/entry-errors.js';
 import { requireOptionalText, requireText } from '../entry-text.js';
 import type { PostingSide } from '../types/posting-side.js';
@@ -13,16 +17,30 @@ import type { PostingSide } from '../types/posting-side.js';
 const CONSTRUCTION_TOKEN = Symbol('JournalEntryLine');
 
 /**
+ * Module-private proof that a functional amount came from the aggregate's posting step.
+ * A line that could carry an amount a caller wrote would be a line that declares its own worth in the
+ * ledger's currency, which is the one value only the entry is allowed to derive from a rate.
+ * The barrel does not export this symbol, so outside the domain it is not reachable.
+ */
+export const FUNCTIONAL_AMOUNT_TOKEN = Symbol('JournalEntryLine.functionalAmount');
+
+/**
  * Immutable line of a journal entry: one account, one side and a strictly positive amount.
  * A line never exists on its own: the entry owns the collection and decides when a line may be
  * added or removed. Whether the account exists, belongs to the ledger or accepts postings is an
  * application check, not a line invariant.
+ *
+ * A caller-created line has one amount, in the currency it was agreed in. Posting adds the second one:
+ * `functionalAmount`, in the ledger's currency, and `rate` when the line had to be converted. Both are
+ * absent on a draft, because a draft does not convert (009d, rule 9).
  */
 export class JournalEntryLine {
   readonly #id: string;
   readonly #accountId: string;
   readonly #side: PostingSide;
   readonly #amount: Money;
+  readonly #functionalAmount: Money | undefined;
+  readonly #rate: ExchangeRate | undefined;
   readonly #description: string | undefined;
 
   private constructor(fields: JournalEntryLineFields, token: typeof CONSTRUCTION_TOKEN) {
@@ -34,6 +52,8 @@ export class JournalEntryLine {
     this.#accountId = fields.accountId;
     this.#side = fields.side;
     this.#amount = fields.amount;
+    this.#functionalAmount = fields.functionalAmount;
+    this.#rate = fields.rate;
     this.#description = fields.description;
     Object.freeze(this);
   }
@@ -48,6 +68,8 @@ export class JournalEntryLine {
       accountId: requireText(input.accountId, 'accountId', invalidEntryLine),
       side: requireSide(input.side),
       amount: requirePositiveAmount(input.amount),
+      functionalAmount: undefined,
+      rate: undefined,
       description: requireOptionalText(input.description, 'description', invalidEntryLine),
     }, CONSTRUCTION_TOKEN);
   }
@@ -64,12 +86,62 @@ export class JournalEntryLine {
     return this.#side;
   }
 
+  /** The amount as it was agreed, in its own currency. Posting never replaces it. */
   get amount(): Money {
     return this.#amount;
   }
 
+  /**
+   * The same line in the ledger's functional currency, once the entry posted it; `undefined` on a draft.
+   * It is stored with the line and never recalculated, so a later quote or rounding policy does not move
+   * the history (rule 7).
+   */
+  get functionalAmount(): Money | undefined {
+    return this.#functionalAmount;
+  }
+
+  /** The rate that produced the functional amount, present only when this line was converted (rule 3). */
+  get rate(): ExchangeRate | undefined {
+    return this.#rate;
+  }
+
   get description(): string | undefined {
     return this.#description;
+  }
+
+  /**
+   * Returns a copy that carries what posting decided for this line.
+   *
+   * The token keeps the decision where it belongs: only the entry posts, so only the entry may say what a
+   * line is worth in the book's currency.
+   */
+  withFunctionalAmount(
+    input: JournalEntryLineFunctionalInput,
+    token: typeof FUNCTIONAL_AMOUNT_TOKEN,
+  ): JournalEntryLine {
+    if (token !== FUNCTIONAL_AMOUNT_TOKEN) {
+      throw invalidEntryLine('a functional amount is attached by the entry when it posts, never by a caller');
+    }
+    if (typeof input !== 'object' || input === null) {
+      throw invalidEntryLine(`expected a functional input object, received ${describeValue(input)}`);
+    }
+    // The functional amount is not required to be positive: a conversion can round down to zero.
+    if (!(input.functionalAmount instanceof Money)) {
+      throw invalidEntryLine(`functionalAmount must be a Money, received ${describeValue(input.functionalAmount)}`);
+    }
+    if (input.rate !== undefined && !(input.rate instanceof ExchangeRate)) {
+      throw invalidEntryLine(`rate must be an ExchangeRate, received ${describeValue(input.rate)}`);
+    }
+
+    return new JournalEntryLine({
+      id: this.#id,
+      accountId: this.#accountId,
+      side: this.#side,
+      amount: this.#amount,
+      functionalAmount: input.functionalAmount,
+      rate: input.rate,
+      description: this.#description,
+    }, CONSTRUCTION_TOKEN);
   }
 }
 

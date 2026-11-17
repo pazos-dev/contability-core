@@ -1,4 +1,5 @@
 import type { AccountingDate } from '../../period/index.js';
+import type { Currency, ExchangeRate } from '../../shared/money/index.js';
 import type { EntryStatus } from '../types/entry-status.js';
 import type { JournalEntryLine } from '../value-objects/journal-entry-line.js';
 
@@ -21,6 +22,20 @@ export interface JournalEntryReversalInput {
   readonly periodId: string;
   readonly accountingDate: AccountingDate;
   readonly description?: string;
+}
+
+/**
+ * What posting needs from the caller of the aggregate.
+ *
+ * The number is the ledger's sequence (Q11) and the functional currency is the ledger's unit of account: the
+ * entry knows `ledgerId`, not the ledger, so both arrive with the operation. `rates` carries one rate per
+ * foreign currency present, chosen by the application from what the caller supplied; the aggregate decides
+ * which of them a line needs and rejects the operation when one is missing.
+ */
+export interface JournalEntryPostContext {
+  readonly number: number;
+  readonly functionalCurrency: Currency;
+  readonly rates: readonly ExchangeRate[];
 }
 
 /**

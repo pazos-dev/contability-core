@@ -8,6 +8,8 @@ export type EntryErrorCode =
   | 'ENTRY_INCOMPLETE'
   | 'ENTRY_UNBALANCED'
   | 'ENTRY_CURRENCY_MISMATCH'
+  | 'ENTRY_RATE_MISSING'
+  | 'ENTRY_RATE_DUPLICATE'
   | 'ENTRY_NUMBER_INVALID';
 
 /** Domain exception with a stable code; adapters translate it to their own error model. */
@@ -53,6 +55,16 @@ export function entryUnbalanced(reason: string): EntryError {
 
 export function entryCurrencyMismatch(reason: string): EntryError {
   return new EntryError('ENTRY_CURRENCY_MISMATCH', `Entry currency mismatch: ${reason}.`);
+}
+
+/** A line outside the functional currency arrived with no rate: none is assumed, not even one (rule 4). */
+export function entryRateMissing(reason: string): EntryError {
+  return new EntryError('ENTRY_RATE_MISSING', `Entry rate missing: ${reason}.`);
+}
+
+/** Two rates for the same source currency in one operation: choosing one would invent a precedence (rule 12). */
+export function entryRateDuplicate(reason: string): EntryError {
+  return new EntryError('ENTRY_RATE_DUPLICATE', `Duplicate entry rate: ${reason}.`);
 }
 
 /** The sequential number an entry only has once it is posted: a positive integer, never invented by the caller. */

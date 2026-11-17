@@ -2,6 +2,7 @@
 export type {
   JournalEntryHeaderInput,
   JournalEntryInput,
+  JournalEntryPostContext,
   JournalEntryReversalInput,
 } from './dto/journal-entry-dto.js';
 export type { JournalEntryLineInput } from './dto/journal-entry-line-dto.js';
