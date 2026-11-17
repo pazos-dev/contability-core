@@ -1,6 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento: 009a, numeración de asientos
+Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento: 009b, redondeo y operaciones con factor
+(`docs/specs/rounding.md`): `Money` multiplica por un factor decimal exacto, divide por un entero y reparte sin
+perder ni inventar una sola unidad mínima, con tres modos de redondeo simétricos y `HALF_UP` por defecto (cierra
+Q05); antes, 009a, numeración de asientos
 (`docs/specs/entry-numbering.md`): cada asiento contabilizado recibe un entero secuencial por libro, con
 contador del anfitrión (Q11 cerrada en su ámbito y su formato); antes, 007, el contrato escrito del adaptador
 del anfitrión (`docs/INTEGRATION.md`), que audita garantía por garantía contra el código; antes, 008, consultas
@@ -352,6 +355,43 @@ permitidos**. El formato (prefijos, año, ceros) y la unicidad durable quedan de
 - Pruebas: 13 nuevas, escritas antes de implementar, con rojo observado en 10. `pnpm typecheck`, `pnpm build`,
   `pnpm test` (311 pruebas, 311 correctas) y `pnpm check:project` en verde.
 
+### 009b — redondeo y operaciones con factor — `docs/specs/rounding.md`
+
+Cierra Q05: **tres modos** (`HALF_UP`, `HALF_EVEN`, `DOWN`), redondeo **simétrico** respecto del signo, modo
+**opcional por llamada** con `HALF_UP` por defecto y reparto por **mayor resto** con desempate por orden de
+entrada. Ningún modo se guarda: cambiarlo no reinterpreta un importe ya calculado.
+
+- `src/core/domain/shared/money/`: `rounding-mode.ts` (el tipo `RoundingMode` y `DEFAULT_ROUNDING_MODE`) y
+  `factor.ts` (`MoneyFactor.fromDecimal`), más las tres operaciones en `money.ts`.
+- Todo el cálculo es `bigint` sobre `bigint` y el redondeo actúa **una sola vez, al final**, sobre el cociente
+  exacto: `minorUnits × numerator / denominator` en `multiply`, `minorUnits / divisor` en `divide`. Un factor
+  nunca pasa por `number`. La división `bigint` trunca hacia cero, así que la regla es simétrica por
+  construcción: se redondea la magnitud y se conserva el signo (`-0,005` → `-0,01`, `-0,009` con `DOWN` → `0,00`).
+- `HALF_EVEN` empata al dígito par: `1,00 × 0,005` da `0,00` y `4,01 / 2` da `2,00`, mientras `4,03 / 2` da `2,02`.
+  No es una variante de `HALF_UP`: sólo cambia los empates exactos.
+- `MoneyFactor` guarda una fracción decimal **sin reducirla**: `0.21` es 21/100 y `-0.5` es -5/10, con
+  denominador potencia de diez siempre positiva y techo de 12 decimales. Se rechazan exponentes, comas,
+  espacios, `+`, `.5`, ceros iniciales y cualquier cosa que no sea texto.
+- `allocate(parts)` acepta un número de partes iguales o una lista de pesos `bigint` positivos y **no acepta
+  modo**: la regla del mayor resto ya decide qué parte recibe la unidad sobrante, y un modo sería una segunda
+  regla sobre la misma decisión. La implementación verifica `Σ partes === total` como invariante y lanza si
+  alguna vez no cierra; la suma es exacta por el algoritmo, no por suerte.
+- **Dos correcciones a la spec durante la implementación**, porque las reglas decididas la contradecían:
+  RD12 con pesos `[1, 2]` sobre `100,00` da `33,33 · 66,67` (los restos son 1 y 2, así que la unidad extra es
+  del segundo; la spec decía `33,34 · 66,66`) y `allocate` ya no lleva `mode` en su firma (regla 14 nueva).
+- Códigos nuevos en `money-errors.ts`: `INVALID_FACTOR`, `DIVISION_BY_ZERO` e `INVALID_ROUNDING_MODE`; un
+  divisor que no es `bigint`, un número de partes que no es entero positivo y un peso que no es `bigint`
+  positivo reutilizan `INVALID_MONEY`.
+- El barrel de `money` publica `MoneyFactor` y `DEFAULT_ROUNDING_MODE` como valores y `RoundingMode` como tipo;
+  `tests/public-api.test.mjs` fija el tipo contra el `.d.ts` emitido, porque un tipo no existe en tiempo de
+  ejecución.
+- No cambia ningún contrato existente: `add`, `subtract`, `compare`, `equals`, `toDecimal` y `toJSON`/`fromJSON`
+  quedan igual, ninguna tasa se persiste y no hay nada que migrar en el anfitrión.
+- Pruebas: 23 nuevas en `tests/domain/shared/money/rounding.test.mjs`, escritas antes de implementar y con rojo
+  observado (`The requested module '../../../../dist/index.js' does not provide an export named
+  'DEFAULT_ROUNDING_MODE'`). `pnpm build`, `node --test tests/domain/shared/money/rounding.test.mjs` (23/23),
+  `pnpm test` (335 pruebas, 335 correctas), `pnpm typecheck` y `pnpm check:project` en verde.
+
 ### 007 — contrato del adaptador del anfitrión — `docs/INTEGRATION.md`
 
 Incremento de documentación: no agrega código ni pruebas. Escribe, para quien implemente un adaptador durable,
@@ -541,8 +581,11 @@ Registradas explícitamente para no prometerlas desde el dominio:
 
 ## Límites de esta entrega
 
-Sin redondeo (`rounding-mode.ts` no existe aún), sin conversión de moneda, sin multiplicación,
-división ni reparto. La escala admitida es 0-6; el catálogo ISO 4217 fija la escala oficial de los
+Sin conversión de moneda: `multiply` aplica un factor dentro de una misma moneda, no convierte. Sin
+multiplicación por `number` ni intercambio de tasas: `Money.multiply` toma un `MoneyFactor` decimal exacto,
+`Money.divide` un divisor entero y `Money.allocate` reparte desde 009b (Q05), y ninguna de las tres admite
+comas flotantes ni pierde unidades mínimas. La escala admitida es 0-6; el catálogo ISO 4217 fija la escala
+oficial de los
 códigos que publica y un código ausente del catálogo se acepta como moneda propia con escala
 declarada. La escala se persiste junto al importe y nunca se deduce del código. `Money` admite cero y
 negativos; la restricción a importes positivos vive en `JournalEntryLine`. `Account` no cambia código,
@@ -576,20 +619,21 @@ pendiente del core: son lo que debe aportar quien lo integra. Tabla completa en 
 ## Pendiente de implementar
 
 **009: extensiones** según necesidad demostrada —multimoneda operativa, ejercicio contable, país, impuestos o
-integraciones—, de la que 009a ya tomó la numeración de asientos. Sin ORM, HTTP ni interfaz visual en este
-repositorio.
+integraciones—, de la que 009a ya tomó la numeración de asientos y 009b el redondeo. Sin ORM, HTTP ni interfaz
+visual en este repositorio.
 
 ## Siguiente tarea
 
 El core tiene el ciclo completo de asientos (crear borrador, editar líneas, contabilizar, cerrar, revertir), la
 superficie de lectura (saldos por cuenta, balance de comprobación y mayor) y el libro como agregado con su plan
 y su moneda funcional, así que ya no hay conceptos del módulo que sólo existan por configuración del adaptador.
-El contrato del adaptador ya está escrito (007) y la numeración de asientos ya existe (009a), así que un
-anfitrión durable puede emitir asientos numerados y verificar obligación por obligación lo que le toca.
+El contrato del adaptador ya está escrito (007), la numeración de asientos ya existe (009a) y el redondeo
+también (009b), así que un anfitrión durable puede emitir asientos numerados, aplicar una tasa y repartir un
+importe, y verificar obligación por obligación lo que le toca.
 Queda **009: extensiones** según necesidad demostrada. Los candidatos, en el orden en que un anfitrión real los
-va a pedir: **redondeo** (Q05, hoy `Money` no multiplica ni divide, así que no hay impuestos ni repartos),
-**conversión de moneda** (la mitad abierta de Q08), **cambiar la cabecera de un borrador** y **reversión
-parcial o cancelación de una reversión**. Sin prometer nada de lo que la sección 7 del contrato excluye.
+va a pedir: **conversión de moneda** (la mitad abierta de Q08), **cambiar la cabecera de un borrador** y
+**reversión parcial o cancelación de una reversión**. Sin prometer nada de lo que la sección 7 del contrato
+excluye.
 
 Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
 una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
