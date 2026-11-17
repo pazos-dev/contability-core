@@ -234,6 +234,91 @@ test('E09: only a POSTED entry can be reversed and the reversal needs its own id
   );
 });
 
+const headerChanges = {
+  journalId: 'journal-2',
+  periodId: 'period-2',
+  accountingDate: AccountingDate.create('2026-04-01'),
+  description: 'Corrected header',
+};
+
+// 009c: the header is a second mutable part of a draft and it is edited with the same discipline as the
+// lines —a copy is returned, the receiver keeps its state, and a posted entry has no header to change.
+test('E06: changeHeader returns a copy that keeps identity, ledger, state, lines and the reversal link', () => {
+  const posted = balanced().post(1);
+  const reversal = posted.createReversalDraft({
+    id: 'entry-2',
+    periodId: 'period-2',
+    accountingDate: AccountingDate.create('2026-04-01'),
+  });
+
+  const changed = reversal.changeHeader({
+    ...headerChanges,
+    periodId: 'period-3',
+    accountingDate: AccountingDate.create('2026-05-01'),
+  });
+
+  assert.equal(changed.status, 'DRAFT');
+  assert.equal(changed.id, reversal.id);
+  assert.equal(changed.ledgerId, reversal.ledgerId);
+  assert.equal(changed.number, undefined);
+  assert.equal(changed.reversalOfEntryId, 'entry-1');
+  assert.equal(changed.journalId, 'journal-2');
+  assert.equal(changed.periodId, 'period-3');
+  assert.equal(changed.accountingDate.value, '2026-05-01');
+  assert.equal(changed.description, 'Corrected header');
+  assert.deepEqual(
+    changed.lines.map((entryLine) => [entryLine.id, entryLine.side, entryLine.amount.toDecimal()]),
+    reversal.lines.map((entryLine) => [entryLine.id, entryLine.side, entryLine.amount.toDecimal()]),
+  );
+
+  // The receiver never changes: the edit happens on a copy.
+  assert.equal(reversal.journalId, 'journal-1');
+  assert.equal(reversal.periodId, 'period-2');
+  assert.equal(reversal.accountingDate.value, '2026-04-01');
+  assert.equal(reversal.description, 'Electricity expense');
+  assert.equal(posted.status, 'POSTED');
+  assert.equal(posted.number, 1);
+});
+
+test('E06: a POSTED entry rejects changeHeader and keeps its number and its header', () => {
+  const posted = balanced().post(7);
+
+  assert.throws(() => posted.changeHeader({ ...headerChanges }), assertEntryError('ENTRY_STATE'));
+
+  assert.equal(posted.status, 'POSTED');
+  assert.equal(posted.number, 7);
+  assert.equal(posted.journalId, 'journal-1');
+  assert.equal(posted.periodId, 'period-1');
+  assert.equal(posted.accountingDate.value, '2026-03-15');
+  assert.equal(posted.description, 'Electricity expense');
+  assert.equal(posted.lines.length, 2);
+});
+
+test('E06: changeHeader validates its four fields and leaves the draft as it was', () => {
+  const draft = balanced();
+
+  for (const field of ['journalId', 'periodId', 'description']) {
+    for (const value of ['', '   ', ' value', 'value ', null, undefined, 7, {}]) {
+      assert.throws(
+        () => draft.changeHeader({ ...headerChanges, [field]: value }),
+        assertEntryError('INVALID_ENTRY'),
+        `${field}: ${String(value)}`,
+      );
+    }
+  }
+
+  assert.throws(
+    () => draft.changeHeader({ ...headerChanges, accountingDate: '2026-04-01' }),
+    assertEntryError('INVALID_ENTRY'),
+  );
+
+  assert.equal(draft.journalId, 'journal-1');
+  assert.equal(draft.periodId, 'period-1');
+  assert.equal(draft.accountingDate.value, '2026-03-15');
+  assert.equal(draft.description, 'Electricity expense');
+  assert.equal(draft.lines.length, 2);
+});
+
 test('E10: the lines snapshot cannot be used to change the entry', () => {
   const draft = balanced();
   const snapshot = draft.lines;

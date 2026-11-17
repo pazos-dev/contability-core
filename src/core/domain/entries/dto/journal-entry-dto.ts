@@ -24,6 +24,17 @@ export interface JournalEntryReversalInput {
 }
 
 /**
+ * The complete header of a draft when it is edited. The four fields are required on purpose: there is no
+ * "absent means keep", which is where a caller silently loses what it did not send.
+ */
+export interface JournalEntryHeaderInput {
+  readonly journalId: string;
+  readonly periodId: string;
+  readonly accountingDate: AccountingDate;
+  readonly description: string;
+}
+
+/**
  * Validated state a value object hands to its own private constructor.
  * It stays internal to the domain: the barrel never exports it.
  */
@@ -45,4 +56,8 @@ export interface JournalEntryChanges {
   readonly status?: EntryStatus;
   readonly number?: number;
   readonly lines?: readonly JournalEntryLine[];
+  readonly journalId?: string;
+  readonly periodId?: string;
+  readonly accountingDate?: AccountingDate;
+  readonly description?: string;
 }

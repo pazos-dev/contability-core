@@ -101,14 +101,15 @@ test('API: the application barrel publishes the report and port types', async ()
   }
 });
 
-// The facade is the only public entry point of the application layer: sixteen use cases after 008b, no more
+// The facade is the only public entry point of the application layer: seventeen use cases after 009c, no more
 // and no fewer. Adding one without deciding how it is published fails here.
-test('API: the facade exposes exactly the sixteen use cases', async () => {
+test('API: the facade exposes exactly the seventeen use cases', async () => {
   const { Accounting } = await import('../dist/index.js');
   const expected = [
     'accountBalances',
     'accountMovements',
     'addEntryLine',
+    'changeHeader',
     'closePeriod',
     'createEntryDraft',
     'postEntry',
