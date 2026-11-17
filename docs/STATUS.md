@@ -1,9 +1,9 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-16. Entrega: preparación 2.0. Último incremento: 009b, redondeo y operaciones con factor
-(`docs/specs/rounding.md`): `Money` multiplica por un factor decimal exacto, divide por un entero y reparte sin
-perder ni inventar una sola unidad mínima, con tres modos de redondeo simétricos y `HALF_UP` por defecto (cierra
-Q05); antes, 009a, numeración de asientos
+Actualizado: 2026-11-17. Entrega: preparación 2.0. Último incremento: 009c, cabecera de borrador
+(`docs/specs/entry-draft-edit.md`, L14-L24): diario, período, fecha contable y descripción se reemplazan en un
+borrador sin borrarlo, y un asiento contabilizado sigue sin editarse; antes, 009b, redondeo y operaciones con
+factor (`docs/specs/rounding.md`), que cierra Q05; antes, 009a, numeración de asientos
 (`docs/specs/entry-numbering.md`): cada asiento contabilizado recibe un entero secuencial por libro, con
 contador del anfitrión (Q11 cerrada en su ámbito y su formato); antes, 007, el contrato escrito del adaptador
 del anfitrión (`docs/INTEGRATION.md`), que audita garantía por garantía contra el código; antes, 008, consultas
@@ -355,6 +355,27 @@ permitidos**. El formato (prefijos, año, ceros) y la unicidad durable quedan de
 - Pruebas: 13 nuevas, escritas antes de implementar, con rojo observado en 10. `pnpm typecheck`, `pnpm build`,
   `pnpm test` (311 pruebas, 311 correctas) y `pnpm check:project` en verde.
 
+### 009c — cabecera de borrador — `docs/specs/entry-draft-edit.md`, L14-L24
+
+`changeEntryHeader` reemplaza diario, período, fecha contable y descripción de un borrador sin borrarlo: es el
+método diecisiete de la fachada y la operación que el límite del 006d dejaba fuera.
+
+- **Reemplazo completo, no parcial.** Los cuatro campos son obligatorios; no existe «ausente significa
+  conservar», que es donde se pierde un dato por accidente.
+- **Sólo coherencia, como al crear el borrador**: diario y período tienen que existir en el libro, pero no se
+  exige diario activo ni período abierto, y no se comprueba que la fecha caiga dentro del período. Un borrador
+  contra un período todavía cerrado es legítimo; `postEntry` vuelve a exigir todo.
+- **Un borrador de reversión sí corrige su fecha y su período**, que es justo lo que necesita cuando el original
+  vive en un período ya cerrado, y conserva el enlace con el original.
+- **Un contabilizado no se edita**: `ENTRY_STATE` desde la guarda del agregado, y conserva su número.
+- La fecha entra como texto y se hidrata con `AccountingDate.create`, así que `2026-02-30` falla con
+  `INVALID_DATE` y no se normaliza.
+- Pruebas: 11 nuevas en `tests/application/entry-draft-header.test.mjs`, una por criterio, más tres en el
+  agregado. Rojo observado antes de implementar (11 de 11). La suite pasa de 340 a 354 pruebas.
+- `#copyWith` es compartido por `addLine`, `removeLine`, `post` y `changeHeader`, así que se corrió una
+  comprobación diferencial contra el commit base sobre las cuatro operaciones: salidas, asientos guardados y
+  registros de idempotencia idénticos.
+
 ### 009b — redondeo y operaciones con factor — `docs/specs/rounding.md`
 
 Cierra Q05: **tres modos** (`HALF_UP`, `HALF_EVEN`, `DOWN`), redondeo **simétrico** respecto del signo, modo
@@ -519,7 +540,7 @@ solo agrega esos barrels.
 - `period/index.ts`: `AccountingDate`, `AccountingPeriod`, `PeriodStatus`, `PeriodError` y sus tipos.
 - `entries/index.ts`: `JournalEntry`, `JournalEntryLine`, `EntryError` y sus tipos.
 - `core/application/index.ts`: `Accounting`, `ApplicationError` y los tipos de dato (`dto`) y de puerto. Las
-  dieciséis operaciones de caso de uso viven en `use-cases/` como implementación interna y no se exportan.
+  diecisiete operaciones de caso de uso viven en `use-cases/` como implementación interna y no se exportan.
 - `adapters/memory/index.ts`: `createInMemoryAccounting` y sus tipos. Expone además el adaptador de
   asientos (`entries`) como costura de composición: es el único adaptador que existe en esta fase y un
   anfitrión que arme asientos con el dominio necesita poder guardarlos. Crear y editar borradores por caso
@@ -606,8 +627,8 @@ JSON del asiento.
 
 | Tema | Impacto |
 | --- | --- |
-| Cambiar la cabecera de un borrador | Diario, período, fecha contable y descripción: `JournalEntry` no tiene operación y agregarla es un cambio de contrato del dominio con sus propias reglas. |
 | Reversión parcial y cancelación de una reversión | Fuera de alcance por spec. |
+| Conversión de moneda (Q08) | La mitad abierta: tasa, fecha de tasa, importe funcional por línea y cuentas de diferencia de cambio. |
 
 ## Contrato del anfitrión
 
@@ -630,10 +651,10 @@ y su moneda funcional, así que ya no hay conceptos del módulo que sólo exista
 El contrato del adaptador ya está escrito (007), la numeración de asientos ya existe (009a) y el redondeo
 también (009b), así que un anfitrión durable puede emitir asientos numerados, aplicar una tasa y repartir un
 importe, y verificar obligación por obligación lo que le toca.
-Queda **009: extensiones** según necesidad demostrada. Los candidatos, en el orden en que un anfitrión real los
-va a pedir: **conversión de moneda** (la mitad abierta de Q08), **cambiar la cabecera de un borrador** y
-**reversión parcial o cancelación de una reversión**. Sin prometer nada de lo que la sección 7 del contrato
-excluye.
+El ciclo de edición de un borrador ya está completo: crear, agregar y quitar líneas, y corregir la cabecera.
+Queda **009: extensiones** según necesidad demostrada. El candidato que un anfitrión real va a pedir primero es
+la **conversión de moneda** (la mitad abierta de Q08), seguido de **reversión parcial o cancelación de una
+reversión**. Sin prometer nada de lo que la sección 7 del contrato excluye.
 
 Lo que **no** se promete: no hay multimoneda operativa dentro de un mismo libro, porque Q08 quedó resuelta como
 una moneda funcional inmutable por libro y el core no convierte tasas; no hay consolidación entre libros; y el
