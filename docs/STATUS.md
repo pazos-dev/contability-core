@@ -214,7 +214,7 @@ mixto de monedas.
 - `draftResultOf` en `entries/entry-result.ts` serializa el borrador resultante y lo comparten las tres
   operaciones de borrador; `EntryDraftResult` reemplaza al antiguo `CreateEntryDraftResult`, que ya no
   describía sólo un alta.
-- Cambiar la cabecera (diario, período, fecha, descripción) sigue fuera: el agregado no tiene operación para
+- Cambiar la cabecera (diario, período, fecha, descripción) quedó fuera **en ese incremento** y se cerró en 009c:
   eso y exponerla exige una decisión de dominio con sus reglas.
 - El core no persiste nada: calcula sobre valores inmutables y entrega el resultado al puerto que le da el
   anfitrión. Sin conexiones, sin almacenamiento, sin sistema de archivos.
@@ -372,9 +372,11 @@ método diecisiete de la fachada y la operación que el límite del 006d dejaba 
   `INVALID_DATE` y no se normaliza.
 - Pruebas: 11 nuevas en `tests/application/entry-draft-header.test.mjs`, una por criterio, más tres en el
   agregado. Rojo observado antes de implementar (11 de 11). La suite pasa de 340 a 354 pruebas.
-- `#copyWith` es compartido por `addLine`, `removeLine`, `post` y `changeHeader`, así que se corrió una
-  comprobación diferencial contra el commit base sobre las cuatro operaciones: salidas, asientos guardados y
-  registros de idempotencia idénticos.
+- `#copyWith` es compartido por `addLine`, `removeLine`, `post` y `changeHeader`. Durante la implementación se
+  corrió una comprobación diferencial contra el commit base sobre las cuatro operaciones —salidas, asientos
+  guardados y registros de idempotencia idénticos—, pero ese instrumento no vive en el repo. Lo que sí queda es
+  una prueba que fija la parte comprobable: `addEntryLine` y `removeEntryLine` conservan la cabecera
+  (`tests/application/entry-draft-header.test.mjs`).
 
 ### 009b — redondeo y operaciones con factor — `docs/specs/rounding.md`
 

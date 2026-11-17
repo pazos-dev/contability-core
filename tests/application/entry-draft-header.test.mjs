@@ -141,7 +141,7 @@ test('L14: changing the header returns the draft with the new header, its lines 
   await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
   const before = saves();
 
-  const result = await app.changeHeader(headerInput());
+  const result = await app.changeEntryHeader(headerInput());
 
   assert.equal(result.status, 'DRAFT');
   assert.equal(result.number, null);
@@ -173,7 +173,7 @@ test('L15: changing only the journal leaves the two lines untouched and returns 
   const { memory, app } = await harness();
   const draft = await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')], { journalId: 'jrn-2' }));
 
-  const result = await app.changeHeader(headerInput({
+  const result = await app.changeEntryHeader(headerInput({
     journalId: 'jrn-1',
     periodId: 'per-2026',
     accountingDate: '2026-03-15',
@@ -192,7 +192,7 @@ test('L16: a posted entry rejects the header change and keeps its number', async
   const posted = await app.postEntry({ ledgerId: 'ledger-1', entryId: 'entry-1', idempotencyKey: 'post-1' });
   const before = saves();
 
-  await assert.rejects(app.changeHeader(headerInput()), assertEntryCode('ENTRY_STATE'));
+  await assert.rejects(app.changeEntryHeader(headerInput()), assertEntryCode('ENTRY_STATE'));
 
   const after = stored(memory);
   assert.equal(after.status, 'POSTED');
@@ -210,7 +210,7 @@ test('L17: an empty or padded description is rejected and nothing changes', asyn
 
   for (const description of ['', '   ', ' Venta corregida', 'Venta corregida ']) {
     await assert.rejects(
-      app.changeHeader(headerInput({ description })),
+      app.changeEntryHeader(headerInput({ description })),
       assertEntryCode('INVALID_ENTRY'),
       JSON.stringify(description),
     );
@@ -227,7 +227,7 @@ test('L18: an impossible date is INVALID_DATE and nothing changes', async () => 
   await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
 
   await assert.rejects(
-    app.changeHeader(headerInput({ accountingDate: '2026-02-30' })),
+    app.changeEntryHeader(headerInput({ accountingDate: '2026-02-30' })),
     assertPeriodCode('INVALID_DATE'),
   );
 
@@ -244,11 +244,11 @@ test('L19: a journal or a period of another ledger, or an unknown one, is not re
   await app.registerPeriod({ ledgerId: 'ledger-2', periodId: 'per-foreign', name: 'Ejercicio 2026', startDate: '2026-01-01', endDate: '2026-12-31' });
 
   for (const journalId of ['jrn-foreign', 'jrn-nowhere']) {
-    await assert.rejects(app.changeHeader(headerInput({ journalId })), assertCode('JOURNAL_NOT_FOUND'), journalId);
+    await assert.rejects(app.changeEntryHeader(headerInput({ journalId })), assertCode('JOURNAL_NOT_FOUND'), journalId);
   }
 
   for (const periodId of ['per-foreign', 'per-nowhere']) {
-    await assert.rejects(app.changeHeader(headerInput({ periodId })), assertCode('PERIOD_NOT_FOUND'), periodId);
+    await assert.rejects(app.changeEntryHeader(headerInput({ periodId })), assertCode('PERIOD_NOT_FOUND'), periodId);
   }
 
   const after = stored(memory);
@@ -266,7 +266,7 @@ test('L20: a draft may move to an inactive journal and a closed period', async (
   await app.closePeriod({ ledgerId: 'ledger-1', periodId: 'per-old', idempotencyKey: 'close-old' });
   await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
 
-  const result = await app.changeHeader(headerInput({
+  const result = await app.changeEntryHeader(headerInput({
     journalId: 'jrn-old',
     periodId: 'per-old',
     accountingDate: '2025-06-30',
@@ -287,7 +287,7 @@ test('L21: a date outside the period is accepted here and postEntry is the one t
   const { memory, app } = await harness();
   await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
 
-  const result = await app.changeHeader(headerInput({ periodId: 'per-2026', accountingDate: '2025-12-31' }));
+  const result = await app.changeEntryHeader(headerInput({ periodId: 'per-2026', accountingDate: '2025-12-31' }));
 
   assert.equal(result.periodId, 'per-2026');
   assert.equal(result.accountingDate, '2025-12-31');
@@ -320,7 +320,7 @@ test('L22: a reversal draft changes its period and date and keeps the link to th
     }),
   );
 
-  const result = await app.changeHeader(headerInput({
+  const result = await app.changeEntryHeader(headerInput({
     entryId: 'reversal',
     journalId: 'jrn-1',
     periodId: 'per-2027',
@@ -345,9 +345,9 @@ test('L23: the same key with the same header replays without a second save', asy
   await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
 
   const input = headerInput({ idempotencyKey: 'header-1' });
-  const first = await app.changeHeader(input);
+  const first = await app.changeEntryHeader(input);
   const afterFirst = saves();
-  const second = await app.changeHeader(input);
+  const second = await app.changeEntryHeader(input);
 
   assert.deepEqual(second, first);
   assert.equal(saves(), afterFirst);
@@ -358,11 +358,11 @@ test('L24: the same key with another header is a conflict and changes nothing', 
   const { memory, app, saves } = await harness();
   await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
   const input = headerInput({ idempotencyKey: 'header-1' });
-  await app.changeHeader(input);
+  await app.changeEntryHeader(input);
   const afterFirst = saves();
 
   await assert.rejects(
-    app.changeHeader({ ...input, description: 'Otra descripción' }),
+    app.changeEntryHeader({ ...input, description: 'Otra descripción' }),
     assertCode('IDEMPOTENCY_CONFLICT'),
   );
 
@@ -372,4 +372,21 @@ test('L24: the same key with another header is a conflict and changes nothing', 
   assert.equal(after.periodId, 'per-2027');
   assert.equal(saves(), afterFirst);
   assert.equal(headerRecords(memory).length, 1);
+});
+
+test('L15b: adding and removing a line keep the header the draft already has', async () => {
+  const { memory, app, saves } = await harness();
+  await app.createEntryDraft(draftInput([debit('line-1'), credit('line-2')]));
+  await app.changeEntryHeader(headerInput({ journalId: 'jrn-2', periodId: 'per-2026', accountingDate: '2026-06-30', description: 'Corregido' }));
+  const beforeEdits = saves();
+
+  await app.addEntryLine({ ledgerId: 'ledger-1', entryId: 'entry-1', line: debit('line-3', '500') });
+  await app.removeEntryLine({ ledgerId: 'ledger-1', entryId: 'entry-1', lineId: 'line-3' });
+
+  const after = stored(memory);
+  assert.equal(after.journalId, 'jrn-2');
+  assert.equal(after.periodId, 'per-2026');
+  assert.equal(after.accountingDate.value, '2026-06-30');
+  assert.equal(after.description, 'Corregido');
+  assert.equal(saves(), beforeEdits + 2, 'each edit saves once');
 });

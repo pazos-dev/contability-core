@@ -104,7 +104,7 @@ export class Accounting {
     return Entries.removeLine(this.#deps, input);
   }
 
-  changeHeader(input: ChangeEntryHeaderInput): Promise<EntryDraftResult> {
+  changeEntryHeader(input: ChangeEntryHeaderInput): Promise<EntryDraftResult> {
     return Entries.changeHeader(this.#deps, input);
   }
 

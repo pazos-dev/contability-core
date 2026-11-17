@@ -109,7 +109,7 @@ test('API: the facade exposes exactly the seventeen use cases', async () => {
     'accountBalances',
     'accountMovements',
     'addEntryLine',
-    'changeHeader',
+    'changeEntryHeader',
     'closePeriod',
     'createEntryDraft',
     'postEntry',
