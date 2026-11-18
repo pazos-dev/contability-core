@@ -6,3 +6,5 @@ coverage/
 !.env.example
 *.tsbuildinfo
 *.tgz
+# Registry credentials never belong to the repository: `npm login` writes them to the user-level ~/.npmrc.
+.npmrc
