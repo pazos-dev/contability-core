@@ -54,4 +54,16 @@ jobs:
             exit 1
           fi
 
-      - run: pnpm --filter @pazos-dev/contability-core publish --no-git-checks --access public --provenance
+      - name: Skip when this version is already on the registry
+        id: registry
+        run: |
+          version="$(node -p "require('./packages/core/package.json').version")"
+          if npm view "@pazos-dev/contability-core@${version}" version >/dev/null 2>&1; then
+            echo "La version ${version} ya esta publicada: nada que hacer."
+            echo "already=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "already=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - if: steps.registry.outputs.already == 'false'
+        run: pnpm --filter @pazos-dev/contability-core publish --no-git-checks --access public --provenance
