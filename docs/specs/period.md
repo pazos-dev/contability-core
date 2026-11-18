@@ -1,7 +1,7 @@
 # SPEC — Período contable y fecha
 
 Estado: reglas locales listas; cierre concurrente se completa con aplicación/persistencia.
-Ruta: `src/core/domain/period/`.
+Ruta: `packages/core/src/core/domain/period/`.
 
 ## Modelo
 

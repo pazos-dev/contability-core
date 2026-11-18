@@ -11,8 +11,8 @@ E01-E11; no permitir mutaciones fuera del agregado; reversión crea borrador.
 
 1. Leer las skills de proyecto accounting-implement y typescript-best-practices; clean-code-architecture al distribuir responsabilidades.
 2. Implementar el incremento sin HTTP, ORM ni interfaz.
-3. Añadir pruebas `*.test.mjs` bajo tests/ que consuman la salida compilada y verifiquen el comportamiento.
-4. Exportar solo API pública implementada desde src/index.ts.
+3. Añadir pruebas `*.test.mjs` bajo packages/core/tests/ que consuman la salida compilada y verifiquen el comportamiento.
+4. Exportar solo API pública implementada desde packages/core/src/index.ts.
 5. Ejecutar pnpm check:project, pnpm typecheck, pnpm build y pnpm test.
 6. Actualizar STATUS.md con evidencia real y pendientes.
 
@@ -20,12 +20,12 @@ No marcar esta tarea terminada solo porque estén creadas sus rutas.
 
 ## Entregado
 
-Archivos en `src/core/domain/entries/`: `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`,
+Archivos en `packages/core/src/core/domain/entries/`: `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`,
 `posting-side.ts`, `entry-errors.ts`, `entry-text.ts` e `index.ts` (barrel publicado).
 
-Criterios cubiertos por `tests/entries.test.mjs`: E01, E02, E03, E04, E05, E06, E07, E08, E09, E10 y
+Criterios cubiertos por `packages/core/tests/entries.test.mjs`: E01, E02, E03, E04, E05, E06, E07, E08, E09, E10 y
 E11, más la validación de identidad del borrador, `removeLine` de una línea inexistente y la reversión
-rechazada fuera de POSTED. La superficie pública queda fijada en `tests/public-api.test.mjs`.
+rechazada fuera de POSTED. La superficie pública queda fijada en `packages/core/tests/public-api.test.mjs`.
 
 ## Decisiones registradas
 

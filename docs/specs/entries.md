@@ -1,7 +1,7 @@
 # SPEC — Asientos y líneas
 
 Estado: invariantes listas para dominio; contabilización completa depende de aplicación.
-Ruta: `src/core/domain/entries/`.
+Ruta: `packages/core/src/core/domain/entries/`.
 
 ## Modelo propuesto
 

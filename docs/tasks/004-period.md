@@ -1,6 +1,6 @@
 # 004-period — Implementar fecha y período
 
-Estado: completada. Evidencia: `tests/period.test.mjs` (11 pruebas, P01-P04 y P06 en verde, más cierre
+Estado: completada. Evidencia: `packages/core/tests/period.test.mjs` (11 pruebas, P01-P04 y P06 en verde, más cierre
 repetido y validación de fechas) y `docs/STATUS.md`, que registra las validaciones pendientes de
 aplicación/persistencia (P05, P07, P08).
 Leer AGENTS.md y `docs/specs/period.md`.
@@ -14,8 +14,8 @@ P01-P04 y P06; comprobar fechas reales, límites inclusivos y transición de est
 
 1. Leer las skills de proyecto accounting-implement y typescript-best-practices; clean-code-architecture al distribuir responsabilidades.
 2. Implementar el incremento sin HTTP, ORM ni interfaz.
-3. Añadir pruebas `*.test.mjs` bajo tests/ que consuman la salida compilada y verifiquen el comportamiento.
-4. Exportar solo API pública implementada desde src/index.ts.
+3. Añadir pruebas `*.test.mjs` bajo packages/core/tests/ que consuman la salida compilada y verifiquen el comportamiento.
+4. Exportar solo API pública implementada desde packages/core/src/index.ts.
 5. Ejecutar pnpm check:project, pnpm typecheck, pnpm build y pnpm test.
 6. Actualizar STATUS.md con evidencia real y pendientes.
 

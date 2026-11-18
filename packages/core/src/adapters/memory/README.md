@@ -19,7 +19,7 @@ Límites explícitos:
 - **Una sola puerta de escritura.** El adaptador no expone ningún repositorio suelto: se escribe dentro de
   `unitOfWork.run`, igual que en un anfitrión real. Un repositorio sostenido desde afuera escribiría sin
   respaldo, y un `run` posterior que fallara restauraría una copia anterior y descartaría esa escritura en
-  silencio. Esa costura existió y se cerró; `tests/public-api.test.mjs` fija que el objeto expuesto tenga
+  silencio. Esa costura existió y se cerró; `packages/core/tests/public-api.test.mjs` fija que el objeto expuesto tenga
   sólo `unitOfWork` y `snapshot`.
 
 Decisiones de copia, que son parte del contrato y no un detalle:

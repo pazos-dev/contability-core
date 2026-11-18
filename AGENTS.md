@@ -52,6 +52,10 @@ Las rutas son `.agents/skills/<nombre>/SKILL.md`. No cargar la skill de Node par
 
 ## Estructura y preparación actual
 
+El repositorio es un workspace de pnpm con un paquete publicable por artefacto: `packages/core` es el motor y
+cada adaptador durable vive en su propio paquete bajo `packages/`. Las rutas de código de este documento son
+relativas a `packages/core/`.
+
 Usar las carpetas canónicas `domain/money`, `domain/account`, `domain/journal`, `domain/entries` y `domain/period`.
 Journal es el diario y JournalEntry vive en entries; no duplicar conceptos con nombres en plural.
 Leer ADR 0002 para elecciones técnicas de este scaffold. Los requisitos de país, fiscalidad y multimoneda siguen pendientes.

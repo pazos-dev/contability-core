@@ -1,0 +1,4 @@
+# One package per publishable artifact. `packages/core` is the engine; every adapter lives in its own
+# package so a host installs only the engine and the adapters it actually needs.
+packages:
+  - 'packages/*'

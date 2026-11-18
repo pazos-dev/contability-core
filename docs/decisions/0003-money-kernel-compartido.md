@@ -5,7 +5,7 @@ Fecha: 2026-11-14.
 
 ## Contexto
 
-`src/core/domain/money/` era la única carpeta del dominio sin agregado: contenía dos objetos de valor
+`packages/core/src/core/domain/money/` era la única carpeta del dominio sin agregado: contenía dos objetos de valor
 (`Currency`, `Money`), el catálogo ISO generado y su error. Se la trataba como par de `account`, `journal`,
 `entries` y `period`, y esa simetría no se sostenía:
 
@@ -22,7 +22,7 @@ Fecha: 2026-11-14.
 ## Decisión
 
 `money/` deja de ser un contexto acotado y pasa a ser el kernel compartido del dominio:
-`src/core/domain/shared/money/`.
+`packages/core/src/core/domain/shared/money/`.
 
 - **Dentro de `domain/`.** `Money` es un concepto de dominio; sacarlo de la capa permitiría que un adaptador
   importara un importe monetario sin pasar por el dominio, que es el límite que el proyecto cuida.
@@ -45,8 +45,8 @@ Fecha: 2026-11-14.
 ## Consecuencias
 
 - Se actualizaron en el mismo cambio: `scripts/check-project.mjs`, `docs/ARCHITECTURE.md`,
-  `docs/specs/money.md`, `docs/specs/currency-catalog.md`, `docs/DOMAIN.md`, `tests/public-api.test.mjs`,
-  `tests/domain/shared/money/` y el generador `scripts/sync-iso4217.mjs` con la cabecera del archivo generado.
+  `docs/specs/money.md`, `docs/specs/currency-catalog.md`, `docs/DOMAIN.md`, `packages/core/tests/public-api.test.mjs`,
+  `packages/core/tests/domain/shared/money/` y el generador `packages/core/scripts/sync-iso4217.mjs` con la cabecera del archivo generado.
 - La superficie publicada no cambia: `package.json` exporta sólo `.` y el barrel raíz reexporta los mismos
   símbolos. Sólo se movió una ruta interna.
 - Un contexto acotado puede importar `shared/` por el barrel del concepto compartido; sigue prohibido importar

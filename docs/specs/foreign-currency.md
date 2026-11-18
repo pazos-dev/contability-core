@@ -3,7 +3,7 @@
 Estado: **implementado y verificado** (incremento 009d). Evidencia en la sección de verificación; las
 desviaciones que aparecieron al implementar están en «Lo que la implementación fijó».
 Decisiones de origen: Q08 (mitad abierta), respondidas por el humano el 2026-11-17 mediante selección.
-Ruta prevista: dominio en `src/core/domain/entries/`, reglas en `src/core/application/use-cases/entries/`.
+Ruta prevista: dominio en `packages/core/src/core/domain/entries/`, reglas en `packages/core/src/core/application/use-cases/entries/`.
 Depende de: `ledger.md` (L17-L24: moneda funcional del libro), `entries.md` (E05, E12: una sola moneda por
 asiento), `rounding.md` (RD01-RD20: `MoneyFactor` y `multiply`), `post-entry.md` y `reverse-entry.md`.
 
@@ -218,11 +218,11 @@ Siguen abiertas y no bloquean esta entrega:
 
 Prevista, con test-first por criterio:
 
-- `tests/domain/entries/foreign-currency.test.mjs`: reglas 2-6, 8, 12 y la simetría de la reversión (FX02, FX05,
+- `packages/core/tests/domain/entries/foreign-currency.test.mjs`: reglas 2-6, 8, 12 y la simetría de la reversión (FX02, FX05,
   FX07).
-- `tests/application/foreign-currency.test.mjs`: FX01, FX03, FX04, FX06, FX08-FX14 contra el adaptador en
+- `packages/core/tests/application/foreign-currency.test.mjs`: FX01, FX03, FX04, FX06, FX08-FX14 contra el adaptador en
   memoria, con tasas reales y un libro en UYU.
-- `tests/domain/shared/money/` no cambia: `multiply` ya existe desde 009b y este incremento lo consume, no lo
+- `packages/core/tests/domain/shared/money/` no cambia: `multiply` ya existe desde 009b y este incremento lo consume, no lo
   modifica.
 - `docs/specs/{ledger,entries}.md`: actualizar E05, E12 y L24 en el mismo commit que el comportamiento.
 
@@ -230,10 +230,10 @@ Comandos reales del repositorio: `pnpm check:project`, `pnpm typecheck`, `pnpm b
 
 Ejecutada sobre este incremento:
 
-- `tests/domain/entries/foreign-currency.test.mjs`: 12 pruebas. Rojo observado antes de implementar: el módulo
+- `packages/core/tests/domain/entries/foreign-currency.test.mjs`: 12 pruebas. Rojo observado antes de implementar: el módulo
   entero no cargaba (`SyntaxError: The requested module '../../../dist/index.js' does not provide an export
   named 'ExchangeRate'`).
-- `tests/application/foreign-currency.test.mjs`: 15 pruebas, FX01, FX03-FX14 (FX02 se fija en las dos) más una
+- `packages/core/tests/application/foreign-currency.test.mjs`: 15 pruebas, FX01, FX03-FX14 (FX02 se fija en las dos) más una
   que fija el comportamiento anterior de la huella de idempotencia. Rojo
   observado antes de implementar: 12 de 15 fallaban con el `LEDGER_CURRENCY_MISMATCH` del camino anterior —o
   con la comprobación del código nuevo, que nunca llegaba a ejecutarse—; las tres que pasaban son las que
@@ -241,13 +241,13 @@ Ejecutada sobre este incremento:
   `PRESERVE` de la huella anterior).
 - `docs/specs/{ledger,entries,post-entry,reverse-entry,reports}.md`: reescritas las reglas que 009d vuelve
   falsas, conservando su numeración.
-- `tests/public-api.test.mjs`: fija `ExchangeRate` en el barrel de `money`, el tipo `ExchangeRateJSON`, el tipo
+- `packages/core/tests/public-api.test.mjs`: fija `ExchangeRate` en el barrel de `money`, el tipo `ExchangeRateJSON`, el tipo
   `ExchangeRateInput` del barrel de aplicación y los tres códigos nuevos en los `.d.ts` emitidos.
-- `tests/application/foreign-currency-regressions.test.mjs`: 7 pruebas de la revisión de 009d. Tres estaban en
+- `packages/core/tests/application/foreign-currency-regressions.test.mjs`: 7 pruebas de la revisión de 009d. Tres estaban en
   rojo antes del arreglo —`JournalEntryLine.restore` no existía y `41.250` no replayaba la huella de `41.25`— y
   cuatro fijan límites que el código ya tenía: una tasa de la moneda funcional se rechaza aunque ninguna línea la
   necesite, una conversión que redondea a cero funcional se contabiliza con cero, y el orden de la lista decide
-  entre `ENTRY_RATE_DUPLICATE` y `INVALID_EXCHANGE_RATE`. `tests/public-api.test.mjs` gana una prueba para el
+  entre `ENTRY_RATE_DUPLICATE` y `INVALID_EXCHANGE_RATE`. `packages/core/tests/public-api.test.mjs` gana una prueba para el
   tipo `JournalEntryLineRestoreInput` y la fábrica `restore`.
 - Comandos reales: `pnpm build`, `pnpm test` (391 pruebas, 391 correctas), `pnpm typecheck`,
   `pnpm check:project`.

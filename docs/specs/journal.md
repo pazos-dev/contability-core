@@ -1,7 +1,7 @@
 # SPEC — Diario contable
 
 Estado: propuesta concreta para implementar tras Account.
-Ruta: `src/core/domain/journal/`.
+Ruta: `packages/core/src/core/domain/journal/`.
 
 Journal es la entidad que identifica un diario dentro del libro. No es JournalEntry.
 Modelo mínimo propuesto: id, ledgerId, code, name y estado ACTIVE/INACTIVE.

@@ -28,7 +28,7 @@ import { fingerprintOf, remember, replay } from '../shared/idempotency.js';
 ```
 
 S3. Invariante: cero cambios de comportamiento y cero cambios de superficie pública. Es un refactor
-estructural; las 217 pruebas y `tests/public-api.test.mjs` son la red.
+estructural; las 217 pruebas y `packages/core/tests/public-api.test.mjs` son la red.
 
 S4. Descartado y por qué:
 - **Barrel interno de la capa** (`internal.ts` que re-exporta dominio, contratos, errores y puertos): esconde
@@ -51,7 +51,7 @@ para pasalro a clases era papra solucionar ese problema pero el refactor que hic
 analiza el codigony explicame uqenformas hay de refactorizar yu qur no hayan tantos imports por tadas partes o
 es mejor dejarlo asi»
 
-L2. Medición previa al cambio, con un script sobre `src/`: 58 archivos, 126 sentencias `import`, 260 bindings,
+L2. Medición previa al cambio, con un script sobre `packages/core/src/`: 58 archivos, 126 sentencias `import`, 260 bindings,
 2.2 sentencias por archivo. Los peores casos eran `accounting.ts` (9 sentencias / 32 bindings),
 `create-entry-draft.ts` (8/17) y `post-entry.ts` y `reverse-entry.ts` (6/20 cada uno, con 11 constructores de
 error por archivo).

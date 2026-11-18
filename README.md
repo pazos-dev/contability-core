@@ -2,7 +2,21 @@
 
 Motor contable reutilizable escrito en **TypeScript**, pensado para integrarse en aplicaciones de inventario, ventas, ERP u otros sistemas sin acoplar el núcleo a una interfaz gráfica, un ORM o una base de datos concreta.
 
-> **Estado:** proyecto en desarrollo (`0.0.0`, paquete privado). Ya existen modelos de dominio, 13 operaciones de aplicación, puertos y un adaptador en memoria para desarrollo y pruebas. No hay persistencia durable de producción incluida. Consulta [docs/STATUS.md](docs/STATUS.md) para el alcance y pendientes actualizados.
+> **Estado:** proyecto en desarrollo (`0.0.0`, paquete publicable en un workspace de pnpm). Ya existen modelos de dominio, 17 operaciones de aplicación, puertos y un adaptador en memoria para desarrollo y pruebas. No hay persistencia durable de producción incluida. Consulta [docs/STATUS.md](docs/STATUS.md) para el alcance y pendientes actualizados.
+
+## Paquetes
+
+El repositorio es un workspace de pnpm: **un paquete publicable por artefacto**. Un anfitrión instala el motor y, por separado, los adaptadores que realmente usa; el core no arrastra drivers ni frameworks.
+
+| Paquete | Contenido |
+| --- | --- |
+| `packages/core` | El motor: dominio, aplicación, puertos y el adaptador en memoria. Sin ORM, sin HTTP, sin acceso a disco. |
+
+```bash
+pnpm add @pazos-dev/contability-core
+```
+
+Los adaptadores durables —Prisma, PostgreSQL u otro— viven en paquetes propios bajo `packages/` y declaran el driver como `peerDependency`, para que el anfitrión decida la versión y no convivan dos clientes en el mismo proceso.
 
 ## Arquitectura
 
@@ -10,14 +24,14 @@ El proyecto sigue una separación inspirada en **Clean Architecture**:
 
 | Componente | Responsabilidad |
 | --- | --- |
-| `src/core/domain/` | Entidades y reglas contables internas: `Ledger`, `Account`, `Journal`, `AccountingPeriod`, `JournalEntry`, `Money` y sus valores asociados. |
-| `src/core/application/facade/accounting.ts` | Punto de entrada `Accounting`: recibe una operación y delega en el caso de uso correspondiente. |
-| `src/core/application/use-cases/` | Orquesta casos de uso organizados por área (`ledgers`, `accounts`, `journals`, `periods`, `entries`). |
-| `src/core/application/use-cases/shared/` | Reglas reutilizables e idempotencia; no forma parte de la API pública. |
-| `src/core/application/dto.ts` | Tipos de entrada y salida serializables, independientes de entidades u ORM. |
-| `src/core/application/ports.ts` | Interfaces de repositorios y unidad de trabajo, implementadas por los adaptadores. |
-| `src/core/application/errors.ts` | Errores de aplicación con códigos estables; los errores del dominio se propagan. |
-| `src/adapters/memory/` | Implementación volátil de repositorios y unidad de trabajo para pruebas/desarrollo. |
+| `packages/core/src/core/domain/` | Entidades y reglas contables internas: `Ledger`, `Account`, `Journal`, `AccountingPeriod`, `JournalEntry`, `Money` y sus valores asociados. |
+| `packages/core/src/core/application/facade/accounting.ts` | Punto de entrada `Accounting`: recibe una operación y delega en el caso de uso correspondiente. |
+| `packages/core/src/core/application/use-cases/` | Orquesta casos de uso organizados por área (`ledgers`, `accounts`, `journals`, `periods`, `entries`). |
+| `packages/core/src/core/application/use-cases/shared/` | Reglas reutilizables e idempotencia; no forma parte de la API pública. |
+| `packages/core/src/core/application/dto.ts` | Tipos de entrada y salida serializables, independientes de entidades u ORM. |
+| `packages/core/src/core/application/ports.ts` | Interfaces de repositorios y unidad de trabajo, implementadas por los adaptadores. |
+| `packages/core/src/core/application/errors.ts` | Errores de aplicación con códigos estables; los errores del dominio se propagan. |
+| `packages/core/src/adapters/memory/` | Implementación volátil de repositorios y unidad de trabajo para pruebas/desarrollo. |
 
 ```mermaid
 flowchart TD

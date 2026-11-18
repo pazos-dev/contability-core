@@ -1,7 +1,7 @@
 # SPEC — Cuenta contable
 
 Estado: reglas locales listas; jerarquía y unicidad se verifican al implementar aplicación.
-Ruta: `src/core/domain/account/`.
+Ruta: `packages/core/src/core/domain/account/`.
 
 ## Modelo
 

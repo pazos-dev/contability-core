@@ -1,8 +1,8 @@
 {
-  "name": "@pazos-dev/contability-core",
+  "name": "@pazos-dev/contability",
   "version": "0.0.0",
   "private": true,
-  "description": "Núcleo contable reutilizable para integrar en distintas aplicaciones; reglas por implementar",
+  "description": "Monorepo del motor contable: el core embebible y sus adaptadores, publicados por separado",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/pazos-dev/contability-core.git"
@@ -12,25 +12,13 @@
     "node": ">=24",
     "pnpm": ">=10"
   },
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
-    }
-  },
-  "files": [
-    "dist"
-  ],
   "scripts": {
     "check:project": "node scripts/check-project.mjs",
-    "sync:iso4217": "node scripts/sync-iso4217.mjs",
-    "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json",
-    "test": "node scripts/run-tests.mjs",
-    "check": "pnpm check:project && pnpm typecheck && pnpm build && pnpm test"
-  },
-  "devDependencies": {
-    "typescript": "5.9.3"
+    "typecheck": "pnpm -r run typecheck",
+    "build": "pnpm -r run build",
+    "test": "pnpm -r run test",
+    "sync:iso4217": "pnpm --filter @pazos-dev/contability-core run sync:iso4217",
+    "check": "pnpm run check:project && pnpm run typecheck && pnpm run build && pnpm run test"
   },
   "packageManager": "pnpm@11.25.0"
 }

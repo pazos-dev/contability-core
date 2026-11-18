@@ -79,7 +79,7 @@ que `ledger.md` ya rechazó para libros. Consecuencia registrada: es un método 
 anfitrión ya implementa, así que rompe su compilación y el incremento vuelve a tener riesgo de contrato
 (ítem 3) y verificación independiente al cerrar.
 
-L8. 008a implementado en `f27efd4`. Test-first real: las 17 pruebas se escribieron antes de tocar `src/` y el
+L8. 008a implementado en `f27efd4`. Test-first real: las 17 pruebas se escribieron antes de tocar `packages/core/src/` y el
 rojo fue 17/17 con `app.accountBalances is not a function`. Después, `pnpm check` en verde con **278 pruebas**
 (eran 260): 17 del reporte más la prueba nueva del barrel. Interpretaciones aceptadas del implementador: el
 cursor en memoria es un desplazamiento sobre el orden total `(accountingDate, entryId)`; el tamaño de página del

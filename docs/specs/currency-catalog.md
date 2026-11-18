@@ -5,7 +5,7 @@ Entrega: revisión del incremento 005 del core. El catálogo deja de ser una pue
 la fuente de la escala oficial donde existe, sin impedir las monedas propias del usuario.
 Fuente: ISO 4217, lista oficial de una moneda por país y por fondo publicada por SIX Group
 (`list-one.xml`, `Pblshd="2026-09-17"`), incorporada el 2026-11-06.
-Ruta: `src/core/domain/shared/money/currency-catalog.ts` y `src/core/domain/shared/money/currency.ts`.
+Ruta: `packages/core/src/core/domain/shared/money/currency-catalog.ts` y `packages/core/src/core/domain/shared/money/currency.ts`.
 
 ## Objetivo
 
@@ -132,8 +132,8 @@ versionado con el código. Actualizarla exige una revisión del diff de la tabla
 
 ## Verificación
 
-`tests/domain/shared/money/currency-catalog.test.mjs` cubre IC01-IC14, incluidos M05 y M13: la aceptación de un código
-ausente del catálogo y la autoridad de la escala persistida. `tests/domain/shared/money/money.test.mjs` conserva M01-M12
+`packages/core/tests/domain/shared/money/currency-catalog.test.mjs` cubre IC01-IC14, incluidos M05 y M13: la aceptación de un código
+ausente del catálogo y la autoridad de la escala persistida. `packages/core/tests/domain/shared/money/money.test.mjs` conserva M01-M12
 adaptados, más M14 y M15, que anclan la persistencia de la escala; M13 no tiene prueba en ese archivo.
 Comando: `pnpm check`. El generador se probó además a mano contra documentos truncados,
 sin fecha, con unidad menor fuera de patrón, sin código y con escalas en conflicto: los seis casos

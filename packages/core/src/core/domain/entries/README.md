@@ -2,7 +2,7 @@
 
 Responsabilidad: Asiento, líneas, equilibrio, estados y reversión.
 Especificación desde la raíz: `docs/specs/entries.md`.
-Estado: implementado y probado (criterios E01-E11) por `tests/domain/entries/entries.test.mjs`.
+Estado: implementado y probado (criterios E01-E11) por `packages/core/tests/domain/entries/entries.test.mjs`.
 
 Archivos:
 

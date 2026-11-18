@@ -2,7 +2,7 @@
 
 Responsabilidad: cuenta contable y su código.
 Especificación desde la raíz: `docs/specs/account.md`.
-Estado: reglas locales implementadas y probadas (A01-A03, A08 y A09) en `tests/domain/account/account.test.mjs`.
+Estado: reglas locales implementadas y probadas (A01-A03, A08 y A09) en `packages/core/tests/domain/account/account.test.mjs`.
 
 Archivos:
 

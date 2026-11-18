@@ -1,7 +1,7 @@
 # SPEC — Crear un borrador de asiento
 
 Estado: implementada y verificada (incremento 006c).
-Ruta: `src/core/application/use-cases/entries/entries.ts`.
+Ruta: `packages/core/src/core/application/use-cases/entries/entries.ts`.
 Depende de: `entries.md` (E01-E11) y del contrato general de `registration.md` (puertos, errores, unidad
 de trabajo, huella de idempotencia).
 
@@ -126,5 +126,5 @@ Burban los de dominio: `INVALID_ENTRY`, `INVALID_ENTRY_LINE`, `DUPLICATE_LINE_ID
 
 ## Verificación
 
-- Pruebas: `tests/application/entry-draft.test.mjs`, una por criterio de D01 a D13, consumiendo `dist/`.
+- Pruebas: `packages/core/tests/application/entry-draft.test.mjs`, una por criterio de D01 a D13, consumiendo `dist/`.
 - `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.

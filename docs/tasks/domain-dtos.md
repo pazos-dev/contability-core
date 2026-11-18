@@ -3,7 +3,7 @@
 Separar en cada dominio las formas de datos (entradas de construcción, representaciones serializadas y la
 forma interna que consume el constructor privado) de los archivos de los objetos de valor, agrupar por
 naturaleza `errors/`, `types/` y `value-objects/`, reconocer `money` como kernel compartido del dominio y
-reagrupar los archivos de prueba en espejo de `src/`. Rama `refactor/domain-dtos`; `main` queda en `e00a128`
+reagrupar los archivos de prueba en espejo de `packages/core/src/`. Rama `refactor/domain-dtos`; `main` queda en `e00a128`
 hasta el merge.
 
 ## Specs
@@ -13,11 +13,11 @@ separar las interfaces y tipos que estan y mantener correctamente clean arq valu
 test tmabien de dominio».
 
 S2. Decisión del usuario sobre ubicación, textual del preview aprobado: «dto/ dentro de cada dominio, sigue
-público». Los DTO viven en `src/core/domain/<dominio>/dto/` y cada barrel los sigue exportando con los mismos
+público». Los DTO viven en `packages/core/src/core/domain/<dominio>/dto/` y cada barrel los sigue exportando con los mismos
 nombres: la superficie pública del paquete no pierde ni renombra un símbolo.
 
-S3. Decisión del usuario sobre pruebas, textual del preview aprobado: «Espejo de `src/`». `tests/domain/<dominio>/`,
-`tests/application/`, `tests/adapters/` y `tests/public-api.test.mjs`.
+S3. Decisión del usuario sobre pruebas, textual del preview aprobado: «Espejo de `packages/core/src/`». `packages/core/tests/domain/<dominio>/`,
+`packages/core/tests/application/`, `packages/core/tests/adapters/` y `packages/core/tests/public-api.test.mjs`.
 
 S4. Regla de separación: `dto/` reúne toda forma de datos del dominio y ninguna de esas formas tiene
 comportamiento — las entradas de construcción (`*Input`), las representaciones serializadas (`*JSON`) y las
@@ -29,7 +29,7 @@ S5. Consistencia de tipos de estado: `AccountStatus` y `JournalStatus` dejan de 
 de la clase y viven en `account-status.ts` y `journal-status.ts`, igual que `period-status.ts` y
 `entry-status.ts`.
 
-S6. Sin cambio de comportamiento: las 217 pruebas y `tests/public-api.test.mjs` pasan sin cambiar una sola
+S6. Sin cambio de comportamiento: las 217 pruebas y `packages/core/tests/public-api.test.mjs` pasan sin cambiar una sola
 expectativa, y `pnpm check` queda en verde.
 
 S7. Nada fuera del dominio importa un DTO del dominio. Hoy sólo los barrels los reexportan, así que mover los
@@ -52,7 +52,7 @@ importante?». Diagnóstico confirmado: `money/` es la única carpeta del domini
 generado de 223 líneas era el único archivo de su raíz, el 46% de las líneas de la carpeta.
 
 S12. Decisión del usuario entre tres opciones: «Sacar money/ de domain/: kernel compartido». `money` deja de
-ser un contexto acotado y vive en `src/core/domain/shared/money/`, dentro de la capa de dominio y plano
+ser un contexto acotado y vive en `packages/core/src/core/domain/shared/money/`, dentro de la capa de dominio y plano
 (`currency.ts`, `money.ts`, `currency-catalog.ts`, `money-errors.ts`, más `dto/`), sin `value-objects/` ni
 `errors/`. `describe-value.ts` pasa a `shared/`. `check:project` exige los cuatro contextos acotados y, aparte,
 el barrel, README y spec del kernel compartido. Registrado en ADR 0003, que sustituye ese punto de ADR 0002.
@@ -89,8 +89,8 @@ cualquiera de las cuatro clases queda prohibido explícitamente por S17.
 | ID | Spec | Tarea | Commit |
 | --- | --- | --- | --- |
 | T1 | S2, S4, S5, S7 | Extraer las 14 formas de datos y los 2 tipos de estado a `dto/` en los cinco dominios; barrels con las rutas nuevas | `refactor(domain): move every data shape into per-domain dto folders` |
-| T2 | S3, S8 | Reagrupar los 14 archivos de prueba en espejo de `src/` y ajustar los imports a `dist/` | `test: mirror the source tree in the tests folder` |
-| T3 | S2, S3, S6 | Documentar: `ARCHITECTURE.md`, los cinco README de dominio, `tests/README.md` y `STATUS.md` | `docs(domain): document the dto folders and the test layout` |
+| T2 | S3, S8 | Reagrupar los 14 archivos de prueba en espejo de `packages/core/src/` y ajustar los imports a `dist/` | `test: mirror the source tree in the tests folder` |
+| T3 | S2, S3, S6 | Documentar: `ARCHITECTURE.md`, los cinco README de dominio, `packages/core/tests/README.md` y `STATUS.md` | `docs(domain): document the dto folders and the test layout` |
 | T4 | S9, S10 | Mover `errors/`, `types/` y `value-objects/` en los cinco dominios; imports y barrels | `refactor(domain): group errors, types and value objects into their own folders` |
 | T5 | S9, S10 | Documentar la agrupación por naturaleza en `ARCHITECTURE.md`, los cinco README y `STATUS.md` | `docs(domain): document the folder taxonomy` |
 | T6 | S11, S12 | Mover `money/` a `shared/money/` plano y `describe-value.ts` a `shared/`; imports, barrels, `check:project`, generador y pruebas | `refactor(domain): move money into the shared kernel and flatten it` |
@@ -113,14 +113,14 @@ tipos que estan y mantener correctamente clean arq value object etc. y su carpet
 L2. Diagnóstico propio antes de escribir: `pnpm check` estaba en verde, así que «errores» no eran fallos de
 compilación ni de prueba. Se identificaron tres defectos reales: los DTO de construcción dentro de los
 archivos de los objetos de valor (12 interfaces en 5 archivos), su export en la superficie pública del
-paquete (6 símbolos) y las pruebas sin agrupar por capa, contra lo que ya pedía `tests/README.md`.
+paquete (6 símbolos) y las pruebas sin agrupar por capa, contra lo que ya pedía `packages/core/tests/README.md`.
 
 L3. Se descartó fusionar `EntryLineInput` (aplicación) con `JournalEntryLineInput` (dominio): uno viaja con
 `MoneyJSON` y `lineId`, el otro con `Money` e `id`. No son duplicados, son dos concerns con el límite de capa
 en el medio.
 
 L4. Decisiones del usuario: los DTO quedan dentro del dominio y siguen siendo públicos; las pruebas se
-agrupan en espejo de `src/`.
+agrupan en espejo de `packages/core/src/`.
 
 L5. Se descartó mover los DTO a la capa de aplicación: era la tercera opción del preview y no se eligió, así
 que el dominio sigue publicando sus DTO de construcción y `ARCHITECTURE.md` no cambia de modelo de capas.
@@ -182,8 +182,8 @@ con dos nombres. `ports/` no era lo mismo —son contratos de comportamiento— 
 `StoredOperation`, y eso es lo que hacía que las dos carpetas se leyeran iguales. Revisadas el resto:
 `domain/shared/` y `application/use-cases/shared/` ya comparten nombre; `application/errors.ts` y
 `domain/<contexto>/errors/` comparten nombre y difieren sólo en empaquetado, que la regla justifica (una clase
-de error para toda la capa contra una por contexto); `src/composition/` está vacía salvo README; y
-`src/adapters/memory/` no entra en la regla porque es un adaptador concreto, no una capa con naturalezas.
+de error para toda la capa contra una por contexto); `packages/core/src/composition/` está vacía salvo README; y
+`packages/core/src/adapters/memory/` no entra en la regla porque es un adaptador concreto, no una capa con naturalezas.
 
 L13. Nombre elegido: `dto`, y no `contracts`. `contract` ya significa otra cosa en este proyecto —el contrato
 con el anfitrión, que son los puertos—, y esa ambigüedad es justamente lo que produjo la confusión. `dto` ya

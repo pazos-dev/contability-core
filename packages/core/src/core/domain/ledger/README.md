@@ -4,7 +4,7 @@ Responsabilidad: libro contable como ámbito de aislamiento y dueño de **un** p
 funcional.
 Especificación desde la raíz: `docs/specs/ledger.md`.
 Estado: incrementos 006e y 006f completos y verificados. Reglas locales probadas (R1-R5, L01, L03, L14, L17, L19,
-L21) en `tests/domain/ledger/ledger.test.mjs`, puerto `LedgerRepository`, adaptador en memoria y casos de uso
+L21) en `packages/core/tests/domain/ledger/ledger.test.mjs`, puerto `LedgerRepository`, adaptador en memoria y casos de uso
 implementados; el detalle por tarea vive en `docs/tasks/006e-ledger.md` y `docs/tasks/006f-ledger-currency.md`.
 
 Archivos:

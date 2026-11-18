@@ -2,7 +2,7 @@
 
 Estado: **implementada y verificada**: líneas en el incremento 006d (L01-L13) y cabecera en el 009c
 (L14-L24).
-Ruta: `src/core/application/use-cases/entries/entries.ts`.
+Ruta: `packages/core/src/core/application/use-cases/entries/entries.ts`.
 Depende de: `entries.md` (E06, E07), `entry-draft.md` (D01-D13) y el contrato general de `registration.md`.
 
 ## Objetivo
@@ -164,8 +164,8 @@ Burban los de dominio: `ENTRY_STATE`, `DUPLICATE_LINE_ID`, `INVALID_ENTRY_LINE`,
 
 ## Verificación
 
-- Líneas: `tests/application/entry-draft-edit.test.mjs`, una por criterio de L01 a L13.
-- Cabecera: `tests/application/entry-draft-header.test.mjs`, una por criterio de L14 a L24, más las reglas de
-  la cabecera en `tests/domain/entries/entries.test.mjs` (la copia conserva identidad, líneas y enlace; un
+- Líneas: `packages/core/tests/application/entry-draft-edit.test.mjs`, una por criterio de L01 a L13.
+- Cabecera: `packages/core/tests/application/entry-draft-header.test.mjs`, una por criterio de L14 a L24, más las reglas de
+  la cabecera en `packages/core/tests/domain/entries/entries.test.mjs` (la copia conserva identidad, líneas y enlace; un
   `POSTED` la rechaza).
 - `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.

@@ -2,7 +2,7 @@
 
 Estado: implementada (incremento 006b). U03b, U06 y U07 no son de este repositorio: son contrato del
 anfitrión (ver `../INTEGRATION.md`, frontera core/anfitrión).
-Ruta: `src/core/application/use-cases/entries/`.
+Ruta: `packages/core/src/core/application/use-cases/entries/`.
 Depende de: `entries.md` (E01-E11), `account.md` (A06), `journal.md` (J05), `period.md` (P05).
 Contrato general de casos de uso, puertos y errores: `registration.md`, que fija las convenciones que
 este documento no repite.
@@ -213,7 +213,7 @@ Burban los de dominio sin envolver, con su código original.
 
 ## Verificación
 
-- Pruebas: `tests/application/post-entry.test.mjs`.
+- Pruebas: `packages/core/tests/application/post-entry.test.mjs`.
 - Una prueba por criterio U01-U05 y U08-U17, más el caso límite de la fecha igual al inicio y al fin del
   período (P01 aplicado desde el caso de uso).
 - U03a se prueba con el adaptador en memoria real, inyectando el fallo en `record` y comparando el estado

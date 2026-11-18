@@ -44,14 +44,14 @@ un contrato que el anfitrión debe cumplir al implementar los puertos. Cada obli
 Dos advertencias sobre la primera fila, para que nadie las descubra en producción:
 
 - La huella **no** canonicaliza lo anidado por sí sola. `fingerprintOf`
-  (`src/core/application/use-cases/shared/idempotency.ts`) ordena y filtra sólo el primer nivel; lo que hay
+  (`packages/core/src/core/application/use-cases/shared/idempotency.ts`) ordena y filtra sólo el primer nivel; lo que hay
   dentro de un valor lo normaliza el DTO que lo construye `Ledger` colapsa la moneda a `code/scale` y
   `draftResultOf` convierte una `description` ausente en `null`, que **no** se omite. Por eso el anfitrión no
   debe re-normalizar la huella: la guarda como texto.
 - `ACCOUNT_HAS_MOVEMENTS` existe como guarda de defensa, pero **no es alcanzable** a través de la API pública:
   la única cuenta que puede tener movimientos es contabilizable, y esa misma cuenta se rechaza antes como
   padre con `ACCOUNT_PARENT_NOT_GROUPING`. No cuentes con ese código. Hay además un camino de invariante que
-  lanza un `Error` sin código (`src/core/application/use-cases/entries/result.ts`): si aparece, es un defecto
+  lanza un `Error` sin código (`packages/core/src/core/application/use-cases/entries/result.ts`): si aparece, es un defecto
   del core, no una entrada de usuario.
 
 Consecuencia práctica: en este repositorio las pruebas del adaptador en memoria demuestran **la disciplina de
@@ -83,7 +83,7 @@ sobrevive al primer fallo.
 
 ## 3. Obligaciones por puerto
 
-Los contratos son las interfaces de `src/core/application/ports.ts`. Aquí está lo que la firma no dice.
+Los contratos son las interfaces de `packages/core/src/core/application/ports.ts`. Aquí está lo que la firma no dice.
 
 ### `LedgerRepository`
 

@@ -2,7 +2,7 @@
 
 Responsabilidad: fechas de calendario y período abierto/cerrado.
 Especificación desde la raíz: `docs/specs/period.md`.
-Estado: reglas locales implementadas y probadas (P01-P04 y P06) en `tests/domain/period/period.test.mjs`.
+Estado: reglas locales implementadas y probadas (P01-P04 y P06) en `packages/core/tests/domain/period/period.test.mjs`.
 
 Archivos:
 

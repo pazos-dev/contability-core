@@ -2,8 +2,8 @@
 
 Estado: **implementada y verificada** (incremento 009a, rama `feat/009a-entry-numbering`).
 Decisión de origen: Q11, respondida por el humano el 2026-11-16 (ver `## Decisiones pendientes`).
-Ruta prevista: dominio en `src/core/domain/entries/`, regla en
-`src/core/application/use-cases/entries/`, puerto en `src/core/application/ports.ts`.
+Ruta prevista: dominio en `packages/core/src/core/domain/entries/`, regla en
+`packages/core/src/core/application/use-cases/entries/`, puerto en `packages/core/src/core/application/ports.ts`.
 Depende de: `entries.md` (E01-E12), `post-entry.md` (flujo de contabilización), `reverse-entry.md` (la
 reversión es un asiento más del mismo agregado), `ledger.md` (el libro es el ámbito) y `INTEGRATION.md`
 (qué garantiza el anfitrión).
@@ -157,7 +157,7 @@ Siguen abiertas y no bloquean esta entrega:
 
 - **Cambio de contrato de dominio.** `JournalEntry` gana un campo y `post` cambia de firma. Es un cambio de
   contrato público (ítem 3): el paquete es `private` en 0.0.0 y no hay consumidores registrados, pero el
-  compilador de un anfitrión va a reclamar `post()` sin argumentos. `tests/public-api.test.mjs` fija la
+  compilador de un anfitrión va a reclamar `post()` sin argumentos. `packages/core/tests/public-api.test.mjs` fija la
   superficie de los barrels y se actualiza con este incremento.
 - **Cambio de contrato de aplicación.** `EntryDraftResult` y los dos resultados de contabilización suman un
   campo. Un anfitrión que ya guarde resultados de idempotencia va a releer objetos **sin** número: la huella
@@ -183,23 +183,23 @@ Siguen abiertas y no bloquean esta entrega:
 
 Prevista, con test-first por criterio:
 
-- `tests/domain/entries/entries.test.mjs`: N04, N05, N09, N10 y las invariantes del agregado (un `POSTED` sin
+- `packages/core/tests/domain/entries/entries.test.mjs`: N04, N05, N09, N10 y las invariantes del agregado (un `POSTED` sin
   número no se construye, la reversión nace sin número).
-- `tests/application/entry-numbering.test.mjs`: N01, N02, N03, N06, N07, N08 y N11, contra el adaptador en
+- `packages/core/tests/application/entry-numbering.test.mjs`: N01, N02, N03, N06, N07, N08 y N11, contra el adaptador en
   memoria con un contador real por libro, y N07 con un contador que lanza.
-- `tests/application/reports-*.test.mjs`: N12, extendiendo una prueba existente por reporte en lugar de
+- `packages/core/tests/application/reports-*.test.mjs`: N12, extendiendo una prueba existente por reporte en lugar de
   duplicarlas.
-- `tests/public-api.test.mjs`: el campo nuevo en los resultados y el barrel.
+- `packages/core/tests/public-api.test.mjs`: el campo nuevo en los resultados y el barrel.
 
 Comandos reales del repositorio: `pnpm typecheck`, `pnpm build`, `pnpm test`, `pnpm check:project`.
 
 Evidencia de la implementación:
 
-- `tests/domain/entries/entry-numbering.test.mjs` (6 pruebas): N01, N05, N06 y N10 en el agregado. N09 queda
+- `packages/core/tests/domain/entries/entry-numbering.test.mjs` (6 pruebas): N01, N05, N06 y N10 en el agregado. N09 queda
   cubierto **por construcción**, no por una prueba: el constructor rechaza el par estado/número y ninguna
   factoría puede producir un borrador con número, así que la rama DRAFT del chequeo es inalcanzable desde la
   interfaz pública.
-- `tests/application/entry-numbering.test.mjs` (12 pruebas): N01, N02, N03, N04, N06, N07, N08, N11 y N12
+- `packages/core/tests/application/entry-numbering.test.mjs` (12 pruebas): N01, N02, N03, N04, N06, N07, N08, N11 y N12
   contra el adaptador en memoria, con un contador real por libro, más las reglas 7 y 10. N07 y N11 usan una
   unidad de trabajo cuyo contador lanza: N07 comprueba que no se escribe nada, y N11 que el período cerrado se
   reporta **antes** de pedir el número.

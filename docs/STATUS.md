@@ -1,6 +1,6 @@
 # Estado del proyecto
 
-Actualizado: 2026-11-17. Entrega: preparación 2.0. Último incremento: 009d, moneda extranjera y conversión
+Actualizado: 2026-11-18. Entrega: preparación 2.0. Último incremento: 009d, moneda extranjera y conversión
 (`docs/specs/foreign-currency.md`): una línea conserva su importe original, gana su importe funcional y la tasa
 usada, el cuadre se evalúa en moneda funcional y la reversión espeja sin recalcular; antes, 009c, cabecera de
 borrador
@@ -17,16 +17,44 @@ carpeta por área en
 `use-cases/`, con las precondiciones de cada área en su `rules.ts` y las compartidas en `shared/rules.ts`;
 antes, nombres de módulo unificados
 en todas las capas (`dto` para datos, `ports` para comportamiento), sobre `money` como kernel compartido en
-`domain/shared/money/` (ADR 0003), el DTO por dominio y las pruebas en espejo de `src/`, el refactor de la
+`domain/shared/money/` (ADR 0003), el DTO por dominio y las pruebas en espejo de `packages/core/src/`, el refactor de la
 idempotencia (`Idempotency`), el contrato de clases y la fachada `Accounting`, 006d-application (edición de las
 líneas de un borrador), 006c, 006b y 006a-application, 006-entries y 005-currency-catalog revisado al modelo
 mixto de monedas.
+
+## Forma del repositorio — workspace (2026-11-18)
+
+El repositorio pasó de un paquete único a un workspace de pnpm, con **un paquete publicable por artefacto**:
+`packages/core` es el motor y cada adaptador durable nace en su propio paquete bajo `packages/`. No cambió
+ninguna regla contable.
+
+- Superficie pública intacta: mismo `Accounting`, mismas diecisiete operaciones, mismas 397 pruebas en verde.
+  El validador de estructura, el typecheck, el build y la suite se ejecutan igual desde la raíz con `pnpm check`.
+- `pnpm-workspace.yaml` declara `packages/*`. `scripts/check-project.mjs` se quedó en la raíz porque valida el
+  proyecto entero; los scripts del paquete (`run-tests.mjs`, `sync:iso4217`) viven en `packages/core/scripts/`.
+  `pnpm sync:iso4217` desde la raíz delega en el paquete con `--filter`, así que el comando documentado sigue
+  funcionando y el catálogo generado sigue siendo `packages/core/src/core/domain/shared/money/currency-catalog.ts`.
+- `packages/core` publica solo `dist/` (verificado con `pnpm pack --dry-run`: `dist/**`, `package.json` y
+  `README.md`, sin `packages/core/src/`), ya no está marcado `private` y declara `sideEffects: false` y
+  `publishConfig.access: public`.
+- El artefacto compilado no importa ningún módulo de `node:`: el motor no depende del entorno de ejecución. Por
+  eso `packages/core` dejó de declarar `engines`: exigir Node 24 a quien sólo consume el motor era una
+  restricción sin respaldo en el código. La raíz del workspace sí lo exige, porque sus scripts usan Node.
+- Las rutas de `docs/` se reescribieron como rutas desde la raíz del repo (`packages/core/src/...`).
+
+Publicar todavía requiere decisiones humanas: licencia y `LICENSE`, versión inicial distinta de `0.0.0`,
+workflow de publicación con tag, y regenerar o retirar `MANIFEST.json`, que quedó con la lista y los hashes de
+las rutas anteriores.
+
+Advertencia conocida del runner: con pnpm 11.25.0, `pnpm -r run test` devuelve 0 sin salida si el paquete no
+declara el script `test`, así que borrar ese script dejaría la suite en verde con cero pruebas. `run-tests.mjs`
+sí falla cuando descubre cero archivos, así que el agujero exige borrar el script, no sólo los tests.
 
 ## Implementado y verificado
 
 ### 001-money — `docs/specs/money.md`, M01-M12
 
-- `src/core/domain/shared/money/`: `currency.ts`, `money.ts`, `money-errors.ts`.
+- `packages/core/src/core/domain/shared/money/`: `currency.ts`, `money.ts`, `money-errors.ts`.
 - `Currency`: código de tres letras A-Z y escala entera de 0 a 6; inmutable, `equals`, `toJSON`/`fromJSON`.
 - `Money`: `bigint` en unidades mínimas, parser decimal exacto sin redondeo, `add`, `subtract`,
   `compare`, `equals`, `toDecimal`, `toJSON`/`fromJSON`.
@@ -34,7 +62,7 @@ mixto de monedas.
 
 ### 002-account — `docs/specs/account.md`, A01-A03, A08 y A09
 
-- `src/core/domain/account/`: `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`.
+- `packages/core/src/core/domain/account/`: `account.ts`, `account-code.ts`, `account-type.ts`, `account-errors.ts`.
 - `AccountCode`: valor inmutable de texto; conserva ceros iniciales y formato; rechaza vacío y
   espacios exteriores en lugar de recortarlos.
 - `Account`: inmutable, creado desde un DTO copiado; expone `id`, `chartOfAccountsId`, `code`,
@@ -47,7 +75,7 @@ mixto de monedas.
 
 ### 003-journal — `docs/specs/journal.md`, J01-J02, J04 y J06
 
-- `src/core/domain/journal/`: `journal.ts`, `journal-errors.ts`.
+- `packages/core/src/core/domain/journal/`: `journal.ts`, `journal-errors.ts`.
 - `Journal`: inmutable con `id`, `ledgerId`, `code`, `name` y estado `ACTIVE`/`INACTIVE`; nace activo
   en el libro indicado y `deactivate`/`activate` devuelven copias que conservan identidad, libro,
   código y nombre.
@@ -58,7 +86,7 @@ mixto de monedas.
 
 ### 004-period — `docs/specs/period.md`, P01-P04 y P06
 
-- `src/core/domain/period/`: `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`,
+- `packages/core/src/core/domain/period/`: `accounting-date.ts`, `accounting-period.ts`, `period-status.ts`,
   `period-errors.ts`.
 - `AccountingDate`: fecha de calendario `YYYY-MM-DD` sin `Date`, sin zona horaria y sin normalización;
   rechaza meses y días inexistentes, incluidos los 29 de febrero no bisiestos (1900, 2026).
@@ -70,7 +98,7 @@ mixto de monedas.
 
 ### 005-currency-catalog — `docs/specs/currency-catalog.md`, IC01-IC14, más M05 y M13-M15
 
-- `src/core/domain/shared/money/currency-catalog.ts`: tabla ISO 4217 incorporada, generada desde la lista
+- `packages/core/src/core/domain/shared/money/currency-catalog.ts`: tabla ISO 4217 incorporada, generada desde la lista
   oficial de SIX Group publicada el 2026-09-17, con fuente y huella del XML en el encabezado.
 - 165 monedas con unidad menor decimal (17 de escala 0, 139 de 2, 7 de 3 y 2 de 4) y 13 códigos ISO
   sin unidad menor decimal (`XAG XAU XBA XBB XBC XBD XDR XPD XPT XSU XTS XUA XXX`).
@@ -93,7 +121,7 @@ mixto de monedas.
 
 ### 006-entries — `docs/specs/entries.md`, E01-E11
 
-- `src/core/domain/entries/`: `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`,
+- `packages/core/src/core/domain/entries/`: `journal-entry.ts`, `journal-entry-line.ts`, `entry-status.ts`,
   `posting-side.ts`, `entry-errors.ts` y `entry-text.ts` (helper interno de validación de texto).
 - `JournalEntryLine`: inmutable con `id`, `accountId`, `side` DEBIT/CREDIT, `amount` Money y
   `description` opcional. Rechaza importe cero o negativo: `Money` admite ambos, la línea no.
@@ -115,11 +143,11 @@ mixto de monedas.
 
 ### 006a-application — `docs/specs/registration.md`, R01-R17
 
-- `src/core/application/`: `errors.ts` (`ApplicationError` con códigos estables), `ports/index.ts`
+- `packages/core/src/core/application/`: `errors.ts` (`ApplicationError` con códigos estables), `ports/index.ts`
   (`UnitOfWork` y su alcance, `LedgerRepository` — `LedgerDirectory` en 006a, reemplazado en 006e —,
   repositorios de cuentas, diarios y períodos,
   `IdempotencyRegistry`, `PostedMovementsQuery`), los contratos y cinco casos de uso.
-- `src/adapters/memory/`: mapas de valores inmutables, `snapshot()` de lectura y una unidad de trabajo
+- `packages/core/src/adapters/memory/`: mapas de valores inmutables, `snapshot()` de lectura y una unidad de trabajo
   que restaura el estado anterior completo cuando el trabajo falla. Sin durabilidad ni aislamiento, dicho
   en el README del adaptador.
 - Casos de uso: `registerAccount`, `setAccountStatus`, `registerJournal`, `setJournalStatus`,
@@ -146,7 +174,7 @@ mixto de monedas.
 - Corrección de la revisión R4: el registro de idempotencia copia el resultado al guardarlo y al
   entregarlo. Antes guardaba la misma referencia que recibía el consumidor, así que mutar el resultado de
   una respuesta reescribía lo que respondía el siguiente reintento; `readonly` sólo lo impedía en
-  compilación. Regla 7 de `docs/specs/registration.md`, prueba `U04b` en `tests/application/post-entry.test.mjs`.
+  compilación. Regla 7 de `docs/specs/registration.md`, prueba `U04b` en `packages/core/tests/application/post-entry.test.mjs`.
 - `postedMovements` se consulta a través de un puerto y en 006a responde siempre `false`, porque todavía
   no existe una operación que contabilice. Su adaptador real llega con 006b.
 
@@ -167,7 +195,7 @@ mixto de monedas.
   movimientos. La comprobación de reversión previa vive justo antes de entregar al puerto, para que un adaptador durable la sustituya
   por una restricción única.
 - `PostedMovementsQuery` deja de ser un doble: `hasPostedLines` lee del repositorio de asientos y devuelve
-  `true` en las cuentas con líneas contabilizadas (probado con datos reales en `tests/application/post-entry.test.mjs`).
+  `true` en las cuentas con líneas contabilizadas (probado con datos reales en `packages/core/tests/application/post-entry.test.mjs`).
   Pero `ACCOUNT_HAS_MOVEMENTS` es una guarda de defensa y no una regla alcanzable: sólo una cuenta
   contabilizable puede recibir movimientos, y esa misma cuenta se rechaza antes como padre con
   `ACCOUNT_PARENT_NOT_GROUPING`. El orden de comprobación es deliberado y la prueba fija cuál de los dos
@@ -190,7 +218,7 @@ mixto de monedas.
 
 ### 006c-application — `docs/specs/entry-draft.md`, D01-D13
 
-- `createEntryDraft` en `src/core/application/use-cases/entries.ts`: alta de un borrador con cabecera y
+- `createEntryDraft` en `packages/core/src/core/application/use-cases/entries.ts`: alta de un borrador con cabecera y
   líneas en una sola unidad de trabajo.
 - Cierra el circuito. Hasta 006b, `postEntry` exigía un borrador persistido y **ninguna operación del core
   lo producía**; el hueco quedó registrado como decisión pendiente y ahora está resuelto.
@@ -206,7 +234,7 @@ mixto de monedas.
 
 ### 006d-application — `docs/specs/entry-draft-edit.md`, L01-L13
 
-- `addEntryLine` y `removeEntryLine` en `src/core/application/use-cases/entries.ts`: corrigen un borrador
+- `addEntryLine` y `removeEntryLine` en `packages/core/src/core/application/use-cases/entries.ts`: corrigen un borrador
   entregado al puerto sin borrarlo y sin que el anfitrión toque el repositorio de asientos.
 - Son cálculo puro sobre el agregado: `addLine` y `removeLine` ya existían y son los que deciden. Una
   edición no agrega ningún puerto ni toca el adaptador.
@@ -224,7 +252,7 @@ mixto de monedas.
 
 ### 006e-ledger — `docs/specs/ledger.md`, L01-L16
 
-- `src/core/domain/ledger/`: `ledger.ts` (agregado `Ledger` con `id`, `name`, `chartOfAccountsId` y estado
+- `packages/core/src/core/domain/ledger/`: `ledger.ts` (agregado `Ledger` con `id`, `name`, `chartOfAccountsId` y estado
   `ACTIVE`/`INACTIVE`; `rename`, `deactivate` y `activate` devuelven copias y el plan nunca cambia),
   `types/ledger-status.ts`, `errors/ledger-errors.ts`, `dto/ledger-dto.ts` y su `README.md`. El barrel publica
   `Ledger`, `LedgerError`, `LedgerInput`, `LedgerErrorCode` y `LedgerStatus`.
@@ -235,16 +263,16 @@ mixto de monedas.
   libro y registro de idempotencia en una sola unidad de trabajo.
 - `Ledgers.setStatus`: guarda de valor, libro (`LEDGER_NOT_FOUND`) y copia con el estado nuevo. Repetir el
   estado actual es un no-op, y por eso no lleva clave de idempotencia.
-- La fachada `Accounting` expone **trece** métodos; `tests/public-api.test.mjs` los fija junto con el barrel
+- La fachada `Accounting` expone **trece** métodos; `packages/core/tests/public-api.test.mjs` los fija junto con el barrel
   `core/domain/ledger`.
 - `requireActiveLedger` en `use-cases/shared/rules.ts` es la primera regla de los once casos de uso existentes,
   en la misma posición donde antes se resolvía el plan: ausente es `LEDGER_NOT_FOUND` e inactivo es
   `LEDGER_INACTIVE`. `requireChartOfAccountsId` delega en ella y devuelve el plan del libro.
 - El adaptador en memoria elimina `options.chartOfAccountsByLedger`: `MemoryMaps` tiene un mapa `ledgers`,
   `snapshot()` los expone y los arneses siembran los libros que necesitan con `registerLedger`
-  (`tests/application/seed.mjs`). Un libro inexistente ya no puede aparecer por configuración.
-- Pruebas: `tests/domain/ledger/ledger.test.mjs` (reglas locales, L03 y L14), `tests/application/ledger.test.mjs`
-  (L01-L10, L12, L15 y L16), L13 por R04 en `tests/application/registration.test.mjs`, y L11 **una prueba por
+  (`packages/core/tests/application/seed.mjs`). Un libro inexistente ya no puede aparecer por configuración.
+- Pruebas: `packages/core/tests/domain/ledger/ledger.test.mjs` (reglas locales, L03 y L14), `packages/core/tests/application/ledger.test.mjs`
+  (L01-L10, L12, L15 y L16), L13 por R04 en `packages/core/tests/application/registration.test.mjs`, y L11 **una prueba por
   área, no una por caso de uso**: cuentas, diarios y períodos en `registration.test.mjs`, asientos en
   `entry-draft.test.mjs`.
 
@@ -277,9 +305,9 @@ Resuelve Q08 con la opción A: **una moneda funcional por libro**, sin conversi�
 - Migración a cargo del anfitrión: los libros ya persistidos no tienen moneda y el core no inventa una por
   defecto (Q09). Los registros de idempotencia guardados por un alta anterior tampoco coinciden con la huella
   nueva: el anfitrión decide si los descarta al migrar o acepta que un reintento con la misma clave falle.
-- Pruebas nuevas: L17-L21 y la regla 18 en `tests/application/ledger.test.mjs` y el agregado en
-  `tests/domain/ledger/ledger.test.mjs`; L22 y L24 en `tests/application/post-entry.test.mjs`, incluida la vía
-  de `reverse`; L23 en `tests/application/entry-draft.test.mjs`. El arnés `tests/application/seed.mjs` siembra
+- Pruebas nuevas: L17-L21 y la regla 18 en `packages/core/tests/application/ledger.test.mjs` y el agregado en
+  `packages/core/tests/domain/ledger/ledger.test.mjs`; L22 y L24 en `packages/core/tests/application/post-entry.test.mjs`, incluida la vía
+  de `reverse`; L23 en `packages/core/tests/application/entry-draft.test.mjs`. El arnés `packages/core/tests/application/seed.mjs` siembra
   los libros en `TEST_CURRENCY` (`UYU`/2) y acepta otra moneda como tercer argumento.
 
 ### 008-consultas — `docs/specs/reports.md`, AB01-AB05, TB00-TB11 y GL01-GL11
@@ -305,9 +333,9 @@ información de lo contabilizado.
   sin acumulación en cuentas de grupo; sin efectos ni idempotencia.
 - Un balance que no cuadra no es error: devuelve `totals` y `balanced: false`, porque encontrar la diferencia es
   el uso principal del reporte.
-- Fachada: de trece a **dieciséis** métodos. `tests/public-api.test.mjs` lo fija y además comprueba los tipos
+- Fachada: de trece a **dieciséis** métodos. `packages/core/tests/public-api.test.mjs` lo fija y además comprueba los tipos
   nuevos contra `dist/core/application/index.d.ts`, porque los tipos se borran en runtime.
-- Pruebas de 008a: `tests/application/reports-balances.test.mjs`, una por criterio (18), escritas antes de
+- Pruebas de 008a: `packages/core/tests/application/reports-balances.test.mjs`, una por criterio (18), escritas antes de
   implementar: el rojo fue 17/17 por `app.accountBalances is not a function`. TB09 usa un `PostedEntriesQuery`
   de prueba que miente, porque ningún camino legítimo puede devolver otra moneda.
 - **008b — `Reports.accountMovements`**: mayor de una cuenta con `openingBalance` (neto de todo lo anterior a
@@ -326,7 +354,7 @@ información de lo contabilizado.
   ordenarlo, así que recorrer todo el mayor es cuadrático en filas del rango. La alternativa sería confiar en
   un acumulado del llamador; si duele, la salida es un saldo materializado con fecha de corte, que es otra
   decisión.
-- Pruebas de 008b: `tests/application/reports-account-movements.test.mjs`, 14 pruebas, el rojo también
+- Pruebas de 008b: `packages/core/tests/application/reports-account-movements.test.mjs`, 14 pruebas, el rojo también
   observado (`app.accountMovements is not a function`). GL09 fija la procedencia del cursor, GL10 el descarte de
   borradores y asientos ajenos en los tres casos de uso, GL11 la página vacía.
 - Verificación independiente del incremento por riesgo de contrato (ítem 3): un bloqueante (procedencia del
@@ -373,7 +401,7 @@ método diecisiete de la fachada y la operación que el límite del 006d dejaba 
 - **Un contabilizado no se edita**: `ENTRY_STATE` desde la guarda del agregado, y conserva su número.
 - La fecha entra como texto y se hidrata con `AccountingDate.create`, así que `2026-02-30` falla con
   `INVALID_DATE` y no se normaliza.
-- Pruebas: 12 nuevas hoy en `tests/application/entry-draft-header.test.mjs` —once por los criterios L14-L24 más
+- Pruebas: 12 nuevas hoy en `packages/core/tests/application/entry-draft-header.test.mjs` —once por los criterios L14-L24 más
   `L15b`, que la corrección del nombre de la operación agregó para fijar que editar líneas no toca la cabecera—,
   más tres en el agregado. Rojo observado antes de implementar (11 de 11). La suite pasó de 340 a 354 pruebas al
   cerrar el incremento y a 355 con `L15b`.
@@ -381,7 +409,7 @@ método diecisiete de la fachada y la operación que el límite del 006d dejaba 
   corrió una comprobación diferencial contra el commit base sobre las cuatro operaciones —salidas, asientos
   guardados y registros de idempotencia idénticos—, pero ese instrumento no vive en el repo. Lo que sí queda es
   una prueba que fija la parte comprobable: `addEntryLine` y `removeEntryLine` conservan la cabecera
-  (`tests/application/entry-draft-header.test.mjs`).
+  (`packages/core/tests/application/entry-draft-header.test.mjs`).
 
 ### 009d — moneda extranjera y conversión — `docs/specs/foreign-currency.md`, FX01-FX15
 
@@ -389,7 +417,7 @@ El asiento puede registrar una operación pactada en otra moneda: guarda lo que 
 libro, con la tasa que se usó. `LEDGER_CURRENCY_MISMATCH` deja de ser el rechazo por defecto de una línea en
 otra moneda; lo que falta, si falta, es la tasa.
 
-- `ExchangeRate` en `src/core/domain/shared/money/exchange-rate.ts`: valor inmutable `from`/`to`/`factor` con
+- `ExchangeRate` en `packages/core/src/core/domain/shared/money/exchange-rate.ts`: valor inmutable `from`/`to`/`factor` con
   `MoneyFactor`, que rechaza con `INVALID_EXCHANGE_RATE` un factor que no sea un `MoneyFactor` estrictamente
   positivo, un operando que no sea `Currency` y una moneda convertida en sí misma. `MoneyFactor` gana
   `toDecimal()`, la inversa exacta de `fromDecimal` (41,25 es 4125/100 y vuelve a `"41.25"`).
@@ -417,8 +445,8 @@ otra moneda; lo que falta, si falta, es la tasa.
   lleva modo de redondeo (se aplica `HALF_UP` por defecto, así que FX14 sólo ejercita ese modo) y la conversión
   exige monedas de la misma escala, porque `Money.multiply` devuelve el producto en la moneda del operando y
   una sola multiplicación no puede expresar un cambio de escala sin redondear dos veces.
-- Pruebas: 28 nuevas —12 en `tests/domain/entries/foreign-currency.test.mjs`, 15 en
-  `tests/application/foreign-currency.test.mjs` y una en `tests/public-api.test.mjs`—, escritas antes de
+- Pruebas: 28 nuevas —12 en `packages/core/tests/domain/entries/foreign-currency.test.mjs`, 15 en
+  `packages/core/tests/application/foreign-currency.test.mjs` y una en `packages/core/tests/public-api.test.mjs`—, escritas antes de
   implementar y con rojo observado (el módulo de dominio no cargaba sin `ExchangeRate`; en la aplicación
   fallaban 12 de 15). La suite pasa de 355 a 383.
   Además se migraron al nuevo contexto de `post` los 30 sitios existentes y se retargetizaron los cuatro casos
@@ -428,8 +456,8 @@ otra moneda; lo que falta, si falta, es la tasa.
   reconstruir una línea convertida —`create` sigue siendo la ruta del borrador y no acepta `functionalAmount` ni
   `rate`—, la huella de idempotencia canonicaliza cada tasa (`41.25` y `41.250` replayan) y `HA45` de
   `docs/INTEGRATION.md` documenta la obligación del anfitrión. Pruebas: 8 nuevas —siete en
-  `tests/application/foreign-currency-regressions.test.mjs`, de las que tres estaban en rojo antes del arreglo,
-  y una en `tests/public-api.test.mjs`—; la suite pasa de 383 a 391.
+  `packages/core/tests/application/foreign-currency-regressions.test.mjs`, de las que tres estaban en rojo antes del arreglo,
+  y una en `packages/core/tests/public-api.test.mjs`—; la suite pasa de 383 a 391.
 
 ### 009b — redondeo y operaciones con factor — `docs/specs/rounding.md`
 
@@ -437,7 +465,7 @@ Cierra Q05: **tres modos** (`HALF_UP`, `HALF_EVEN`, `DOWN`), redondeo **simétri
 **opcional por llamada** con `HALF_UP` por defecto y reparto por **mayor resto** con desempate por orden de
 entrada. Ningún modo se guarda: cambiarlo no reinterpreta un importe ya calculado.
 
-- `src/core/domain/shared/money/`: `rounding-mode.ts` (el tipo `RoundingMode` y `DEFAULT_ROUNDING_MODE`) y
+- `packages/core/src/core/domain/shared/money/`: `rounding-mode.ts` (el tipo `RoundingMode` y `DEFAULT_ROUNDING_MODE`) y
   `factor.ts` (`MoneyFactor.fromDecimal`), más las tres operaciones en `money.ts`.
 - Todo el cálculo es `bigint` sobre `bigint` y el redondeo actúa **una sola vez, al final**, sobre el cociente
   exacto: `minorUnits × numerator / denominator` en `multiply`, `minorUnits / divisor` en `divide`. Un factor
@@ -459,13 +487,13 @@ entrada. Ningún modo se guarda: cambiarlo no reinterpreta un importe ya calcula
   divisor que no es `bigint`, un número de partes que no es entero positivo y un peso que no es `bigint`
   positivo reutilizan `INVALID_MONEY`.
 - El barrel de `money` publica `MoneyFactor` y `DEFAULT_ROUNDING_MODE` como valores y `RoundingMode` como tipo;
-  `tests/public-api.test.mjs` fija el tipo contra el `.d.ts` emitido, porque un tipo no existe en tiempo de
+  `packages/core/tests/public-api.test.mjs` fija el tipo contra el `.d.ts` emitido, porque un tipo no existe en tiempo de
   ejecución.
 - No cambia ningún contrato existente: `add`, `subtract`, `compare`, `equals`, `toDecimal` y `toJSON`/`fromJSON`
   quedan igual, ninguna tasa se persiste y no hay nada que migrar en el anfitrión.
-- Pruebas: 23 nuevas en `tests/domain/shared/money/rounding.test.mjs`, escritas antes de implementar y con rojo
+- Pruebas: 23 nuevas en `packages/core/tests/domain/shared/money/rounding.test.mjs`, escritas antes de implementar y con rojo
   observado (`The requested module '../../../../dist/index.js' does not provide an export named
-  'DEFAULT_ROUNDING_MODE'`). `pnpm build`, `node --test tests/domain/shared/money/rounding.test.mjs` (23/23),
+  'DEFAULT_ROUNDING_MODE'`). `pnpm build`, `node --test packages/core/tests/domain/shared/money/rounding.test.mjs` (23/23),
   `pnpm test` (335 pruebas, 335 correctas), `pnpm typecheck` y `pnpm check:project` en verde.
 
 ### 007 — contrato del adaptador del anfitrión — `docs/INTEGRATION.md`
@@ -496,11 +524,11 @@ puerto, para que se puedan verificar una por una.
   relación empresa/libro/plan, resuelta en 006e (Q07).
 
 Comprobación: `pnpm check:project` en verde. `pnpm typecheck`, `build` y `test` no se re-ejecutan porque el diff
-no toca `src/` ni `tests/`.
+no toca `packages/core/src/` ni `packages/core/tests/`.
 
 ### Contrato de la capa de aplicación — fachada `Accounting`
 
-- `Accounting` (`src/core/application/facade/accounting.ts`) es la **única** superficie pública de la capa: un
+- `Accounting` (`packages/core/src/core/application/facade/accounting.ts`) es la **única** superficie pública de la capa: un
   objeto con un método por caso de uso (`app.postEntry(input)`). El barrel exporta `Accounting` y
   `ApplicationError`, nada más; las cinco clases de área no salen del paquete.
 - Por dentro, cada caso de uso es una clase con `execute(input)` que recibe `ApplicationDeps` (sólo
@@ -518,7 +546,7 @@ no toca `src/` ni `tests/`.
   y adaptadores quedaron igual.
 - Corte limpio, sin alias: el paquete es `private` en 0.0.0 y no hay consumidores registrados. Un anfitrión
   migra `makePostEntry(deps)(input)` → `new Accounting(deps).postEntry(input)`.
-- `tests/application/application-facade.test.mjs` recorre el circuito completo a través de la fachada, la
+- `packages/core/tests/application/application-facade.test.mjs` recorre el circuito completo a través de la fachada, la
   propagación de errores sin escritura parcial y que dos fachadas sobre las mismas dependencias compartan los
   almacenes. Los siete archivos de test que antes componían casos de uso ahora hablan sólo con la fachada: la
   suite completa pasa por la superficie pública, así que un export de más rompe `public-api` y un método
@@ -539,13 +567,13 @@ no toca `src/` ni `tests/`.
 - Los `*Fields` y `*Changes` se exportan desde su módulo para que la clase los importe, pero nunca desde el
   barrel: siguen siendo internos.
 - La superficie pública no perdió ni renombró un símbolo: los seis `*Input` se siguen exportando con el mismo
-  nombre desde el barrel de su dominio, y `tests/public-api.test.mjs` no necesitó una sola edición.
+  nombre desde el barrel de su dominio, y `packages/core/tests/public-api.test.mjs` no necesitó una sola edición.
   `AccountStatus` y `JournalStatus` viven ahora en `account-status.ts` y `journal-status.ts`, como
   `period-status.ts` y `entry-status.ts`.
 - `currency-catalog.ts` queda fuera de la regla: lo genera `pnpm sync:iso4217`, conserva `IsoCurrencyEntry` y
   vive junto a `currency.ts` en `shared/money/`, porque editarlo a mano lo perdería en la próxima
   regeneración. `entry-text.ts` queda en la raíz de `entries/` como el ayudante interno que es.
-- Las pruebas espejan `src/`: `tests/domain/<dominio>/`, `tests/application/` y `tests/public-api.test.mjs`.
+- Las pruebas espejan `packages/core/src/`: `packages/core/tests/domain/<dominio>/`, `packages/core/tests/application/` y `packages/core/tests/public-api.test.mjs`.
   `scripts/run-tests.mjs` ya descubría `*.test.mjs` de forma recursiva, así que no cambió.
 - Sin cambio de comportamiento: 217 pruebas y `pnpm check` en verde, sin una expectativa editada. Las specs y
   los README apuntan a las rutas nuevas.
@@ -583,8 +611,8 @@ no toca `src/` ni `tests/`.
 
 ### API pública
 
-Cada contexto acotado expone su superficie en su propio `src/core/domain/<dominio>/index.ts`, y el kernel
-compartido en `shared/money/index.ts`; fuera de esa carpeta nadie importa los archivos internos. `src/index.ts`
+Cada contexto acotado expone su superficie en su propio `packages/core/src/core/domain/<dominio>/index.ts`, y el kernel
+compartido en `shared/money/index.ts`; fuera de esa carpeta nadie importa los archivos internos. `packages/core/src/index.ts`
 solo agrega esos barrels.
 
 - `shared/money/index.ts`: `Currency`, `ExchangeRate`, `Money`, `MoneyError`, `MoneyFactor`,
@@ -605,14 +633,14 @@ solo agrega esos barrels.
 
 `describeValue` sigue siendo un helper interno del dominio, no forma parte de la API pública.
 `pnpm check:project` exige el `index.ts` de los cinco dominios y los dos barrels nuevos;
-`tests/public-api.test.mjs` fija la superficie de cada barrel y la del paquete, y falla si el paquete
+`packages/core/tests/public-api.test.mjs` fija la superficie de cada barrel y la del paquete, y falla si el paquete
 exporta algo fuera de ellos.
 
 ### Revisión del núcleo — revisión de solo lectura y seguimiento
 
 Revisión de solo lectura del core, **176 comprobaciones** sobre dominio, aplicación, adaptador y documentación.
 **No se encontró ningún defecto de comportamiento en el dinero**: `Money`, `MoneyFactor`, `ExchangeRate`, el
-redondeo y el reparto conservan sus invariantes, y las pruebas de `tests/domain/shared/money/` no cambiaron de
+redondeo y el reparto conservan sus invariantes, y las pruebas de `packages/core/tests/domain/shared/money/` no cambiaron de
 resultado (sí se retiraron tres aserciones que no podían fallar por el motivo que afirmaban).
 
 Lo que sí encontró, y este seguimiento corrige:
@@ -648,27 +676,27 @@ Pruebas nuevas: 6 (T1, M1 en los dos reportes, L1, L2 en runtime y la forma decl
 | Comando | Resultado |
 | --- | --- |
 | `pnpm check:project` | Correcto: rutas, barrels por dominio, enlaces, configuración y seis skills. |
-| `pnpm typecheck` | Correcto sobre `src/`. |
+| `pnpm typecheck` | Correcto sobre `packages/core/src/`. |
 | `pnpm build` | Correcto; emite `dist/` con declaraciones. |
 | `pnpm test` | 397 pruebas, 397 correctas, 0 fallos. |
 
 Las pruebas consumen `dist/index.js`, por lo que requieren `pnpm build` antes de `pnpm test`.
 
-Cobertura por criterio: M01-M12 en `tests/domain/shared/money/money.test.mjs`; A01, A02, A03, A08 y A09 en
-`tests/domain/account/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
+Cobertura por criterio: M01-M12 en `packages/core/tests/domain/shared/money/money.test.mjs`; A01, A02, A03, A08 y A09 en
+`packages/core/tests/domain/account/account.test.mjs`, más casos de tipo cerrado, `postingAllowed`, `parentId`, espacios
 exteriores, `rename`, `deactivate` y `activate`; J01, J02, desactivación y reactivación con datos
-conservados en `tests/domain/journal/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
-`tests/domain/period/period.test.mjs`; IC01-IC14 en `tests/domain/shared/money/currency-catalog.test.mjs`; E01-E11 en
-`tests/domain/entries/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
-inexistente y la reversión rechazada; R01-R17 en `tests/application/registration.test.mjs`, incluidos el fallo de
+conservados en `packages/core/tests/domain/journal/journal.test.mjs`; P01-P04, P06, cierre repetido y validación de fechas en
+`packages/core/tests/domain/period/period.test.mjs`; IC01-IC14 en `packages/core/tests/domain/shared/money/currency-catalog.test.mjs`; E01-E11 en
+`packages/core/tests/domain/entries/entries.test.mjs`, más la validación de identidad del borrador, `removeLine` de una línea
+inexistente y la reversión rechazada; R01-R17 en `packages/core/tests/application/registration.test.mjs`, incluidos el fallo de
 guardado que no deja escritura previa, el corte por libro y la idempotencia; superficie de cada barrel y
-agregación del paquete en `tests/public-api.test.mjs`; U01-U05 y U08-U18b en
-`tests/application/post-entry.test.mjs`, más la copia del resultado de idempotencia (U04b);
-C01-C04, C06 y C07 en `tests/application/close-period.test.mjs`; V01-V16 en `tests/application/reverse-entry.test.mjs`; D01-D13 en
-`tests/application/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
-`tests/application/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
-que faltaba; L01-L16 del libro en `tests/domain/ledger/ledger.test.mjs` y `tests/application/ledger.test.mjs`, con L11
-una prueba por área y L13 cubierto por R04; `tests/application/application-facade.test.mjs` para el circuito completo a
+agregación del paquete en `packages/core/tests/public-api.test.mjs`; U01-U05 y U08-U18b en
+`packages/core/tests/application/post-entry.test.mjs`, más la copia del resultado de idempotencia (U04b);
+C01-C04, C06 y C07 en `packages/core/tests/application/close-period.test.mjs`; V01-V16 en `packages/core/tests/application/reverse-entry.test.mjs`; D01-D13 en
+`packages/core/tests/application/entry-draft.test.mjs`, más el borrador vacío y el circuito completo crear → contabilizar; L01-L13 en
+`packages/core/tests/application/entry-draft-edit.test.mjs`, incluido el borrador incompleto que queda postable al agregarle la línea
+que faltaba; L01-L16 del libro en `packages/core/tests/domain/ledger/ledger.test.mjs` y `packages/core/tests/application/ledger.test.mjs`, con L11
+una prueba por área y L13 cubierto por R04; `packages/core/tests/application/application-facade.test.mjs` para el circuito completo a
 través de `Accounting`, la propagación de errores y dos fachadas sobre las mismas dependencias compartiendo los
 almacenes.
 
@@ -678,7 +706,7 @@ Registradas explícitamente para no prometerlas desde el dominio:
 
 | Regla | estado |
 | --- | --- |
-| A04 — padre de otro plan | Verificada en `tests/application/registration.test.mjs` (R05). |
+| A04 — padre de otro plan | Verificada en `packages/core/tests/application/registration.test.mjs` (R05). |
 | A04 — ciclo | Cumplida por construcción: no existe operación que cambie `parentId` y re-registrar un id se rechaza (A04 en la suite). Sin comprobación propia porque no podría fallar. |
 | A05 — código único dentro del plan, permitido en otro plan | Verificada (R03, R04). La restricción única de BD es del anfitrión. |
 | A07 — cuenta usada se desactiva, no se borra | Verificada por ausencia de operación de borrado (R10). |

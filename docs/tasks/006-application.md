@@ -45,16 +45,16 @@ Casos de uso: `registerAccount`, `setAccountStatus`, `registerJournal`, `setJour
 
 Piezas nuevas:
 
-- `src/core/application/ports/`: `UnitOfWork` (con su alcance), `LedgerDirectory`, `AccountRepository`,
+- `packages/core/src/core/application/ports/`: `UnitOfWork` (con su alcance), `LedgerDirectory`, `AccountRepository`,
   `JournalRepository`, `PeriodRepository`, `IdempotencyRegistry`, `PostedMovementsQuery`.
-- `src/core/application/use-cases/`: los cinco casos como fábrica de función asíncrona, cada archivo con sus
+- `packages/core/src/core/application/use-cases/`: los cinco casos como fábrica de función asíncrona, cada archivo con sus
   contratos de entrada y salida serializables al lado (hoy son clases agrupadas por área; ver
   `application-classes.md` y `import-topology.md`).
-- `src/core/application/errors.ts`: `ApplicationError` y sus códigos.
-- `src/core/application/index.ts` y `src/adapters/memory/index.ts`: barrels públicos.
-- `src/adapters/memory/`: repositorios, registro de idempotencia y unidad de trabajo con restauración del
+- `packages/core/src/core/application/errors.ts`: `ApplicationError` y sus códigos.
+- `packages/core/src/core/application/index.ts` y `packages/core/src/adapters/memory/index.ts`: barrels públicos.
+- `packages/core/src/adapters/memory/`: repositorios, registro de idempotencia y unidad de trabajo con restauración del
   estado previo ante error.
-- `src/index.ts`: agrega los barrels nuevos. `tests/public-api.test.mjs` fija la superficie ampliada.
+- `packages/core/src/index.ts`: agrega los barrels nuevos. `packages/core/tests/public-api.test.mjs` fija la superficie ampliada.
 
 Reglas verificadas acá: A04, A05, A07, A09 (lado aplicación), J03, P07 y la regla de padre agrupador.
 

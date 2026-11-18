@@ -1,7 +1,7 @@
 # SPEC — Cerrar un período
 
 Estado: implementada (incremento 006b). C05 y P08 son contrato del anfitrión (ver `../INTEGRATION.md`).
-Ruta: `src/core/application/use-cases/periods/`.
+Ruta: `packages/core/src/core/application/use-cases/periods/`.
 Depende de: `period.md` (P06, P08). Contrato general de casos de uso y puertos: `registration.md`.
 
 ## Objetivo
@@ -105,7 +105,7 @@ Burbujea `PERIOD_ALREADY_CLOSED` del dominio.
 
 ## Verificación
 
-- Pruebas: `tests/application/close-period.test.mjs`.
+- Pruebas: `packages/core/tests/application/close-period.test.mjs`.
 - Una prueba por criterio C01-C04, C06 y C07.
 - C05 se registra como diferido en este documento y en `docs/STATUS.md`; no se escribe como prueba verde.
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.

@@ -70,14 +70,14 @@ tarde: no son cálculos puros sino la colaboración de una operación con el reg
 | ID | Spec | Tarea | Commit |
 | --- | --- | --- | --- |
 | T1 | S2, S5 | Once clases con `execute(input)` y los cuatro barrels por área; fachada `Accounting` y barrel de aplicación | `refactor(application)!: turn use cases into classes and add the Accounting facade` |
-| T2 | S3, S5 | Migrar los siete archivos de test que componían casos de uso, `public-api` a la nueva superficie, y `tests/application-facade.test.mjs` | el mismo commit de T1 |
+| T2 | S3, S5 | Migrar los siete archivos de test que componían casos de uso, `public-api` a la nueva superficie, y `packages/core/tests/application-facade.test.mjs` | el mismo commit de T1 |
 | T3 | S1, S5 | Specs y documentos: contrato de casos de uso, `ARCHITECTURE.md`, `STATUS.md`, READMEs de la capa y este documento | `docs(application): document the class contract and the facade` |
 
 ## Log
 
 L1. «la capa de aplicacion esta heca con funciones quiero migrarla a clases y objeta para que sea mas comodo»
 
-L2. Exploración previa a la decisión: 11 fábricas exportadas en `src/core/application/index.ts`, ~60 llamadas
+L2. Exploración previa a la decisión: 11 fábricas exportadas en `packages/core/src/core/application/index.ts`, ~60 llamadas
 en 9 archivos de test, y el contrato documentado como decisión explícita en `docs/specs/registration.md`
 («un caso de uso es una fábrica de funciones asíncronas, sin clases ni decoradores»). Por eso la migración se
 trata como cambio de contrato público, con spec primero y sin alias.
@@ -96,7 +96,7 @@ fábricas de una línea como código muerto por un commit. Resultado: dos commit
 (1f653f3) trae las once clases, la fachada, los barrels, la migración de los siete archivos de test,
 `public-api` y el test nuevo de la fachada; el segundo trae los documentos. Además, las menciones reales a
 `makeX` en la documentación eran cuatro, no quince: `docs/specs/registration.md`, tres en `docs/STATUS.md` y
-una en `src/core/application/use-cases/README.md`.
+una en `packages/core/src/core/application/use-cases/README.md`.
 
 L6. Resultado verificado: `pnpm check` en verde en la rama, 217 pruebas (214 previas + 3 de la fachada), 0
 fallos, con `typecheck` y `build` limpios. La suite migrada no cambió ni una expectativa: sólo la forma de
@@ -104,7 +104,7 @@ invocar (`makeX(deps)(input)` → `new X(deps).execute(input)`).
 
 L7. «pero 3n el.index sigues exportando todas las funciones por separado». Tenía razón: el barrel exportaba
 `Accounting` **más** las once clases, así que la superficie seguía siendo un símbolo por operación. Se
-corrigió con S2b: `src/core/application/index.ts` exporta sólo `Accounting`, `ApplicationError` y los tipos;
+corrigió con S2b: `packages/core/src/core/application/index.ts` exporta sólo `Accounting`, `ApplicationError` y los tipos;
 las clases quedan internas en `use-cases/`; los siete archivos de test y `public-api` se migran a la fachada
 (`app.postEntry(input)` en lugar de `new PostEntry(deps).execute(input)`), y el test de la fachada cambia la
 interoperación con una clase suelta por dos fachadas sobre las mismas dependencias. Ganancia lateral: la

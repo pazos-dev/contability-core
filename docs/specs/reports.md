@@ -3,8 +3,8 @@
 Estado: **implementado y verificado**. 008a (`accountBalances`, `trialBalance`) y 008b (`accountMovements`)
 existen y están probados. Este documento fija el comportamiento de los tres reportes del módulo. Nada de lo
 que describe existía antes de este incremento: es la primera superficie de **lectura**.
-Ruta prevista: casos de uso en `src/core/application/use-cases/reports/`, puerto de lectura en
-`src/core/application/ports.ts`, adaptador en memoria en `src/adapters/memory/`.
+Ruta prevista: casos de uso en `packages/core/src/core/application/use-cases/reports/`, puerto de lectura en
+`packages/core/src/core/application/ports.ts`, adaptador en memoria en `packages/core/src/adapters/memory/`.
 Depende de: `ledger.md` (la moneda funcional del libro, L17-L24), `entries.md` (qué es un asiento
 `POSTED`), `registration.md` (convenciones de casos de uso, errores y DTO) y `money.md`.
 Decisión que lo habilita: Q08 resuelta como **una** moneda funcional por libro, la que la contabilización fija
@@ -34,7 +34,7 @@ Incluye:
   fila, saldo de apertura y paginación desde el primer día.
 - Un puerto de lectura nuevo: `PostedEntriesQuery`, implementado por el anfitrión.
 - Tres casos de uso nuevos en la fachada: `accountBalances` y `trialBalance` (008a) y `accountMovements`
-  (008b). La fachada pasa de trece a **dieciséis** métodos; `tests/public-api.test.mjs` lo fija y se
+  (008b). La fachada pasa de trece a **dieciséis** métodos; `packages/core/tests/public-api.test.mjs` lo fija y se
   actualiza con este incremento.
 
 Excluye, declarado para no prometerlo:
@@ -342,8 +342,8 @@ Pendientes que este incremento no cierra:
 
 ## Verificación
 
-- Pruebas de saldos y balance en `tests/application/reports-balances.test.mjs` (AB01-AB05, TB00-TB11) y del
-  mayor en `tests/application/reports-account-movements.test.mjs` (GL01-GL11 más las reglas 1, 3, 9 y 14).
+- Pruebas de saldos y balance en `packages/core/tests/application/reports-balances.test.mjs` (AB01-AB05, TB00-TB11) y del
+  mayor en `packages/core/tests/application/reports-account-movements.test.mjs` (GL01-GL11 más las reglas 1, 3, 9 y 14).
 - Cada criterio se prueba desde la fachada, no contra funciones internas, para que el contrato público sea
   lo que queda fijado.
 - TB09 y GL10 necesitan un puerto que mienta: se implementa un `PostedEntriesQuery` de prueba que devuelve
@@ -355,7 +355,7 @@ Pendientes que este incremento no cierra:
   incremento encontró exactamente eso en la primera implementación.
 - GL03 y GL04 comparten escenario: la misma cuenta, dos páginas encadenadas por el cursor, verificando que
   no falta ni sobra ninguna fila y que el saldo corriente continúa de una página a la otra.
-- `tests/public-api.test.mjs` pasa a fijar **dieciséis** métodos en la fachada.
+- `packages/core/tests/public-api.test.mjs` pasa a fijar **dieciséis** métodos en la fachada.
 - Comandos: `pnpm check` — `check:project`, `typecheck`, `build` y `test` en ese orden. **`pnpm test` por sí
   solo corre contra `dist/` y no prueba el código actual**; sin `build` antes, su resultado no vale.
 - Estado hoy: **implementado y verificado**. `pnpm check` en verde con **293 pruebas** (eran 260 al abrir el

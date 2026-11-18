@@ -5,11 +5,11 @@ Estado: **implementado y verificado** hasta el incremento 006f. L01-L16 se imple
 (`foreign-currency.md`) cambió lo que significa contabilizar en otra moneda: ya no se rechaza por serlo, se
 convierte con la tasa que recibe la operación, y por eso L22 y L24 y las reglas 15 y 17 se reescribieron en ese
 mismo incremento. Este documento fija el comportamiento del
-libro contable; lo que describe existe y está probado en `tests/domain/ledger/ledger.test.mjs` y
-`tests/application/ledger.test.mjs`, con L11 cubierto una prueba por área en `tests/application/registration.test.mjs`
-y `tests/application/entry-draft.test.mjs`, y L13 por la prueba de unicidad por plan que ya existía (R04).
-Ruta: dominio en `src/core/domain/ledger/`, casos de uso en
-`src/core/application/use-cases/ledgers/`.
+libro contable; lo que describe existe y está probado en `packages/core/tests/domain/ledger/ledger.test.mjs` y
+`packages/core/tests/application/ledger.test.mjs`, con L11 cubierto una prueba por área en `packages/core/tests/application/registration.test.mjs`
+y `packages/core/tests/application/entry-draft.test.mjs`, y L13 por la prueba de unicidad por plan que ya existía (R04).
+Ruta: dominio en `packages/core/src/core/domain/ledger/`, casos de uso en
+`packages/core/src/core/application/use-cases/ledgers/`.
 Depende de: `registration.md` (convenciones de casos de uso, puertos, errores e idempotencia),
 `journal.md` y `account.md` (convenciones de entidad y estado).
 
@@ -263,21 +263,21 @@ Pendientes, con lo que bloquean:
 
 ## Verificación
 
-- Pruebas: `tests/domain/ledger/ledger.test.mjs` para las reglas locales del agregado (L03, L14 e
-  inmutabilidad) y `tests/application/ledger.test.mjs` para L01-L10, L12, L15 y L16.
-- L11 se cubre una prueba por área, no once: `tests/application/registration.test.mjs` para cuentas, diarios y
-  períodos, y `tests/application/entry-draft.test.mjs` para asientos.
+- Pruebas: `packages/core/tests/domain/ledger/ledger.test.mjs` para las reglas locales del agregado (L03, L14 e
+  inmutabilidad) y `packages/core/tests/application/ledger.test.mjs` para L01-L10, L12, L15 y L16.
+- L11 se cubre una prueba por área, no once: `packages/core/tests/application/registration.test.mjs` para cuentas, diarios y
+  períodos, y `packages/core/tests/application/entry-draft.test.mjs` para asientos.
 - Las pruebas del alta nombran la moneda explícitamente en cada caso, incluido el rechazo, para que una
   moneda por defecto no pueda volver a entrar sin que una prueba lo detecte.
-- L13 se cubre con la prueba de unicidad por plan que ya existe en `tests/application/registration.test.mjs`
+- L13 se cubre con la prueba de unicidad por plan que ya existe en `packages/core/tests/application/registration.test.mjs`
   (R04), alimentada ahora por dos libros registrados en lugar de por configuración.
-- `tests/public-api.test.mjs` fija la superficie de trece métodos y el barrel `core/domain/ledger`, y falla si
+- `packages/core/tests/public-api.test.mjs` fija la superficie de trece métodos y el barrel `core/domain/ledger`, y falla si
   `Ledger` se filtra al paquete fuera de él.
-- L17-L21 en `tests/application/ledger.test.mjs`; L22 y L23 en `tests/application/post-entry.test.mjs` y
-  `tests/application/entry-draft.test.mjs`; la inmutabilidad de L21 se cubre además en el agregado.
+- L17-L21 en `packages/core/tests/application/ledger.test.mjs`; L22 y L23 en `packages/core/tests/application/post-entry.test.mjs` y
+  `packages/core/tests/application/entry-draft.test.mjs`; la inmutabilidad de L21 se cubre además en el agregado.
 - L22 y L24 se reescribieron en 009d: la tasa es lo que falta, no la moneda. Sus casos viven en
-  `tests/application/post-entry.test.mjs` y el detalle de la conversión en
-  `tests/application/foreign-currency.test.mjs` (FX01-FX14).
+  `packages/core/tests/application/post-entry.test.mjs` y el detalle de la conversión en
+  `packages/core/tests/application/foreign-currency.test.mjs` (FX01-FX14).
 - Comandos: `pnpm check:project`, `pnpm typecheck`, `pnpm build`, `pnpm test`.
 - Estado hoy: **implementado y verificado**. Existen `Ledger`, `LedgerRepository`, `registerLedger` y
   `setLedgerStatus`; la fachada expone diecisiete métodos; `chartOfAccountsByLedger` ya no existe en el adaptador

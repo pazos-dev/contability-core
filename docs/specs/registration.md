@@ -1,8 +1,8 @@
 # SPEC — Registro de cuentas, diarios y períodos
 
 Estado: implementada y verificada (incremento 006a).
-Ruta: `src/core/application/use-cases/accounts/`, `src/core/application/use-cases/journals/` y
-`src/core/application/use-cases/periods/`.
+Ruta: `packages/core/src/core/application/use-cases/accounts/`, `packages/core/src/core/application/use-cases/journals/` y
+`packages/core/src/core/application/use-cases/periods/`.
 Depende de: `account.md` (A04, A05, A07, A09), `journal.md` (J03), `period.md` (P07).
 Ver `docs/tasks/006-application.md` para el orden de entrega.
 
@@ -281,7 +281,7 @@ El cierre no está acá: ver `close-period.md`.
 | R16 | — | Un `idempotencyKey` ya usado con otra petición | Repetir con otro `accountId` o `journalId` | `IDEMPOTENCY_CONFLICT`; nada guardado |
 | R17 | — | Un `status` distinto de `ACTIVE` o `INACTIVE` | `setAccountStatus` o `setJournalStatus` | `INVALID_APPLICATION_INPUT`; el estado anterior no cambia |
 | R18 | — | Un `idempotencyKey` ya usado con el mismo id y otro `code`, `name`, `type`, `parentId`, `postingAllowed` o fechas | Repetir el caso de uso | `IDEMPOTENCY_CONFLICT`; el registro guardado queda intacto |
-| R19 | — | Un resultado ya devuelto por un caso de uso idempotente, mutado por el llamador en ejecución | Repetir la petición con la misma clave | Devuelve el resultado original, no el mutado; cada entrega es un objeto distinto del guardado (probado como U04b en `tests/application/post-entry.test.mjs`) |
+| R19 | — | Un resultado ya devuelto por un caso de uso idempotente, mutado por el llamador en ejecución | Repetir la petición con la misma clave | Devuelve el resultado original, no el mutado; cada entrega es un objeto distinto del guardado (probado como U04b en `packages/core/tests/application/post-entry.test.mjs`) |
 
 ## Decisiones pendientes
 
@@ -306,10 +306,10 @@ El cierre no está acá: ver `close-period.md`.
 
 ## Verificación
 
-- Pruebas nuevas: `tests/application/registration.test.mjs`, consumiendo `dist/` como el resto de la suite.
+- Pruebas nuevas: `packages/core/tests/application/registration.test.mjs`, consumiendo `dist/` como el resto de la suite.
 - Una prueba por criterio de R01 a R16, más el caso límite de cada regla: período de un solo día válido,
   padre del mismo plan aceptado, código repetido en otro plan aceptado.
-- R19 se verifica en `tests/application/post-entry.test.mjs` (`U04b`), sobre un resultado con líneas y totales anidados:
+- R19 se verifica en `packages/core/tests/application/post-entry.test.mjs` (`U04b`), sobre un resultado con líneas y totales anidados:
   mutar la respuesta devuelta no cambia lo que responde el reintento. La prueba se apoya en el contrato del
   puerto, así que vale para los nueve casos de uso idempotentes.
 - R14 se verifica con una unidad de trabajo real del adaptador en memoria y un repositorio que falla en

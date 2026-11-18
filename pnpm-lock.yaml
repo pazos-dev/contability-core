@@ -6,7 +6,9 @@ settings:
 
 importers:
 
-  .:
+  .: {}
+
+  packages/core:
     devDependencies:
       typescript:
         specifier: 5.9.3

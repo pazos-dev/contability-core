@@ -2,12 +2,12 @@
 
 Responsabilidad: Currency y Money exactos.
 Especificación desde la raíz: `docs/specs/money.md`.
-Ubicación: `src/core/domain/shared/money/`. Es el kernel compartido del dominio, no un contexto acotado: no
+Ubicación: `packages/core/src/core/domain/shared/money/`. Es el kernel compartido del dominio, no un contexto acotado: no
 tiene agregado propio y no lo posee ningún dominio del negocio. `entries` y la capa de aplicación lo importan
 por su barrel.
-Estado: implementado y probado. Criterios M01-M15 e IC01-IC14 por `tests/domain/shared/money/money.test.mjs`
-y `tests/domain/shared/money/currency-catalog.test.mjs`; redondeo, factor exacto y reparto (RD01-RD20) por
-`tests/domain/shared/money/rounding.test.mjs`, con la especificación en `docs/specs/rounding.md`.
+Estado: implementado y probado. Criterios M01-M15 e IC01-IC14 por `packages/core/tests/domain/shared/money/money.test.mjs`
+y `packages/core/tests/domain/shared/money/currency-catalog.test.mjs`; redondeo, factor exacto y reparto (RD01-RD20) por
+`packages/core/tests/domain/shared/money/rounding.test.mjs`, con la especificación en `docs/specs/rounding.md`.
 
 Archivos:
 

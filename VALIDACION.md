@@ -10,7 +10,7 @@ Fecha: 2026-11-06.
 | `pnpm build` | Correcto; produce el módulo vacío y su declaración. |
 | `node scripts/run-tests.mjs` | Código 1 esperado: todavía no hay pruebas de negocio. |
 
-**Límite de la evidencia:** src/index.ts contiene solo `export {}`. La comprobación de tipos y compilación
+**Límite de la evidencia:** packages/core/src/index.ts contiene solo `export {}`. La comprobación de tipos y compilación
 verifica que la configuración inicial funciona; no prueba Money, cuentas, diarios, asientos ni períodos.
 No se ha ejecutado ninguna prueba contable y no existe implementación de esas reglas.
 No hay lint ni verificador semántico de arquitectura configurados.
@@ -20,5 +20,5 @@ MANIFEST.json enumera tamaños y SHA-256 de todos los archivos entregados salvo 
 La integridad del ZIP y las huellas del manifiesto se verifican al empaquetar.
 
 **Actualización posterior:** el core ya implementa incrementos reales (001-money a 004-period),
-`src/index.ts` exporta solo capacidades probadas y existen pruebas de negocio en `tests/`.
+`packages/core/src/index.ts` exporta solo capacidades probadas y existen pruebas de negocio en `packages/core/tests/`.
 Ver `docs/STATUS.md` para la evidencia vigente de cada incremento.

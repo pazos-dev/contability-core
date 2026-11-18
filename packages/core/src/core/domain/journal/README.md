@@ -3,7 +3,7 @@
 Responsabilidad: diario contable. `JournalEntry` vive en `entries`, no aquí.
 Especificación desde la raíz: `docs/specs/journal.md`.
 Estado: reglas locales implementadas y probadas (J01-J02, desactivación y reactivación) en
-`tests/domain/journal/journal.test.mjs`.
+`packages/core/tests/domain/journal/journal.test.mjs`.
 
 Archivos:
 

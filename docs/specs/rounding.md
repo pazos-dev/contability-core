@@ -2,7 +2,7 @@
 
 Estado: **implementado y verificado** (incremento 009b). Evidencia en la sección de verificación.
 Decisiones de origen: Q05, respondidas por el humano el 2026-11-16 mediante selección (D1-D5, abajo).
-Ruta prevista: `src/core/domain/shared/money/` (`rounding-mode.ts`, `factor.ts`, y las operaciones en `money.ts`).
+Ruta prevista: `packages/core/src/core/domain/shared/money/` (`rounding-mode.ts`, `factor.ts`, y las operaciones en `money.ts`).
 Depende de: `money.md` (M01-M15: exactitud, escala obligatoria, cero y negativos admitidos),
 `currency-catalog.md` (la escala es parte de la identidad de la moneda) y ADR 0002.
 
@@ -181,7 +181,7 @@ Siguen abiertas y no bloquean esta entrega:
 
 ## Verificación
 
-Implementada con test-first por criterio en `tests/domain/shared/money/rounding.test.mjs`: 23 pruebas, el rojo
+Implementada con test-first por criterio en `packages/core/tests/domain/shared/money/rounding.test.mjs`: 23 pruebas, el rojo
 observado antes de implementar (`does not provide an export named 'DEFAULT_ROUNDING_MODE'`).
 
 - RD01-RD09: los tres modos sobre los casos de empate, incluidos negativos y escala 0; RD06 separa los dos
@@ -195,7 +195,7 @@ observado antes de implementar (`does not provide an export named 'DEFAULT_ROUND
 Comandos reales del repositorio, ejecutados sobre este incremento:
 
 - `pnpm build`: correcto, sin diagnósticos (`tsc -p tsconfig.build.json`).
-- `node --test tests/domain/shared/money/rounding.test.mjs`: 23 pruebas, 23 correctas.
+- `node --test packages/core/tests/domain/shared/money/rounding.test.mjs`: 23 pruebas, 23 correctas.
 - `pnpm test`: 335 pruebas, 335 correctas.
 - `pnpm typecheck`: correcto, sin diagnósticos (`tsc --noEmit`).
 - `pnpm check:project`: correcto.

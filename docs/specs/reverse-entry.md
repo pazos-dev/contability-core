@@ -1,7 +1,7 @@
 # SPEC — Revertir un asiento contabilizado
 
 Estado: implementada y verificada (incremento 006b).
-Ruta: `src/core/application/use-cases/entries/`.
+Ruta: `packages/core/src/core/application/use-cases/entries/`.
 Depende de: `entries.md` (E09), `post-entry.md` (invariantes de contabilización reutilizadas).
 Contrato general de casos de uso y puertos: `registration.md`.
 
@@ -159,7 +159,7 @@ Burbujea `ENTRY_STATE` del dominio cuando el original no está POSTED.
 
 ## Verificación
 
-- Pruebas: `tests/application/reverse-entry.test.mjs`.
+- Pruebas: `packages/core/tests/application/reverse-entry.test.mjs`.
 - Una prueba por criterio V01-V16, más el caso de un asiento de tres líneas con dos cuentas y lado mixto
   para confirmar que el espejado no depende de la posición.
 - V13 se prueba con el adaptador en memoria real, inyectando el fallo en `record` y comparando el estado

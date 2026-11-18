@@ -30,7 +30,7 @@ después sea un incremento encima y no una reescritura.
 
 | ID | Tarea | Spec | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Dominio `Ledger` + `LedgerError`; inmutable, plan inmutable, nace `ACTIVE` | S1, spec R1-R5, L01, L03, L14 | dominio `src/core/domain/ledger/` | b6e915b |
+| T1 | Dominio `Ledger` + `LedgerError`; inmutable, plan inmutable, nace `ACTIVE` | S1, spec R1-R5, L01, L03, L14 | dominio `packages/core/src/core/domain/ledger/` | b6e915b |
 | T2 | `LedgerRepository` reemplaza `LedgerDirectory`, `registerLedger` con idempotencia e id libre, `chartOfAccountsByLedger` eliminado | S2, S3, L01-L05, L12, L13, L15, L16 | puertos, adaptador, `use-cases/ledgers/`, arneses de prueba | 32b3bcc |
 | T3 | `setLedgerStatus`: valor admitido → libro → transición no-op → escritura | L06-L10 | `use-cases/ledgers/` | 7543d85 |
 | T4 | `LEDGER_INACTIVE` en los once casos de uso, sin mover la posición del libro en cada flujo | L11 | `use-cases/shared/rules.ts` | f34c7bd |
@@ -63,7 +63,7 @@ prueba L03 lo esperaba como `ApplicationError` y falló; la prueba se corrigió,
 L7. Cierre del incremento. `pnpm check` en verde con **243 pruebas** (eran 217 antes de 006e): 26 nuevas entre
 dominio, casos de uso y superficie. La documentación de T5 se delegó a un worker por presupuesto de contexto;
 reportó 243 y ninguna prueba roja, y el padre verificó lo que quedó fuera de su alcance — `docs/tasks`,
-`src/core/domain/ledger/README.md`, el estado de `src/core/application/README.md` y la frase «eleven symbols»
+`packages/core/src/core/domain/ledger/README.md`, el estado de `packages/core/src/core/application/README.md` y la frase «eleven symbols»
 que sobrevivía en la fachada y en el índice de la capa.
 
 L8. Pendientes que este incremento **no** cierra, dichos para no prometerlos: moneda funcional del libro
