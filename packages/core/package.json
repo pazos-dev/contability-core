@@ -1,6 +1,6 @@
 {
   "name": "@pazos-dev/contability-core",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Núcleo contable reutilizable para integrar en distintas aplicaciones; reglas por implementar",
   "repository": {
     "type": "git",
@@ -9,6 +9,7 @@
   },
   "type": "module",
   "sideEffects": false,
+  "license": "MIT",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

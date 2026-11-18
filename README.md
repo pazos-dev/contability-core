@@ -2,7 +2,7 @@
 
 Motor contable reutilizable escrito en **TypeScript**, pensado para integrarse en aplicaciones de inventario, ventas, ERP u otros sistemas sin acoplar el núcleo a una interfaz gráfica, un ORM o una base de datos concreta.
 
-> **Estado:** proyecto en desarrollo (`0.0.0`, paquete publicable en un workspace de pnpm). Ya existen modelos de dominio, 17 operaciones de aplicación, puertos y un adaptador en memoria para desarrollo y pruebas. No hay persistencia durable de producción incluida. Consulta [docs/STATUS.md](docs/STATUS.md) para el alcance y pendientes actualizados.
+> **Estado:** proyecto en desarrollo (`0.1.0`, paquete publicable en un workspace de pnpm, licencia MIT). Ya existen modelos de dominio, 17 operaciones de aplicación, puertos y un adaptador en memoria para desarrollo y pruebas. No hay persistencia durable de producción incluida. Consulta [docs/STATUS.md](docs/STATUS.md) para el alcance y pendientes actualizados.
 
 ## Paquetes
 

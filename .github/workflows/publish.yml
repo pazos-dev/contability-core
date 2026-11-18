@@ -1,0 +1,57 @@
+name: publish
+
+# A release is a tag. The workflow refuses to publish when the tag and `packages/core/package.json` disagree,
+# because a version published by mistake can only be deprecated, never withdrawn.
+#
+# This repository is an embeddable engine, so the only artifact that leaves it today is the core package. Each
+# future adapter publishes from its own package and its own tag.
+#
+# Authentication uses npm trusted publishing (OIDC), not a long-lived token: configure a trusted publisher for
+# `@pazos-dev/contability-core` on npmjs.com with this repository and the workflow name `publish.yml`. The
+# secret-free flow is the reason `id-token: write` is granted. A fallback with `NPM_TOKEN` would need
+# `registry-url: 'https://registry.npmjs.org'` in `setup-node` plus that secret, and is deliberately not wired
+# so the two paths cannot half-exist.
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: publish-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.25.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # The same gate a human runs locally. Nothing is published from a tree that cannot pass its own checks.
+      - run: pnpm check
+
+      - name: Refuse to publish when the tag and the package version disagree
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          version="$(node -p "require('./packages/core/package.json').version")"
+          if [ "v${version}" != "${GITHUB_REF_NAME}" ]; then
+            echo "El tag ${GITHUB_REF_NAME} no coincide con la version ${version} de packages/core." >&2
+            exit 1
+          fi
+
+      - run: pnpm --filter @pazos-dev/contability-core publish --no-git-checks --access public --provenance

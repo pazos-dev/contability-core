@@ -42,9 +42,21 @@ ninguna regla contable.
   restricción sin respaldo en el código. La raíz del workspace sí lo exige, porque sus scripts usan Node.
 - Las rutas de `docs/` se reescribieron como rutas desde la raíz del repo (`packages/core/src/...`).
 
-Publicar todavía requiere decisiones humanas: licencia y `LICENSE`, versión inicial distinta de `0.0.0`,
-workflow de publicación con tag, y regenerar o retirar `MANIFEST.json`, que quedó con la lista y los hashes de
-las rutas anteriores.
+Publicar quedó resuelto salvo el paso humano que no puedo hacer yo:
+
+- **Licencia MIT** y `LICENSE`: el archivo vive en la raíz y en `packages/core/`, porque npm siempre incluye el
+  `LICENSE` del directorio del paquete aunque `files` declare sólo `dist`.
+- **Versión inicial `0.1.0`** en `packages/core`, con `license: MIT` declarado.
+- **`.github/workflows/publish.yml`**: se dispara por tag `v*` (o a mano), corre `pnpm check` completo y
+  **se niega a publicar si el tag no coincide con la versión del paquete**, porque una versión publicada por
+  error sólo se puede deprecar, nunca retirar. Autentica con trusted publishing de npm (OIDC, `id-token: write`),
+  sin token de larga vida: hay que configurar el trusted publisher de `@pazos-dev/contability-core` en npmjs.com
+  apuntando a este repositorio y al workflow `publish.yml`.
+
+El paso de publicación en sí **no está verificado**: nadie publicó todavía y no hay credenciales en este entorno.
+Lo que sí está verificado es todo lo anterior — `pnpm check`, `pnpm pack --dry-run` y el contenido del tarball.
+
+Sigue pendiente regenerar o retirar `MANIFEST.json`, que quedó con la lista y los hashes de las rutas anteriores.
 
 Advertencia conocida del runner: con pnpm 11.25.0, `pnpm -r run test` devuelve 0 sin salida si el paquete no
 declara el script `test`, así que borrar ese script dejaría la suite en verde con cero pruebas. `run-tests.mjs`

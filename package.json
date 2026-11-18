@@ -8,6 +8,7 @@
     "url": "git+https://github.com/pazos-dev/contability-core.git"
   },
   "type": "module",
+  "license": "MIT",
   "engines": {
     "node": ">=24",
     "pnpm": ">=10"
