@@ -5,7 +5,7 @@ const root = process.cwd();
 const errors = [];
 const required = [
   'AGENTS.md', 'README.md', 'LEEME-PRIMERO.md', 'PROMPTS.md', 'SKILLS-INCLUIDAS.md',
-  'VALIDACION.md', 'MANIFEST.json', 'package.json', 'pnpm-workspace.yaml',
+  'VALIDACION.md', 'package.json', 'pnpm-workspace.yaml',
   'packages/core/package.json', 'packages/core/tsconfig.json', 'packages/core/tsconfig.build.json',
   'packages/core/src/index.ts', 'packages/core/README.md',
   'packages/core/scripts/run-tests.mjs', 'packages/core/scripts/sync-iso4217.mjs', 'docs/ARCHITECTURE.md', 'docs/DOMAIN.md', 'docs/STATUS.md',

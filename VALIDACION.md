@@ -16,8 +16,9 @@ No se ha ejecutado ninguna prueba contable y no existe implementación de esas r
 No hay lint ni verificador semántico de arquitectura configurados.
 
 Se incluye pnpm-lock.yaml real. El ZIP excluye node_modules, dist y archivos temporales.
-MANIFEST.json enumera tamaños y SHA-256 de todos los archivos entregados salvo el propio manifiesto.
-La integridad del ZIP y las huellas del manifiesto se verifican al empaquetar.
+El manifiesto de tamaños y SHA-256 de esta entrega original se retiró el 2026-11-18: git y los hashes del
+paquete publicado son el registro de integridad vigente, y un archivo de hashes mantenido a mano sólo se
+desactualiza. Ver `docs/STATUS.md`.
 
 **Actualización posterior:** el core ya implementa incrementos reales (001-money a 004-period),
 `packages/core/src/index.ts` exporta solo capacidades probadas y existen pruebas de negocio en `packages/core/tests/`.

@@ -53,10 +53,15 @@ Publicar quedó resuelto salvo el paso humano que no puedo hacer yo:
   sin token de larga vida: hay que configurar el trusted publisher de `@pazos-dev/contability-core` en npmjs.com
   apuntando a este repositorio y al workflow `publish.yml`.
 
-El paso de publicación en sí **no está verificado**: nadie publicó todavía y no hay credenciales en este entorno.
-Lo que sí está verificado es todo lo anterior — `pnpm check`, `pnpm pack --dry-run` y el contenido del tarball.
+El paso de publicación ya está verificado contra el registry: **`@pazos-dev/contability-core@0.1.0`** publicado el
+2026-11-18, 216 archivos (`dist/**`, `package.json`, `README.md` y `LICENSE`), sin `src/`, sin tests y con cero
+dependencias de runtime, más un `npm install` desde un directorio limpio que lo resuelve y lo ejecuta.
+Queda un paso humano pendiente: configurar el **trusted publisher** en npmjs.com para que las próximas
+versiones las publique el workflow por OIDC, sin autenticación manual.
 
-Sigue pendiente regenerar o retirar `MANIFEST.json`, que quedó con la lista y los hashes de las rutas anteriores.
+`MANIFEST.json` se retiró el 2026-11-18: era un snapshot del kit de scaffold (64 archivos) cuando el árbol ya
+tenía 192. El registro de integridad lo da git, que no se desactualiza, así que mantener una segunda copia de
+hashes sólo agregaba trabajo manual sin verificar nada nuevo.
 
 Advertencia conocida del runner: con pnpm 11.25.0, `pnpm -r run test` devuelve 0 sin salida si el paquete no
 declara el script `test`, así que borrar ese script dejaría la suite en verde con cero pruebas. `run-tests.mjs`
