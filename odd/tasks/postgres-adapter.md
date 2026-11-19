@@ -55,7 +55,7 @@ numeración e idempotencia no es revisable.
 
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Andamiaje de `packages/adapter-postgres`, harness de pruebas contra Postgres real y DDL canónico por concepto, publicado como creación del esquema | S1-S5 | inline | `de8567b` |
+| T1 | Andamiaje de `packages/adapter-postgres`, harness de pruebas contra Postgres real y DDL canónico por concepto, publicado como creación del esquema | S1-S5 | inline | `4d8df3b` |
 | T2 | `UnitOfWork` con transacción real y scope, más repositorios de `Ledger` y `Account` | S3 (HA01-HA12) | inline | — |
 | T3 | Repositorios de `Journal` y `AccountingPeriod`, exclusión de rangos y concurrencia de cierre | S3 (HA13-HA16) | inline | — |
 | T4 | `EntryRepository` con líneas, reversión y `EntryNumberSequence` | S3 (HA17-HA20, HA43, HA45) | inline | — |
@@ -125,3 +125,11 @@ Se retiró la maquinaria de migraciones: `migrations/` pasó a `schema/`, el run
 desde cero y se niega si alguna de las ocho tablas ya existe), y desaparecieron el registro de versiones, los
 checksums y la tabla `schema_migration`. Nada estaba desplegado: no había historial que preservar. La primera
 migración existe cuando cambie la primera versión publicada.
+
+**L10** — Cortes de entrega efectivos, al subir la rama a `origin` por pedido del humano. Tres commits:
+`ad31ff2` (servicio de PostgreSQL en las dos compuertas de CI; riesgo item 5, aislado para que se revise solo),
+`4d8df3b` (paquete, once archivos de esquema por concepto, `createSchema` y 29 pruebas; riesgo ninguno) y
+`6abd867` (`design/db-schema/`). Los commits que citaban L5 y L7 ya no existen en la rama: eran locales y la
+reescritura del esquema según L8/L9 los dejó atrás; `4d8df3b` es la forma vigente de T1. Ninguna tarea de T2 a
+T7 está hecha: el paquete todavía no implementa un puerto. La forma de entrega —pull request o merge directo—
+sigue siendo decisión del humano.
