@@ -23,7 +23,7 @@ export function connectionStringFor(name) {
 }
 
 /**
- * Runs `work` against a throwaway database with the migrations applied by the caller, then drops it.
+ * Runs `work` against a throwaway database with the schema created by the caller, then drops it.
  * One database per test keeps every guarantee observable without a search_path trick: the exclusion
  * constraint needs the btree_gist operator classes and those live where the extension is installed.
  */
@@ -50,6 +50,7 @@ export const PG_ERROR = {
   EXCLUSION_VIOLATION: '23P01',
   FOREIGN_KEY_VIOLATION: '23503',
   CHECK_VIOLATION: '23514',
+  INVALID_TEXT_REPRESENTATION: '22P02',
 };
 
 export async function expectCode(promise, code, label) {

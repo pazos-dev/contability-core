@@ -1,19 +1,20 @@
 // Adaptador PostgreSQL del motor contable.
 //
-// Estado: T1 de `odd/tasks/postgres-adapter.md`. Publica el esquema canónico y su runner de migraciones.
-// Los puertos durables se agregan en las tareas siguientes; este paquete nunca migra al importarse.
+// Estado: T1 de `odd/tasks/postgres-adapter.md`. Publica la creación del esquema canónico.
+// Los puertos durables se agregan en las tareas siguientes; este paquete nunca crea el esquema al importarse.
 export {
-  applyMigrations,
-  MIGRATIONS_DIRECTORY,
-  MIGRATION_FILE_PATTERN,
-  MigrationError,
-  readMigrations,
-} from './migrations.js';
+  createSchema,
+  SCHEMA_DIRECTORY,
+  SCHEMA_FILE_PATTERN,
+  SCHEMA_TABLES,
+  SchemaError,
+  readSchema,
+} from './schema.js';
 export type {
-  ApplyMigrationsOptions,
-  MigrationErrorCode,
-  MigrationFile,
-  MigrationTarget,
+  CreateSchemaOptions,
   Queryable,
-} from './migrations.js';
+  SchemaErrorCode,
+  SchemaFile,
+  SchemaTarget,
+} from './schema.js';
 export { ACCOUNTING_DATE_TYPE_ID, nodePostgresTypes } from './types.js';

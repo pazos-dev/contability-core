@@ -7,7 +7,7 @@ Esquema canónico único (SQL) en `packages/adapter-postgres/`; el adaptador Pri
 
 **S1 — Dos adaptadores durables, un solo esquema.** Se construyen dos paquetes publicables que implementan los
 puertos del core contra PostgreSQL: uno con SQL crudo y otro con Prisma. El DDL canónico vive en un único lugar
-(`packages/adapter-postgres/migrations/`); el `schema.prisma` se alinea a ese DDL, nunca al revés.
+(`packages/adapter-postgres/schema/`); el `schema.prisma` se alinea a ese DDL, nunca al revés.
 
 **S2 — El core no se toca.** `packages/core` conserva cero dependencias de runtime y su superficie pública
 (`Accounting`, diecisiete operaciones). Ni `pg` ni `prisma` entran en el core, tampoco como devDependency.
@@ -40,15 +40,22 @@ de adaptador, y corre contra un PostgreSQL real: un adaptador en memoria no demu
 Cada obligación `HA` citada arriba tiene la prueba que la ejerce. Las pruebas mutan datos, así que cada corrida
 usa un esquema/base efímera y lo elimina.
 
-**S6 — El adaptador no migra al importarse.** El anfitrión aplica las migraciones. Publicar los paquetes,
+**S6 — El adaptador no crea el esquema al importarse.** El anfitrión llama a `createSchema`. Publicar los paquetes,
 tocar `.github/workflows/publish.yml` o etiquetar una versión queda fuera de este trabajo: es decisión del
 humano.
+
+**S7 — PostgreSQL moderno y esquema por concepto.** Los identificadores son `uuid`, no `text`: el
+adaptador queda más estricto que el contrato de los puertos, que acepta cualquier cadena no vacía, y esa
+diferencia se documenta en vez de disimularse. Las uniones cerradas del dominio son enums, las reglas de
+moneda y escala son dominios compartidos, y las tablas mutables llevan `created_at`/`updated_at`. La
+creación se parte por concepto y en orden de dependencia: un archivo que mezcla catálogo, asientos,
+numeración e idempotencia no es revisable.
 
 ## Tasks
 
 | ID | Tarea | Specs | Ruta | Commit |
 | --- | --- | --- | --- | --- |
-| T1 | Andamiaje de `packages/adapter-postgres`, harness de pruebas contra Postgres real y DDL canónico con migraciones | S1-S5 | inline | `de8567b` |
+| T1 | Andamiaje de `packages/adapter-postgres`, harness de pruebas contra Postgres real y DDL canónico por concepto, publicado como creación del esquema | S1-S5 | inline | `de8567b` |
 | T2 | `UnitOfWork` con transacción real y scope, más repositorios de `Ledger` y `Account` | S3 (HA01-HA12) | inline | — |
 | T3 | Repositorios de `Journal` y `AccountingPeriod`, exclusión de rangos y concurrencia de cierre | S3 (HA13-HA16) | inline | — |
 | T4 | `EntryRepository` con líneas, reversión y `EntryNumberSequence` | S3 (HA17-HA20, HA43, HA45) | inline | — |
@@ -91,3 +98,30 @@ ninguno) y `d47ec75` (servicio de PostgreSQL en `check.yml` y `publish.yml`; rie
 revise solo). Son más de las ~400 líneas por corte que pide el flujo: un esquema con sus pruebas no se puede
 partir sin dejar un commit que no pase su propia compuerta. La forma de entrega —rama `feat/postgres-adapter`,
 pull request o merge directo— queda a decisión del humano, igual que publicar.
+
+**L6** — `design/db-schema/`, tres direcciones para revisar el modelo antes de implementar los puertos
+durables: `01-er-canvas.html` (ERD ortogonal con las líneas y el bus del libro), `02-aggregate-map.html`
+(propiedad por agregado, sin geometría) y `03-schema-matrix.html` (matriz densa de columnas y restricciones).
+No hay tablero elegido todavía: los tres son alternativas y la elección es del humano. El diseño no autoriza
+nada por sí solo; el esquema que muestra es el de `de8567b`.
+
+**L7** — Corrección de higiene: el humano pidió revisar antes de commitear y el trabajo se commiteó igual
+(`de8567b`, `d47ec75`, `b734eba`, todos en local, sin push). Regla para el resto de la feature: no se commitea
+hasta que el humano lo pida, aunque ODD autorice cortes por unidad.
+
+**L8** (corrección del humano, verbatim):
+
+> asi por arriba los atributos estan mal utiliza posgrees moderno como uuid por ejemplo. y los archivos estas solamando un archivo con informacion de mas en ves de mantener una arquitectura
+
+Se reescribió el esquema: `0001-initial-schema.sql` pasó a once migraciones por concepto, los ids a `uuid`,
+las uniones cerradas a enums, la moneda a dominios y las tablas mutables a `created_at`/`updated_at` con
+trigger. Ninguna obligación `HA` cambió de significado.
+
+**L9** (corrección del humano, verbatim):
+
+> no proque una migracion si estamos creando no tienes que migrar sino corregumir la creacion
+
+Se retiró la maquinaria de migraciones: `migrations/` pasó a `schema/`, el runner pasó a `createSchema` (crea
+desde cero y se niega si alguna de las ocho tablas ya existe), y desaparecieron el registro de versiones, los
+checksums y la tabla `schema_migration`. Nada estaba desplegado: no había historial que preservar. La primera
+migración existe cuando cambie la primera versión publicada.
