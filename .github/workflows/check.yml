@@ -16,6 +16,25 @@ concurrency:
 jobs:
   check:
     runs-on: ubuntu-latest
+    # The durable adapters prove their guarantees against a real engine, because an in-memory store cannot
+    # demonstrate atomicity, isolation or an exclusion constraint. A service container keeps the suite a
+    # single command: `pnpm check` is still everything a human runs locally.
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      CONTABILITY_TEST_DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/postgres
     steps:
       - uses: actions/checkout@v4
 

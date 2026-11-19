@@ -1,0 +1,40 @@
+{
+  "name": "@pazos-dev/contability-postgres",
+  "version": "0.1.0",
+  "description": "Adaptador PostgreSQL del motor contable: esquema canónico, migraciones y puertos durables",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pazos-dev/contability-core.git",
+    "directory": "packages/adapter-postgres"
+  },
+  "type": "module",
+  "sideEffects": false,
+  "license": "MIT",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "migrations",
+    "LICENSE"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "test": "node scripts/run-tests.mjs"
+  },
+  "dependencies": {
+    "pg": "^8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.6",
+    "@types/pg": "^8.23.1",
+    "typescript": "5.9.3"
+  }
+}
