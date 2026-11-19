@@ -1,0 +1,508 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Matriz del esquema contable</title>
+<style>
+  :root {
+    --bg: #0b0f14;
+    --surface: #11161d;
+    --surface-2: #161d26;
+    --line: #263140;
+    --text: #e6edf5;
+    --muted: #93a3b5;
+    --root: #6ee7b7;
+    --entry: #93c5fd;
+    --catalog: #fcd34d;
+    --infra: #c4b5fd;
+    --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--sans); }
+  .screen { overflow-x: auto; }
+  .hint { display: none; }
+  @media (max-width: 1500px) {
+    .hint {
+      display: block; margin: 0; padding: 8px 16px;
+      background: var(--surface-2); color: var(--muted);
+      font-size: 13px; border-bottom: 1px solid var(--line);
+    }
+  }
+
+  .board {
+    width: 1440px; height: 1000px; padding: 18px 40px 16px;
+    display: grid; grid-template-rows: auto 1fr; row-gap: 14px;
+  }
+
+  header.page h1 { margin: 0; font-size: 21px; letter-spacing: -0.01em; font-weight: 650; }
+  header.page .lede { margin: 5px 0 0; font-size: 12.5px; line-height: 1.4; color: var(--text); max-width: 900px; }
+  header.page .src { margin: 3px 0 0; font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+  .layout { display: grid; grid-template-columns: 884px 456px; column-gap: 20px; align-items: start; }
+
+  .left { display: flex; flex-direction: column; gap: 12px; }
+  .tables { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+  .col-of-tables { display: flex; flex-direction: column; gap: 12px; }
+
+  .tbl { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .tbl > h3 {
+    margin: 0; padding: 5px 8px; font-size: 11.5px; font-weight: 650; font-family: var(--mono);
+    background: var(--surface-2); border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .tbl > h3::before {
+    content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--muted); flex: 0 0 auto;
+  }
+  .tbl.root > h3::before { background: var(--root); }
+  .tbl.entry > h3::before { background: var(--entry); }
+  .tbl.cat > h3::before { background: var(--catalog); }
+  .tbl.inf > h3::before { background: var(--infra); }
+  .n { margin-left: auto; font-size: 9.5px; font-weight: 500; color: var(--muted); letter-spacing: 0.02em; }
+
+  ul.cols { list-style: none; margin: 0; padding: 2px 0 4px; }
+  ul.cols li {
+    display: grid; grid-template-columns: 24px 1fr auto; gap: 6px; align-items: center;
+    padding: 0 8px 0 7px; font-family: var(--mono); font-size: 10.5px; line-height: 17px;
+  }
+  ul.cols li + li { border-top: 1px solid rgba(38, 49, 64, 0.45); }
+  .key {
+    font-size: 8px; font-weight: 700; letter-spacing: 0.03em; text-align: center;
+    border-radius: 3px; border: 1px solid transparent; color: var(--muted);
+  }
+  .key.pk { color: var(--root); border-color: rgba(110, 231, 183, 0.45); background: rgba(110, 231, 183, 0.08); }
+  .key.uq { color: var(--catalog); border-color: rgba(252, 211, 77, 0.4); background: rgba(252, 211, 77, 0.07); }
+  .key.none { border: 0; }
+  .col { color: var(--text); overflow-wrap: anywhere; }
+  .ty { color: var(--muted); font-size: 9.5px; }
+  .extra {
+    margin: 0; padding: 3px 8px 5px; border-top: 1px solid rgba(38, 49, 64, 0.45);
+    font-family: var(--mono); font-size: 9px; line-height: 1.4; color: var(--muted);
+  }
+
+  .panels { display: flex; flex-direction: column; gap: 12px; }
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .panel > h2 {
+    margin: 0; padding: 6px 10px 5px; font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted); font-weight: 650; background: var(--surface-2); border-bottom: 1px solid var(--line);
+  }
+  .rtable { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .rtable th {
+    text-align: left; padding: 4px 8px; font-family: var(--sans); font-size: 9px; font-weight: 650;
+    letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted);
+    border-bottom: 1px solid var(--line); background: rgba(22, 29, 38, 0.5);
+  }
+  .rtable td {
+    padding: 2px 7px; border-top: 1px solid rgba(38, 49, 64, 0.5);
+    font-family: var(--mono); font-size: 9.5px; line-height: 1.35; color: var(--text);
+    vertical-align: top; overflow-wrap: anywhere;
+  }
+  .ct { color: var(--muted); }
+  .t-fk { color: var(--root); }
+  .t-log { color: var(--text); }
+  .t-der { color: var(--catalog); }
+  .tb { display: block; color: var(--text); }
+  .cl { display: block; color: var(--muted); font-size: 9px; }
+  .rtable .desc { font-family: var(--sans); font-size: 9.5px; line-height: 1.3; color: var(--muted); }
+  .rtable tbody th {
+    text-transform: none; letter-spacing: 0; font-family: var(--mono); font-size: 9.5px;
+    font-weight: 600; color: var(--text); background: transparent; padding: 2px 7px;
+    border-top: 1px solid rgba(38, 49, 64, 0.5); border-bottom: 0; vertical-align: top;
+    overflow-wrap: anywhere; line-height: 1.35;
+  }
+
+  .legend { background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px 11px; }
+  .legend > h2 {
+    margin: 0 0 8px; font-size: 10.5px; letter-spacing: 0.07em; text-transform: uppercase;
+    color: var(--muted); font-weight: 650;
+  }
+  .legend-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+  .legend-block > h3 {
+    margin: 0 0 4px; font-size: 11px; font-weight: 650; color: var(--text);
+    display: flex; align-items: center; gap: 7px;
+  }
+  .legend-block > h3::before {
+    content: ""; width: 3px; height: 12px; border-radius: 2px; background: var(--muted); flex: 0 0 auto;
+  }
+  .legend-block:nth-child(1) > h3::before { background: var(--root); }
+  .legend-block:nth-child(2) > h3::before { background: var(--entry); }
+  .legend-block:nth-child(3) > h3::before { background: var(--infra); }
+  .lg-list { margin: 0; padding: 0; list-style: none; }
+  .lg-list li {
+    font-size: 10px; line-height: 1.45; color: var(--muted);
+    padding: 0 0 0 30px; position: relative; text-indent: 0;
+  }
+  .lg-list li + li { margin-top: 2px; }
+  .lg-list li .key { position: absolute; left: 0; top: 1px; width: 24px; }
+  .lg-list li b { color: var(--text); font-weight: 600; }
+  .lg-list code { font-family: var(--mono); font-size: 9.5px; color: var(--text); }
+
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  :focus-visible { outline: 2px solid var(--root); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body>
+<p class="hint">Matriz de 1440 px de ancho: desplazá horizontalmente para verla completa.</p>
+<div class="screen">
+<div class="board">
+
+  <header class="page">
+    <h1>Matriz del esquema: columnas, claves y restricciones</h1>
+    <p class="lede">Leé esta matriz cuando necesites la lista exacta de columnas: cada bloque las lista todas, con su
+    tipo y su marca de clave.</p>
+    <p class="src">@pazos-dev/contability-postgres · schema/ · creación, una por concepto</p>
+    <p class="src">Las cinco tablas mutables (ledger, account, journal, accounting_period y journal_entry) llevan created_at/updated_at timestamptz.</p>
+  </header>
+
+  <div class="layout">
+
+    <div class="left">
+
+      <section class="tables" aria-labelledby="h-tables">
+        <h2 id="h-tables" class="sr-only">Tablas del esquema con sus columnas</h2>
+
+        <div class="col-of-tables">
+
+          <section class="tbl root" aria-labelledby="t-ledger">
+            <h3 id="t-ledger">ledger <span class="n">6 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">name</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">chart_of_accounts_id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">currency_code</span><span class="ty">domain</span></li>
+              <li><span class="key none"></span><span class="col">currency_scale</span><span class="ty">domain</span></li>
+              <li><span class="key none"></span><span class="col">status</span><span class="ty">enum</span></li>
+            </ul>
+          </section>
+
+          <section class="tbl root" aria-labelledby="t-journal">
+            <h3 id="t-journal">journal <span class="n">5 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">ledger_id</span><span class="ty">uuid</span></li>
+              <li><span class="key pk">PK</span><span class="col">id</span><span class="ty">uuid</span></li>
+              <li><span class="key uq">UQ</span><span class="col">code</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">name</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">status</span><span class="ty">enum</span></li>
+            </ul>
+            <p class="extra">UQ (ledger_id, code)</p>
+          </section>
+
+          <section class="tbl root" aria-labelledby="t-period">
+            <h3 id="t-period">accounting_period <span class="n">6 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">ledger_id</span><span class="ty">uuid</span></li>
+              <li><span class="key pk">PK</span><span class="col">id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">name</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">start_date</span><span class="ty">date</span></li>
+              <li><span class="key none"></span><span class="col">end_date</span><span class="ty">date</span></li>
+              <li><span class="key none"></span><span class="col">status</span><span class="ty">enum</span></li>
+            </ul>
+          </section>
+
+        </div>
+
+        <div class="col-of-tables">
+
+          <section class="tbl entry" aria-labelledby="t-entry">
+            <h3 id="t-entry">journal_entry <span class="n">9 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">ledger_id</span><span class="ty">uuid</span></li>
+              <li><span class="key pk">PK</span><span class="col">id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">journal_id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">period_id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">accounting_date</span><span class="ty">date</span></li>
+              <li><span class="key none"></span><span class="col">description</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">status</span><span class="ty">enum</span></li>
+              <li><span class="key uq">UQ</span><span class="col">number</span><span class="ty">integer</span></li>
+              <li><span class="key none"></span><span class="col">reversal_of_entry_id</span><span class="ty">uuid</span></li>
+            </ul>
+            <p class="extra">UQ (ledger_id, number) · NULL no colisiona</p>
+          </section>
+
+          <section class="tbl entry" aria-labelledby="t-line">
+            <h3 id="t-line">journal_entry_line <span class="n">18 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">ledger_id</span><span class="ty">uuid</span></li>
+              <li><span class="key pk">PK</span><span class="col">entry_id</span><span class="ty">uuid</span></li>
+              <li><span class="key pk">PK</span><span class="col">id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">position</span><span class="ty">smallint</span></li>
+              <li><span class="key none"></span><span class="col">account_id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">side</span><span class="ty">enum</span></li>
+              <li><span class="key none"></span><span class="col">amount_minor_units</span><span class="ty">bigint</span></li>
+              <li><span class="key none"></span><span class="col">amount_currency_code</span><span class="ty">domain</span></li>
+              <li><span class="key none"></span><span class="col">amount_currency_scale</span><span class="ty">domain</span></li>
+              <li><span class="key none"></span><span class="col">functional_minor_units</span><span class="ty">bigint</span></li>
+              <li><span class="key none"></span><span class="col">functional_currency_code</span><span class="ty">domain</span></li>
+              <li><span class="key none"></span><span class="col">functional_currency_scale</span><span class="ty">domain</span></li>
+              <li><span class="key none"></span><span class="col">rate_from_code</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">rate_from_scale</span><span class="ty">smallint</span></li>
+              <li><span class="key none"></span><span class="col">rate_to_code</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">rate_to_scale</span><span class="ty">smallint</span></li>
+              <li><span class="key none"></span><span class="col">rate_factor</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">description</span><span class="ty">text</span></li>
+            </ul>
+            <p class="extra">FK (ledger_id, entry_id) → journal_entry (ledger_id, id) · ON DELETE CASCADE</p>
+          </section>
+
+        </div>
+
+        <div class="col-of-tables">
+
+          <section class="tbl cat" aria-labelledby="t-account">
+            <h3 id="t-account">account <span class="n">8 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">chart_of_accounts_id</span><span class="ty">uuid</span></li>
+              <li><span class="key uq">UQ</span><span class="col">code</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">name</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">type</span><span class="ty">enum</span></li>
+              <li><span class="key none"></span><span class="col">parent_id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">posting_allowed</span><span class="ty">boolean</span></li>
+              <li><span class="key none"></span><span class="col">status</span><span class="ty">enum</span></li>
+            </ul>
+            <p class="extra">UQ (chart_of_accounts_id, code)</p>
+          </section>
+
+          <section class="tbl root" aria-labelledby="t-idem">
+            <h3 id="t-idem">idempotency_record <span class="n">5 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">ledger_id</span><span class="ty">uuid</span></li>
+              <li><span class="key pk">PK</span><span class="col">operation</span><span class="ty">text</span></li>
+              <li><span class="key pk">PK</span><span class="col">idempotency_key</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">fingerprint</span><span class="ty">text</span></li>
+              <li><span class="key none"></span><span class="col">result</span><span class="ty">jsonb</span></li>
+            </ul>
+          </section>
+
+          <section class="tbl root" aria-labelledby="t-counter">
+            <h3 id="t-counter">entry_number_counter <span class="n">2 col</span></h3>
+            <ul class="cols">
+              <li><span class="key pk">PK</span><span class="col">ledger_id</span><span class="ty">uuid</span></li>
+              <li><span class="key none"></span><span class="col">last_issued</span><span class="ty">integer</span></li>
+            </ul>
+          </section>
+
+        </div>
+      </section>
+
+      <section class="legend" aria-labelledby="h-legend">
+        <h2 id="h-legend">Leyenda y fuentes</h2>
+        <div class="legend-grid">
+          <div class="legend-block">
+            <h3>Marcas de clave</h3>
+            <ul class="lg-list">
+              <li><span class="key pk">PK</span>Identidad durable de la fila. En los satélites del libro incluye <code>ledger_id</code>.</li>
+              <li><span class="key uq">UQ</span>Unicidad. Cuando abarca más de una columna, el bloque lo dice debajo de la lista.</li>
+              <li>Sin marca: columna de dato o vínculo que el motor no restringe.</li>
+            </ul>
+          </div>
+          <div class="legend-block">
+            <h3>Tipos de relación</h3>
+            <ul class="lg-list">
+              <li><b>FK real</b>: la única del esquema, intra-agregado; la línea no existe fuera de su asiento.</li>
+              <li><b>Lógica</b>: la comprueba el core al leer; el motor no la impone.</li>
+              <li><b>Derivada</b>: cuelga del plan que publica el libro, sin columna de clave foránea.</li>
+            </ul>
+          </div>
+          <div class="legend-block">
+            <h3>Fuentes</h3>
+            <ul class="lg-list">
+              <li><code>packages/adapter-postgres/schema/</code> · una creación por concepto.</li>
+              <li>Ninguna clave foránea une agregados: el adaptador no rechaza lo que el puerto acepta.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+    </div>
+
+    <aside class="panels" aria-label="Relaciones y restricciones">
+
+      <section class="panel" aria-labelledby="h-rel">
+        <h2 id="h-rel">Relaciones</h2>
+        <table class="rtable">
+          <caption class="sr-only">Origen, destino, cardinalidad y tipo de cada relación</caption>
+          <colgroup>
+            <col style="width: 33%">
+            <col style="width: 33%">
+            <col style="width: 12%">
+            <col style="width: 22%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">origen</th>
+              <th scope="col">destino</th>
+              <th scope="col">card.</th>
+              <th scope="col">tipo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><span class="tb">journal_entry</span><span class="cl">(ledger_id, id)</span></td>
+              <td><span class="tb">journal_entry_line</span><span class="cl">(ledger_id, entry_id)</span></td>
+              <td class="ct">1..N</td>
+              <td class="t-fk">FK real</td>
+            </tr>
+            <tr>
+              <td><span class="tb">ledger</span><span class="cl">id</span></td>
+              <td><span class="tb">journal</span><span class="cl">ledger_id</span></td>
+              <td class="ct">1..N</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">ledger</span><span class="cl">id</span></td>
+              <td><span class="tb">accounting_period</span><span class="cl">ledger_id</span></td>
+              <td class="ct">1..N</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">ledger</span><span class="cl">id</span></td>
+              <td><span class="tb">journal_entry</span><span class="cl">ledger_id</span></td>
+              <td class="ct">1..N</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">ledger</span><span class="cl">id</span></td>
+              <td><span class="tb">idempotency_record</span><span class="cl">ledger_id</span></td>
+              <td class="ct">1..N</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">ledger</span><span class="cl">id</span></td>
+              <td><span class="tb">entry_number_counter</span><span class="cl">ledger_id</span></td>
+              <td class="ct">1..1</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">ledger</span><span class="cl">chart_of_accounts_id</span></td>
+              <td><span class="tb">account</span><span class="cl">chart_of_accounts_id</span></td>
+              <td class="ct">1..N</td>
+              <td class="t-der">derivada</td>
+            </tr>
+            <tr>
+              <td><span class="tb">journal_entry</span><span class="cl">journal_id</span></td>
+              <td><span class="tb">journal</span><span class="cl">id</span></td>
+              <td class="ct">N..1</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">journal_entry</span><span class="cl">period_id</span></td>
+              <td><span class="tb">accounting_period</span><span class="cl">id</span></td>
+              <td class="ct">N..1</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">journal_entry_line</span><span class="cl">account_id</span></td>
+              <td><span class="tb">account</span><span class="cl">id</span></td>
+              <td class="ct">N..1</td>
+              <td class="t-log">lógica</td>
+            </tr>
+            <tr>
+              <td><span class="tb">journal_entry</span><span class="cl">reversal_of_entry_id</span></td>
+              <td><span class="tb">journal_entry</span><span class="cl">id</span></td>
+              <td class="ct">N..1</td>
+              <td class="t-log">auto-ref.</td>
+            </tr>
+            <tr>
+              <td><span class="tb">account</span><span class="cl">parent_id</span></td>
+              <td><span class="tb">account</span><span class="cl">id</span></td>
+              <td class="ct">N..1</td>
+              <td class="t-log">auto-ref.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+      <section class="panel" aria-labelledby="h-con">
+        <h2 id="h-con">Restricciones que el motor hace cumplir</h2>
+        <table class="rtable">
+          <caption class="sr-only">Restricción, tabla y qué impide cada una</caption>
+          <colgroup>
+            <col style="width: 42%">
+            <col style="width: 27%">
+            <col style="width: 31%">
+          </colgroup>
+          <thead>
+            <tr>
+              <th scope="col">restricción</th>
+              <th scope="col">tabla</th>
+              <th scope="col">qué impide</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <th scope="row">journal_entry_pkey</th>
+              <td>journal_entry</td>
+              <td class="desc">Reutilizar el id de un asiento del libro.</td>
+            </tr>
+            <tr>
+              <th scope="row">journal_entry_<wbr>ledger_number_unique</th>
+              <td>journal_entry</td>
+              <td class="desc">Dos asientos del libro con el mismo número.</td>
+            </tr>
+            <tr>
+              <th scope="row">accounting_period_no_overlap</th>
+              <td>accounting_period</td>
+              <td class="desc">Períodos del libro que se solapan.</td>
+            </tr>
+            <tr>
+              <th scope="row">journal_entry_line_entry_fkey</th>
+              <td>journal_entry_line</td>
+              <td class="desc">Una línea fuera de su asiento; cascada.</td>
+            </tr>
+            <tr>
+              <th scope="row">idempotency_record_pkey</th>
+              <td>idempotency_record</td>
+              <td class="desc">La misma operación repetida con su clave.</td>
+            </tr>
+            <tr>
+              <th scope="row">account_chart_code_unique</th>
+              <td>account</td>
+              <td class="desc">Dos cuentas con el mismo código en un plan.</td>
+            </tr>
+            <tr>
+              <th scope="row">accounting_period_date_order</th>
+              <td>accounting_period</td>
+              <td class="desc">Un período que termina antes de empezar.</td>
+            </tr>
+            <tr>
+              <th scope="row">journal_entry_number_positive</th>
+              <td>journal_entry</td>
+              <td class="desc">Un número cero o negativo.</td>
+            </tr>
+            <tr>
+              <th scope="row">journal_entry_line_<wbr>functional_complete</th>
+              <td>journal_entry_line</td>
+              <td class="desc">Importe funcional a medias: todo o nada.</td>
+            </tr>
+            <tr>
+              <th scope="row">journal_entry_line_<wbr>rate_complete</th>
+              <td>journal_entry_line</td>
+              <td class="desc">Tasa a medias: monedas, escalas y factor.</td>
+            </tr>
+            <tr>
+              <th scope="row">*_status_domain · account_type_domain · ..._side_domain</th>
+              <td>6 tablas</td>
+              <td class="desc">Un estado o tipo fuera de su dominio.</td>
+            </tr>
+            <tr>
+              <th scope="row">ledger_currency_code_format · ledger_currency_scale_range</th>
+              <td>ledger</td>
+              <td class="desc">Código fuera de ISO 4217 o escala 0..6.</td>
+            </tr>
+          </tbody>
+        </table>
+      </section>
+
+    </aside>
+
+  </div>
+
+</div>
+</div>
+</body>
+</html>

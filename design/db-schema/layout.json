@@ -1,0 +1,17 @@
+{
+  "arrangement": "free",
+  "positions": {
+    "01-er-canvas.html": {
+      "x": 488,
+      "y": 96
+    },
+    "02-aggregate-map.html": {
+      "x": 2059,
+      "y": 0
+    },
+    "03-schema-matrix.html": {
+      "x": 3040,
+      "y": 19
+    }
+  }
+}

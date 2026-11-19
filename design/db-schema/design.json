@@ -1,0 +1,10 @@
+{
+  "title": "Modelo de la base contable",
+  "brief": "Modelo visual del esquema PostgreSQL del motor contable: tablas, claves y relaciones, para revisar el diseño antes de implementar los puertos durables.",
+  "feature": "odd/tasks/postgres-adapter.md",
+  "artboards": [
+    { "file": "01-er-canvas.html", "title": "ERD ortogonal", "tradeoff": "Lee como un diagrama entidad-relación real y muestra cada columna; pierde claridad en pantallas angostas y exige desplazamiento horizontal", "width": 1440, "height": 980 },
+    { "file": "02-aggregate-map.html", "title": "Mapa de agregados", "tradeoff": "Muestra con claridad qué vive y muere con cada agregado; no expone cardinalidades de pares no relacionados", "width": 1440, "height": 900 },
+    { "file": "03-schema-matrix.html", "title": "Matriz del esquema", "tradeoff": "Denso y exacto para comparar columnas y restricciones; sin intuición espacial de las relaciones", "width": 1440, "height": 1000 }
+  ]
+}
